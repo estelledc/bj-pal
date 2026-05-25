@@ -25,8 +25,9 @@ from tools.types import SearchConstraints  # noqa: E402
 from tools.ugc_signals import extract_red_flags, summarize_area  # noqa: E402
 
 from .llm_client import LLMClient, get_llm_client  # noqa: E402
+from .plan_tracer import record_step as _tracer_record_step  # noqa: E402
 from .tracing import trace_span  # noqa: E402
-from .types import Plan, UserPreferences  # noqa: E402
+from .types import Plan, Step, UserPreferences  # noqa: E402
 
 
 # ============================================================
@@ -165,6 +166,9 @@ def _plan_inner(user_input, persona, prefs, area_anchor,
 
     # 7) 用真实路由数据填 travel_time（v2 改 1）+ 4 模式对比（v2 改 6B）
     _fill_real_travel_times(plan, prefs)
+
+    # 8) v2.4 D1：每步落 plan_tracer（失败不抛）
+    _record_plan_to_tracer(plan)
     return plan
 
 
@@ -287,6 +291,8 @@ def _plan_optw_inner(user_input, persona, prefs, area_anchor,
         ),
     )
     _fill_real_travel_times(plan, prefs)
+    # v2.4 D1：每步落 plan_tracer
+    _record_plan_to_tracer(plan)
     return plan
 
 
@@ -317,6 +323,74 @@ def _make_depart_step(idx: int, depart_min: int):
         mode_to_here="transit",
         rationale="OPTW solver 给定的总时长上限内返程",
     )
+
+
+# ============================================================
+# v2.4 D1：每个 plan return 前落 plan_tracer
+# ============================================================
+
+def _estimate_step_confidence(step: Step) -> float:
+    """启发式估算单步置信度 ∈ [0.5, 0.95]。
+
+    依据：
+    - base 0.7
+    - 有 booking 已落库 +0.1（mock_book 校验过餐位/座位）
+    - rationale 含强词（"最高/精选/口碑"）+0.05
+    - risk_tags 每多 1 个 -0.05
+    - is_rerouted -0.05（refined plan 仍带不确定性）
+    - depart 收尾步固定 0.9（确定性高）
+
+    真实场景下这个函数应被 LLM probability / OPTW utility 替换，
+    现在用规则版给 ECE 评测一个 baseline。
+    """
+    if step.kind == "depart":
+        return 0.9
+    base = 0.7
+    if step.booking:
+        base += 0.10
+    rat = step.rationale or ""
+    if any(kw in rat for kw in ("最高", "精选", "口碑", "高度推荐", "最优")):
+        base += 0.05
+    base -= 0.05 * len(step.risk_tags or [])
+    if step.is_rerouted:
+        base -= 0.05
+    return max(0.5, min(0.95, round(base, 3)))
+
+
+def _record_plan_to_tracer(plan: Plan) -> None:
+    """把 Plan 的每一步落 plan_tracer。
+
+    失败不抛错（trace 不能让业务挂）。
+    """
+    try:
+        for step in plan.steps:
+            decision = f"[{step.kind}] {step.poi_name or '(no_poi)'} @ {step.start_time}"
+            confidence = _estimate_step_confidence(step)
+            evidence = {
+                "rationale": (step.rationale or "")[:200],
+                "rating": getattr(step, "rating", None),
+                "risk_tags": list(step.risk_tags or []),
+                "duration_min": step.duration_min,
+                "is_rerouted": bool(step.is_rerouted),
+                "has_booking": bool(step.booking),
+            }
+            fallback = None
+            if plan.fallback_strategies:
+                # plan 级 fallback 一并存到每步，UI 能解释"如果这步出问题怎么办"
+                fallback = dict(plan.fallback_strategies)
+            _tracer_record_step(
+                plan.plan_id,
+                step.step_index,
+                decision=decision,
+                confidence=confidence,
+                step_kind=step.kind,
+                poi_id=step.poi_id,
+                evidence=evidence,
+                fallback_action=fallback,
+            )
+    except Exception:
+        # 故意吞掉：trace 不能让 plan 主路径挂
+        pass
 
 
 def _dedup_and_renumber(plan: Plan) -> None:

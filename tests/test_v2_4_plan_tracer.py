@@ -118,6 +118,40 @@ def t8_step_context_records_outcome():
     assert cal["n_samples"] == 1
 
 
+def t9_planner_e2e_records_to_tracer():
+    """plan() 跑完后 plan_tracer 应有该 plan_id 的全部 step。
+
+    这是 D1 真正生效的关键验证：mock LLM 跑出 plan → tracer 自动记录。
+    """
+    from agents.planner import plan
+    from agents.types import UserPreferences
+
+    prefs = UserPreferences(persona="family", target_start="14:00",
+                             duration_hours=4.0, raw_input="带娃下午溜达")
+    p = plan(
+        user_input="带 5 岁娃下午溜达，离家不远，2 小时左右",
+        persona="family",
+        prefs=prefs,
+        area_anchor="五道营-雍和宫片区",
+    )
+    assert p.plan_id and p.plan_id.startswith("plan-"), p.plan_id
+    print(f"\n[9] e2e plan_id={p.plan_id} steps={len(p.steps)}")
+
+    traced = iter_steps(p.plan_id)
+    assert len(traced) == len(p.steps), f"trace 步数 {len(traced)} ≠ plan 步数 {len(p.steps)}"
+    print(f"     trace 写入 {len(traced)} 步")
+
+    cov = coverage_rate(p.plan_id, expected_steps=len(p.steps))
+    assert cov == 1.0, f"coverage {cov} 不是 1.0"
+    print(f"     coverage = {cov} (v2.4 D1 目标 100%)")
+
+    # 每步置信度合理
+    for ts in traced:
+        assert 0.5 <= ts.confidence <= 0.95, f"conf 越界 {ts.confidence}"
+        assert ts.evidence is not None and "rationale" in ts.evidence
+    print(f"     所有 step 置信度 ∈ [0.5, 0.95]，evidence 含 rationale")
+
+
 if __name__ == "__main__":
     t1_record_step_basic()
     t2_confidence_bounds_validated()
@@ -127,4 +161,5 @@ if __name__ == "__main__":
     t6_calibration_for_plan_e2e()
     t7_v24_target_ece_threshold()
     t8_step_context_records_outcome()
+    t9_planner_e2e_records_to_tracer()
     print("\n所有 D1 验收通过！")

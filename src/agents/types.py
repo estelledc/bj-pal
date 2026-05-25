@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass, field, asdict
 from typing import Any, Literal, Optional
 
@@ -38,6 +39,8 @@ class Plan:
     fallback_strategies: dict = field(default_factory=dict)
     summary: str = ""
     rerouted_at_step: Optional[int] = None
+    # v2.4 D1：plan 唯一 id，给 plan_tracer 关联用；LLM 不需要填，自动生成
+    plan_id: str = field(default_factory=lambda: f"plan-{uuid.uuid4().hex[:12]}")
 
     @classmethod
     def from_dict(cls, d: dict) -> "Plan":
@@ -50,6 +53,7 @@ class Plan:
             fallback_strategies=d.get("fallback_strategies", {}),
             summary=d.get("summary", ""),
             rerouted_at_step=d.get("rerouted_at_step"),
+            plan_id=d.get("plan_id") or f"plan-{uuid.uuid4().hex[:12]}",
         )
 
     def to_dict(self) -> dict:
