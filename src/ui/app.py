@@ -53,6 +53,7 @@ from tools.mock_message import (  # noqa: E402
 )
 from tools.tool_call_log import clear_session, fetch_calls, set_session  # noqa: E402
 from tools.types import POI, SearchConstraints  # noqa: E402
+from ui.calibration_timeline import render_calibration_timeline_panel  # noqa: E402
 from ui.hero import render_hero  # noqa: E402
 from ui.map_view import render_map  # noqa: E402
 from ui.memory_panel import render_memory_panel  # noqa: E402
@@ -403,6 +404,9 @@ def main():
 
         # v2.8 D7：路线可惜度面板（chosen vs alternative）
         render_opportunity_panel(p2, prefs=prefs, expanded=False)
+
+        # v3.1 D7：校准时序面板（跨 plan 的 ECE 演化）
+        render_calibration_timeline_panel(window_size=10, expanded=False)
 
         # 主时间轴 + 地图
         col_left, col_right = st.columns([1, 1])
