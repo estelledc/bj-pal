@@ -5,9 +5,9 @@ __pycache__/
 .venv/
 venv/
 
-# Local data / 派生产物
-data/                    # 高德 POI / UGC 86M，不入库
-*.db                     # SQLite 索引（bj_pal.db / tool_calls.db）
+# 本地数据 / 派生产物（高德 POI / UGC 86M + SQLite 索引，不入库）
+data/
+*.db
 *.db-journal
 *.db-wal
 *.db-shm
@@ -24,6 +24,6 @@ data/                    # 高德 POI / UGC 86M，不入库
 .vscode/
 .idea/
 
-# Local fixtures / temp
+# Local fixtures
 .local-fixtures/
 *.tmp
