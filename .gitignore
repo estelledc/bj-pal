@@ -27,3 +27,6 @@ data/
 # Local fixtures
 .local-fixtures/
 *.tmp
+
+# v2.4 D3 evals 运行产物（每次跑会写新 JSON，不入库）
+evals/results/*.json

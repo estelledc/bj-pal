@@ -111,6 +111,7 @@ def group_rank(
     members: list[GroupMember],
     constraints: Optional[SearchConstraints] = None,
     aggregate_by: str = "weighted",
+    member_weights: Optional[dict[str, float]] = None,
 ) -> list[GroupRankedPOI]:
     """4 人调和排序。
 
@@ -119,12 +120,16 @@ def group_rank(
             - "weighted" (默认): min × 0.5 + avg × 0.5，分值加权法
             - "kemeny":          先 Borda 粗排 → Kemeny 精排（[47][48] 改进点）
                                  优势：保留偏好结构，对 pair 偏好稳定，避开多数暴政
+        member_weights: D5 群偏好收敛器输出的 {name: weight}。
+                        默认全 1.0；implicit_leader=1.5，silent=0.7，vetoer=0.5。
+                        仅作用于 weighted 聚合的 avg 项；min 项保留以防一票否决被忽略。
 
     Returns:
         ranked list, 按聚合方法对应的顺序
     """
     constraints = constraints or SearchConstraints()
     n_members = len(members)
+    weights = member_weights or {m.name: 1.0 for m in members}
     out: list[GroupRankedPOI] = []
     for poi in candidates:
         # L1 硬过滤：任一人 aversion 命中 → 排除
@@ -142,22 +147,33 @@ def group_rank(
             s, matched = score_poi_for_member(poi, m, constraints.budget_per_person)
             member_scores[m.name] = round(s, 3)
             member_matches[m.name] = matched
-        # 总分 = min × 0.5 + avg × 0.5
+        # 总分 = min × 0.5 + weighted_avg × 0.5
         scores = list(member_scores.values())
         score_min = min(scores) if scores else 0
-        score_avg = sum(scores) / max(n_members, 1)
-        total = score_min * 0.5 + score_avg * 0.5
+        # weighted average：每人 score × weight，再除以 weight 总和
+        weight_sum = sum(weights.get(m.name, 1.0) for m in members) or 1.0
+        score_weighted_avg = sum(
+            member_scores[m.name] * weights.get(m.name, 1.0) for m in members
+        ) / weight_sum
+        total = score_min * 0.5 + score_weighted_avg * 0.5
 
         hit_count = sum(1 for matches in member_matches.values() if matches)
         # 构建 reasons
+        # 用 weighted_avg 替代单纯 avg；evidence 注明权重分布
+        weight_repr = ",".join(
+            f"{m.name[1:]}:{weights.get(m.name, 1.0):.1f}" for m in members
+        )
         reasons = [Reason(
             factor="group_min_score",
             contrib=round(score_min * 0.5, 3),
-            evidence=f"4 人中最低分 {score_min:.2f}（避免老好人方案）",
+            evidence=f"{n_members} 人中最低分 {score_min:.2f}（避免老好人方案）",
         ), Reason(
-            factor="group_avg_score",
-            contrib=round(score_avg * 0.5, 3),
-            evidence=f"4 人平均分 {score_avg:.2f}（命中 {hit_count}/{n_members} 人偏好）",
+            factor="group_avg_score",   # 保留旧 factor 名，向后兼容
+            contrib=round(score_weighted_avg * 0.5, 3),
+            evidence=(
+                f"{n_members} 人加权平均 {score_weighted_avg:.2f}"
+                f"（命中 {hit_count}/{n_members} 人偏好，权重 {weight_repr}）"
+            ),
         )]
         # 命中明细
         details = "; ".join(
