@@ -55,6 +55,7 @@ from tools.tool_call_log import clear_session, fetch_calls, set_session  # noqa:
 from tools.types import POI, SearchConstraints  # noqa: E402
 from ui.hero import render_hero  # noqa: E402
 from ui.map_view import render_map  # noqa: E402
+from ui.memory_panel import render_memory_panel  # noqa: E402
 from ui.multimodal_intake import (  # noqa: E402
     apply_multimodal_to_query,
     render_multimodal_intake,
@@ -112,6 +113,10 @@ def main():
         clear_session(st.session_state.session_id)
     set_session(st.session_state.session_id)
 
+    # v2.7 D6：跨 session user_id（默认 demo-user，sidebar 可改）
+    if "user_id" not in st.session_state:
+        st.session_state.user_id = "demo-user-default"
+
     # === Hero 区（改 10）===
     show_hero = st.session_state.get("show_hero", True)
     if show_hero:
@@ -161,6 +166,18 @@ def main():
 
         st.markdown("---")
         st.markdown(f"`session: {st.session_state.session_id[:12]}`")
+
+        # v2.7 D6：user_id（跨 session 记忆）
+        new_uid = st.text_input(
+            "🧑 user_id（跨 session 记忆）",
+            value=st.session_state.user_id,
+            help="多人 demo 时切换 user_id 看不同记忆；同 user_id 跨重启仍生效",
+        )
+        if new_uid != st.session_state.user_id:
+            st.session_state.user_id = new_uid
+            st.rerun()
+
+        render_memory_panel(st.session_state.user_id)
 
         # v2.4 D1：全局 ECE 校准指标（≥ 5 样本才显示）
         render_global_ece(samples_threshold=5)
@@ -268,7 +285,7 @@ def main():
             with cl:
                 st.markdown("### ✅ BJ-Pal（含 reroute / UGC / 真实路由）")
                 with st.spinner("Planner 生成方案..."):
-                    p1 = make_plan(user_input=augmented_input, persona=persona_key,
+                    p1 = make_plan(user_input=augmented_input, persona=persona_key, user_id=st.session_state.user_id,
                                    prefs=prefs, area_anchor=area)
                     st.session_state.plan_v1 = p1
                     p2, events = probe_plan(p1, prefs=prefs)
@@ -282,7 +299,7 @@ def main():
                 st.markdown("### 🟡 朴素 GPT 对照（无 UGC / 无 reroute）")
                 with st.spinner("baseline 生成..."):
                     # baseline = 跑 plan 但不 probe
-                    p_base = make_plan(user_input=augmented_input, persona=persona_key,
+                    p_base = make_plan(user_input=augmented_input, persona=persona_key, user_id=st.session_state.user_id,
                                         prefs=prefs, area_anchor=area)
                 _render_plan_summary(p_base, label="baseline 无 reroute")
                 st.caption("**差异**：未做 UGC ranking / 未触发 reroute / 缺 reasons")
@@ -291,7 +308,7 @@ def main():
         with st.status("Planner 正在生成方案 v1...", expanded=False) as status:
             t0 = time.time()
             try:
-                p1 = make_plan(user_input=augmented_input, persona=persona_key,
+                p1 = make_plan(user_input=augmented_input, persona=persona_key, user_id=st.session_state.user_id,
                                prefs=prefs, area_anchor=area)
                 st.session_state.plan_v1 = p1
                 status.update(label=f"✅ v1 方案 {len(p1.steps)} 步 ({time.time()-t0:.1f}s)",

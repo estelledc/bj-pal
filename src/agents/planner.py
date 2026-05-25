@@ -90,6 +90,7 @@ def plan(
     client: Optional[LLMClient] = None,
     branch_hint: str = "",
     temperature: float = 0.3,
+    user_id: Optional[str] = None,
 ) -> Plan:
     """生成方案。
 
@@ -101,16 +102,27 @@ def plan(
         client: 注入 LLM client；默认 get_llm_client()
         branch_hint: ToT 分支提示词（append 到 user message extra_hint）
         temperature: 采样温度；ToT 不同分支用不同温度增加多样性
+        user_id: v2.7 D6 — 跨 session 用户标识。提供时：
+                 1. user_memory.merge_into_prompt 给 LLM 注入历史偏好
+                 2. user_memory.infer_from_user_input 自动从本次 query 沉淀新偏好
+                 None 时跳过（保持 stateless 行为）
     """
     prefs = prefs or UserPreferences(persona=persona, raw_input=user_input)
     client = client or get_llm_client()
 
+    # v2.7 D6：注入 user_memory + 自动 infer
+    augmented_input = user_input
+    if user_id:
+        from .user_memory import infer_from_user_input, merge_into_prompt
+        infer_from_user_input(user_id, user_input)
+        augmented_input = merge_into_prompt(user_input, user_id)
+
     with trace_span("planner.plan", attrs={
         "persona": persona, "area_anchor": area_anchor,
         "branch_hint": (branch_hint or "")[:40], "temperature": temperature,
-        "client": client.name,
+        "client": client.name, "user_id": user_id or "",
     }):
-        return _plan_inner(user_input, persona, prefs, area_anchor,
+        return _plan_inner(augmented_input, persona, prefs, area_anchor,
                             client, branch_hint, temperature)
 
 
