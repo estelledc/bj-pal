@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Local data / 派生产物
+data/                    # 高德 POI / UGC 86M，不入库
+*.db                     # SQLite 索引（bj_pal.db / tool_calls.db）
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Screenshots / 临时
+.screenshots/
+*.local.png
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Local fixtures / temp
+.local-fixtures/
+*.tmp

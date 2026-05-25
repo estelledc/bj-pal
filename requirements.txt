@@ -1,0 +1,13 @@
+# BJ-Pal 运行时依赖
+# 安装：pip3 install --user -r requirements.txt
+
+# LLM client（LongCat 走 Anthropic 兼容协议）
+anthropic>=0.30.0
+httpx>=0.27.0
+python-dotenv>=1.0.0
+
+# Web UI
+streamlit>=1.30.0
+folium>=0.15.0
+streamlit-folium>=0.15.0
+pandas>=2.0.0

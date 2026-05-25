@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Eval 对比 — v1 / v2 / v3</title>
+<link rel="stylesheet" href="../../../../wiki/style.css">
+</head>
+<body>
+<nav class="breadcrumb">
+  <a href="../../../../index.html">index</a> / explorations / mini-apps / bj-pal / docs / eval-100-results.html
+</nav>
+
+<header class="page">
+  <h1>Eval 对比 — v1 / v2 / v3</h1>
+  <div class="meta">
+    源 md：<code>explorations/mini-apps/bj-pal/docs/eval-100-results.md</code>
+    <span class="src-mtime">最后更新 2026-05-21 19:53</span>
+  </div>
+  <div class="actions">
+    <button onclick="copyMd()">复制原 md</button>
+    <button onclick="toggleEditor()" id="btn-editor">编辑模式 <span id="editor-mode-badge" class="writeback-mode-badge offline">检测中</span></button>
+    <button onclick="rerenderHint()">重新渲染指引</button>
+  </div>
+  <div class="stale-warn" id="stale"></div>
+</header>
+
+<main id="content">
+<h1 id="eval-v1-v2-v3">Eval 对比 — v1 / v2 / v3</h1>
+<blockquote>
+<p>自动生成自 <code>scripts/eval_compare.py</code></p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>配置</th>
+<th>delivery</th>
+<th>commonsense</th>
+<th>hard_constraint</th>
+<th><strong>final_pass</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>v1 (40, baseline)</td>
+<td>0.975 (39/40)</td>
+<td>0.475 (19/40)</td>
+<td>0.675 (27/40)</td>
+<td><strong>0.275 (11/40)</strong></td>
+</tr>
+<tr>
+<td>v2 (40, [73][75])</td>
+<td>0.975 (39/40)</td>
+<td>0.575 (23/40)</td>
+<td>0.650 (26/40)</td>
+<td><strong>0.275 (11/40)</strong></td>
+</tr>
+<tr>
+<td>v2_run2 (40)</td>
+<td>0.975 (39/40)</td>
+<td>0.575 (23/40)</td>
+<td>0.650 (26/40)</td>
+<td><strong>0.275 (11/40)</strong></td>
+</tr>
+<tr>
+<td>v3 (100, [11]+[12]+[88])</td>
+<td>1.000 (100/100)</td>
+<td>0.810 (81/100)</td>
+<td>0.610 (61/100)</td>
+<td><strong>0.470 (47/100)</strong></td>
+</tr>
+<tr>
+<td>mock_v3 (100)</td>
+<td>1.000 (100/100)</td>
+<td>0.580 (58/100)</td>
+<td>0.820 (82/100)</td>
+<td><strong>0.400 (40/100)</strong></td>
+</tr>
+</tbody>
+</table>
+</main>
+
+<footer class="page">
+  路径：<code>explorations/mini-apps/bj-pal/docs/eval-100-results.md</code> ·
+  渲染时间：<span id="rendered-at">2026-05-21 20:11</span> ·
+  样式：<a href="../../../../wiki/style.css">style.css</a> · <a href="../../../../wiki/design-system.html">design system</a>
+</footer>
+
+<script>
+// 原始 md 文本嵌入 base64（避免引号 / 反斜杠转义噩梦）
+const MD_BASE64 = "IyBFdmFsIOWvueavlCDigJQgdjEgLyB2MiAvIHYzCgo+IOiHquWKqOeUn+aIkOiHqiBgc2NyaXB0cy9ldmFsX2NvbXBhcmUucHlgCgp8IOmFjee9riB8IGRlbGl2ZXJ5IHwgY29tbW9uc2Vuc2UgfCBoYXJkX2NvbnN0cmFpbnQgfCAqKmZpbmFsX3Bhc3MqKiB8CnwtLS18LS0tfC0tLXwtLS18LS0tfAp8IHYxICg0MCwgYmFzZWxpbmUpIHwgMC45NzUgKDM5LzQwKSB8IDAuNDc1ICgxOS80MCkgfCAwLjY3NSAoMjcvNDApIHwgKiowLjI3NSAoMTEvNDApKiogfAp8IHYyICg0MCwgWzczXVs3NV0pIHwgMC45NzUgKDM5LzQwKSB8IDAuNTc1ICgyMy80MCkgfCAwLjY1MCAoMjYvNDApIHwgKiowLjI3NSAoMTEvNDApKiogfAp8IHYyX3J1bjIgKDQwKSB8IDAuOTc1ICgzOS80MCkgfCAwLjU3NSAoMjMvNDApIHwgMC42NTAgKDI2LzQwKSB8ICoqMC4yNzUgKDExLzQwKSoqIHwKfCB2MyAoMTAwLCBbMTFdK1sxMl0rWzg4XSkgfCAxLjAwMCAoMTAwLzEwMCkgfCAwLjgxMCAoODEvMTAwKSB8IDAuNjEwICg2MS8xMDApIHwgKiowLjQ3MCAoNDcvMTAwKSoqIHwKfCBtb2NrX3YzICgxMDApIHwgMS4wMDAgKDEwMC8xMDApIHwgMC41ODAgKDU4LzEwMCkgfCAwLjgyMCAoODIvMTAwKSB8ICoqMC40MDAgKDQwLzEwMCkqKiB8Cg==";
+const MD_PATH = "explorations/mini-apps/bj-pal/docs/eval-100-results.md";
+const MD_MTIME = 1779364396;
+
+const WRITEBACK_BASE = "http://127.0.0.1:8765";
+
+// Phase 2 状态
+let writebackOnline = false;
+let writebackToken = null;
+let editorOn = false;
+
+function decodeMd() {
+  const bin = atob(MD_BASE64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder("utf-8").decode(bytes);
+}
+
+async function copyMd() {
+  const md = decodeMd();
+  try {
+    await navigator.clipboard.writeText(md);
+    flashButton(event.target, "已复制");
+  } catch (e) {
+    fallbackCopy(md);
+    flashButton(event.target, "已复制(回退)");
+  }
+}
+
+function fallbackCopy(text) {
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.style.position = "fixed";
+  ta.style.left = "-9999px";
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand("copy");
+  document.body.removeChild(ta);
+}
+
+function flashButton(btn, msg) {
+  if (!btn) return;
+  const old = btn.textContent;
+  btn.textContent = msg;
+  setTimeout(() => { btn.textContent = old; }, 1200);
+}
+
+function toast(msg, kind) {
+  const t = document.createElement("div");
+  t.className = "writeback-toast " + (kind || "");
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+// === writeback 探测（页面加载即跑） ===
+async function detectWriteback() {
+  const badge = document.getElementById("editor-mode-badge");
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 800);
+    const r = await fetch(WRITEBACK_BASE + "/health", { signal: ctrl.signal });
+    clearTimeout(timer);
+    if (!r.ok) throw new Error("health " + r.status);
+    const tr = await fetch(WRITEBACK_BASE + "/token");
+    const tj = await tr.json();
+    writebackToken = tj.token;
+    writebackOnline = true;
+    badge.textContent = "在线";
+    badge.classList.remove("offline");
+    badge.classList.add("online");
+  } catch (e) {
+    writebackOnline = false;
+    badge.textContent = "离线";
+    badge.classList.add("offline");
+  }
+}
+
+function toggleEditor() {
+  editorOn = !editorOn;
+  document.body.classList.toggle("editor-on", editorOn);
+  if (editorOn) attachEditors();
+  else detachEditors();
+}
+
+function attachEditors() {
+  document.querySelectorAll("main h2").forEach(h => {
+    if (h.dataset.editAttached) return;
+    h.dataset.editAttached = "1";
+    h.title = writebackOnline
+      ? "双击：段级在线编辑（保存自动写回 md）"
+      : "双击：导出该段修改 prompt（服务离线）";
+    h.addEventListener("dblclick", () => {
+      if (writebackOnline) openSectionEditor(h);
+      else exportSectionPrompt(h);
+    });
+  });
+}
+
+function detachEditors() {
+  // 不移除 listener，仅靠 editor-on class 控制视觉提示
+}
+
+// === Phase 1 离线回退：复制 prompt ===
+function exportSectionPrompt(h2) {
+  const heading = h2.textContent.trim();
+  const tip = `请把 ${MD_PATH} 中的"${heading}"段改为以下内容（保持其他段不变）：\n\n<在这里粘贴新内容>\n\n改完后用户会重跑 /render。`;
+  navigator.clipboard.writeText(tip).then(
+    () => toast("修改 prompt 已复制；粘贴到会话替换占位即可。", "ok"),
+    () => prompt("自动复制失败，请手动复制：", tip)
+  );
+}
+
+// === Phase 2 在线编辑：段级 textarea + fetch 保存 ===
+function getSectionRange(h2) {
+  // DOM 范围：h2 → 下个同级或更高级 heading 之前
+  const sibs = [];
+  let n = h2.nextSibling;
+  const stop = ["H1", "H2"];
+  while (n) {
+    if (n.nodeType === 1 && stop.includes(n.tagName)) break;
+    sibs.push(n);
+    n = n.nextSibling;
+  }
+  return sibs;
+}
+
+function extractMdSection(mdText, heading) {
+  // 前端版段级抽取——和 server 用相同算法
+  const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const lines = mdText.split("\n");
+  const startRe = new RegExp("^##\\s+" + escaped + "\\s*$");
+  const stopRe = /^#{1,2}\s+\S/;
+  let start = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (startRe.test(lines[i])) { start = i; break; }
+  }
+  if (start === -1) return null;
+  let end = lines.length;
+  for (let j = start + 1; j < lines.length; j++) {
+    if (stopRe.test(lines[j])) { end = j; break; }
+  }
+  return lines.slice(start, end).join("\n").replace(/\s+$/, "");
+}
+
+function openSectionEditor(h2) {
+  if (h2.dataset.editorOpen === "1") return;
+  const heading = h2.textContent.trim();
+  const md = decodeMd();
+  const sectionMd = extractMdSection(md, heading);
+  if (sectionMd === null) {
+    toast(`未在 md 中找到段落"${heading}"——可能 heading 经过修饰。改用复制 prompt 模式。`, "err");
+    exportSectionPrompt(h2);
+    return;
+  }
+
+  h2.dataset.editorOpen = "1";
+
+  // 隐藏原段 DOM（不删，保留以便取消还原）
+  const range = getSectionRange(h2);
+  range.forEach(n => { if (n.style) n.dataset.origDisplay = n.style.display, n.style.display = "none"; });
+  h2.style.display = "none";
+
+  // 插入编辑器
+  const wrap = document.createElement("div");
+  wrap.className = "section-editor-wrap";
+  wrap.innerHTML = `
+    <textarea spellcheck="false"></textarea>
+    <div class="section-editor-actions">
+      <button class="primary" type="button" data-act="save">保存（写回 md + 重渲）</button>
+      <button type="button" data-act="cancel">取消</button>
+      <span class="hint">提示：首行必须保留 <code>## ${heading}</code>；改 heading 也要在首行写新名字。</span>
+    </div>
+  `;
+  wrap.querySelector("textarea").value = sectionMd;
+  h2.parentNode.insertBefore(wrap, h2);
+
+  wrap.querySelector('[data-act="cancel"]').addEventListener("click", () => closeEditor(h2, wrap, true));
+  wrap.querySelector('[data-act="save"]').addEventListener("click", () => saveSection(h2, wrap, heading));
+
+  wrap.querySelector("textarea").focus();
+}
+
+function closeEditor(h2, wrap, restore) {
+  wrap.remove();
+  if (restore) {
+    h2.style.display = "";
+    const range = getSectionRange(h2);
+    range.forEach(n => { if (n.style) n.style.display = n.dataset.origDisplay || ""; });
+  }
+  delete h2.dataset.editorOpen;
+}
+
+async function saveSection(h2, wrap, heading) {
+  const newMd = wrap.querySelector("textarea").value;
+  const saveBtn = wrap.querySelector('[data-act="save"]');
+  saveBtn.disabled = true;
+  saveBtn.textContent = "保存中...";
+
+  try {
+    const r = await fetch(WRITEBACK_BASE + "/section", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Writeback-Token": writebackToken,
+      },
+      body: JSON.stringify({
+        path: MD_PATH,
+        heading: heading,
+        level: 2,
+        new_md: newMd,
+      }),
+    });
+    const j = await r.json();
+    if (!r.ok || !j.ok) {
+      toast("保存失败：" + (j.error || r.status), "err");
+      saveBtn.disabled = false;
+      saveBtn.textContent = "保存（写回 md + 重渲）";
+      return;
+    }
+    toast(`保存成功，重渲 ${j.render_ok ? "成功" : "失败"}，正在 reload...`, "ok");
+    setTimeout(() => location.reload(), 600);
+  } catch (e) {
+    toast("网络错误：" + e.message, "err");
+    saveBtn.disabled = false;
+    saveBtn.textContent = "保存（写回 md + 重渲）";
+  }
+}
+
+function rerenderHint() {
+  const cmd = `/render ${MD_PATH.startsWith("daily/") ? "daily " + MD_PATH.match(/(\\d{4}-\\d{2}-\\d{2})/)?.[1]
+                : MD_PATH.startsWith("learnings/") ? "learning " + MD_PATH
+                : MD_PATH.startsWith("wiki/") ? "wiki"
+                : MD_PATH}`;
+  navigator.clipboard.writeText(cmd).then(
+    () => flashButton(event.target, "命令已复制"),
+    () => prompt("复制失败，请手动复制：", cmd)
+  );
+}
+
+// stale banner：本地不能读 fs，但页面打开时间 vs MD_MTIME 给个粗略提示
+(function staleCheck() {
+  const banner = document.getElementById("stale");
+  if (!banner) return;
+  const ageMs = Date.now() - MD_MTIME * 1000;
+  const ageHr = ageMs / 3600000;
+  if (ageHr > 24 * 7) {
+    banner.classList.add("show");
+    banner.innerHTML = `<strong>提示：</strong>源 md 已 ${Math.floor(ageHr/24)} 天未更新。如刚改过，请运行 <code>/render check</code> 确认是否需重新渲染。`;
+  }
+})();
+
+// 启动即探测 writeback 服务
+detectWriteback();
+</script>
+</body>
+</html>
