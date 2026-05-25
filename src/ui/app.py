@@ -57,6 +57,11 @@ from ui.hero import render_hero  # noqa: E402
 from ui.map_view import render_map  # noqa: E402
 from ui.radar import render_radar  # noqa: E402
 from ui.timeline import render_timeline  # noqa: E402
+from ui.trust_panel import (  # noqa: E402
+    render_global_ece,
+    render_member_weights_panel,
+    render_trust_panel,
+)
 
 
 PRESETS = {
@@ -152,6 +157,9 @@ def main():
 
         st.markdown("---")
         st.markdown(f"`session: {st.session_state.session_id[:12]}`")
+
+        # v2.4 D1：全局 ECE 校准指标（≥ 5 样本才显示）
+        render_global_ece(samples_threshold=5)
         if st.button("🔄 重置 / 清空 Trace", use_container_width=True):
             for k in ["plan_v1", "plan_v2", "events", "card", "send_result",
                       "broadcast_responses", "addons"]:
@@ -329,6 +337,17 @@ def main():
                 responses = simulate_group_responses(p2, DEMO_FRIEND_GROUP,
                                                       force_one_dissent=True)
                 st.session_state.broadcast_responses = responses
+                # v2.4 D5：算成员模式 + weights
+                from agents.group_dynamics import profile_group
+                history_by_member = {r.contact: [r] for r in responses}
+                first_resp = min(
+                    (r for r in responses if r.reply_at_ms > 0),
+                    key=lambda r: r.reply_at_ms, default=None,
+                )
+                st.session_state.member_profiles = profile_group(
+                    DEMO_FRIEND_GROUP, history_by_member,
+                    first_responder=first_resp.contact if first_resp else None,
+                )
 
     # === 展示 ===
     if "plan_v2" in st.session_state:
@@ -342,10 +361,17 @@ def main():
         # 群发响应面板（改 2）
         if "broadcast_responses" in st.session_state:
             _render_broadcast_panel(st.session_state.broadcast_responses, p2, prefs)
+            # v2.4 D5：成员模式权重小卡（broadcast 后才有）
+            if st.session_state.get("member_profiles"):
+                render_member_weights_panel(st.session_state.member_profiles)
+                st.markdown("")
 
         # AddOn 建议（改 7）
         if st.session_state.get("addons"):
             _render_addons(st.session_state.addons)
+
+        # v2.4 D1：履约可信度面板（始终显示，因为 plan() 入口已自动落库）
+        render_trust_panel(p2, expanded=False)
 
         # 主时间轴 + 地图
         col_left, col_right = st.columns([1, 1])
