@@ -107,6 +107,72 @@ def detect_has_elderly(raw_preference: str) -> bool:
     return any(kw in (raw_preference or "") for kw in ELDERLY_KEYWORDS)
 
 
+# ============================================================
+# v2.4 S4 / D5: 时段识别（工作日 vs 周末）
+#
+# 来源：USER_RESEARCH_FINDINGS 信号 4 — "工作日不属于这个 App"（4/5）
+# BJ-Pal 主台词聚焦周六下午；工作日 query 应触发偏好镜子澄清，
+# 不直接出 plan。
+# ============================================================
+
+WEEKDAY_KEYWORDS = [
+    "周一", "周二", "周三", "周四", "周五",
+    "礼拜一", "礼拜二", "礼拜三", "礼拜四", "礼拜五",
+    "工作日", "上班", "下班", "午休", "中午请假", "调休",
+    "工作中", "上着班",
+]
+WEEKEND_KEYWORDS = [
+    "周六", "周日", "周末", "礼拜六", "礼拜天", "礼拜日",
+    "休息日", "双休", "假期",
+]
+
+
+def detect_weekday_context(raw: str) -> dict:
+    """识别用户 query 的时段信号 — 工作日 vs 周末。
+
+    BJ-Pal 主战场是周六下午；检测到工作日 + 没有周末覆盖时，
+    UI 应该提示偏好镜子澄清（"工作日下午是临时约还是有半天假？"）
+    而不是直接出 plan。
+
+    Args:
+        raw: 用户原话
+
+    Returns:
+        {
+            "is_weekday_signal": bool,        # 工作日关键词命中
+            "is_weekend_signal": bool,        # 周末关键词命中
+            "day_keyword": str,               # 命中的具体词
+            "should_clarify": bool,           # UI 是否应该澄清
+            "suggested_clarification": str,   # 建议追问语
+        }
+    """
+    text = raw or ""
+    weekday_hit = next((kw for kw in WEEKDAY_KEYWORDS if kw in text), "")
+    weekend_hit = next((kw for kw in WEEKEND_KEYWORDS if kw in text), "")
+
+    is_weekday = bool(weekday_hit)
+    is_weekend = bool(weekend_hit)
+
+    # 应澄清：工作日命中 + 没有周末覆盖（避免"周六中午请假"误触发）
+    should_clarify = is_weekday and not is_weekend
+
+    if should_clarify:
+        suggested = (
+            f"BJ-Pal 主台词是周六下午。检测到「{weekday_hit}」— "
+            "是临时约还是请了半天假？要不要切到「快速选餐」模式？"
+        )
+    else:
+        suggested = ""
+
+    return {
+        "is_weekday_signal": is_weekday,
+        "is_weekend_signal": is_weekend,
+        "day_keyword": weekday_hit or weekend_hit,
+        "should_clarify": should_clarify,
+        "suggested_clarification": suggested,
+    }
+
+
 def detect_screening_mode(raw_preference: str) -> bool:
     """关键词触发：重要场合 → 切筛选模式。
 

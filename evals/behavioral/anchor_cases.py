@@ -168,29 +168,52 @@ def check_s5_screening_mode() -> dict:
 # ============================================================
 
 def check_s4_weekend_focus() -> dict:
-    """主台词聚焦周六下午，对工作日 query 不应直接出 plan。
+    """主台词聚焦周六下午，对工作日 query 应触发澄清而非直接出 plan。
 
-    现状 v2.3 没有 weekday detection 能力 — 这条 case 故意标 expected=False，
-    作为 v2.4 D5+ 的 todo 信号（红色 baseline）。
-
-    通过条件：runner 能跑通且明确报告"未实现"。
+    检查 detect_weekday_context 行为：
+    - 工作日 query → should_clarify=True
+    - 周末 query → should_clarify=False
+    - "周六中午请假"等混合信号 → 周末覆盖工作日，should_clarify=False
     """
     t0 = time.perf_counter()
-    # 现有代码无 detect_weekday_context；返回 baseline=未覆盖
-    has_weekday_detection = False
     try:
-        from agents.preference_mirror import detect_weekday_context  # noqa: F401
-        has_weekday_detection = True
+        from agents.preference_mirror import detect_weekday_context
     except ImportError:
-        pass
+        return {
+            "pass": False,
+            "observed": {"error": "detect_weekday_context 未实现"},
+            "latency_ms": int((time.perf_counter() - t0) * 1000),
+        }
+
+    must_clarify = [
+        "周一中午有空一起吃个饭吗",
+        "工作日下午想溜达",
+        "周三下班后聚一下",
+    ]
+    must_not_clarify = [
+        "周六下午带娃出门",
+        "周日去逛南锣",
+        "周末双休找地方放空",
+        "周五下班后周末聚一下",  # 含周末覆盖
+    ]
+
+    fails = []
+    for q in must_clarify:
+        r = detect_weekday_context(q)
+        if not r["should_clarify"]:
+            fails.append(f"漏判工作日: {q}")
+    for q in must_not_clarify:
+        r = detect_weekday_context(q)
+        if r["should_clarify"]:
+            fails.append(f"误判周末: {q} ({r['day_keyword']})")
 
     elapsed_ms = int((time.perf_counter() - t0) * 1000)
-    # baseline 阶段：故意 fail，提醒后续轮补 detect_weekday_context
     return {
-        "pass": has_weekday_detection,
+        "pass": len(fails) == 0,
         "observed": {
-            "has_weekday_detection": has_weekday_detection,
-            "note": "v2.4 baseline 未实现，D5 后续轮补",
+            "fails": fails,
+            "n_must_clarify": len(must_clarify),
+            "n_must_not": len(must_not_clarify),
         },
         "latency_ms": elapsed_ms,
     }
