@@ -43,6 +43,7 @@ def fuse_and_rank(
     graph_anchor: Optional[str] = None,
     audience_preference: Optional[str] = None,
     driving: bool = False,
+    time_context: Optional[str] = None,
 ) -> list[RankedPOI]:
     """对候选 POI 做 L1 硬过滤 + L2 加权排序。
 
@@ -52,6 +53,9 @@ def fuse_and_rank(
         center: 当前停留点（lng, lat），用于距离惩罚；None 时不计距离
         weights: 自定义权重；默认见 DEFAULT_WEIGHTS
         heritage_query: True 时对老字号品牌的非总店分店降权（[08] 改进）
+        time_context: v2.6 D4 时段画像（friday_night / rainy_indoor /
+                      weekend_afternoon / holiday_morning / none）。
+                      None 时不应用时段调整，保持向后兼容。
     """
     weights = {**DEFAULT_WEIGHTS, **(weights or {})}
     ranked: list[RankedPOI] = []
@@ -85,9 +89,26 @@ def fuse_and_rank(
         # [03] 开车场景：停车难度 → score 调整
         if driving:
             _apply_parking_adjustment(scored, target_dt)
+        # v2.6 D4 时段画像：friday_night / rainy_indoor 等场景对 POI 加减分
+        if time_context and time_context != "none":
+            _apply_time_bucket_adjustment(scored, time_context)
         ranked.append(scored)
     ranked.sort(key=lambda r: r.score, reverse=True)
     return ranked
+
+
+def _apply_time_bucket_adjustment(ranked: RankedPOI, bucket: str) -> None:
+    """v2.6 D4：对 POI 应用时段画像加减分。"""
+    from .time_bucket import score_poi_for_bucket
+    delta, why = score_poi_for_bucket(ranked.poi, bucket)
+    if delta == 0.0:
+        return
+    ranked.score = round(ranked.score + delta, 4)
+    ranked.reasons.append(Reason(
+        factor="time_bucket_match" if delta > 0 else "time_bucket_mismatch",
+        contrib=delta,
+        evidence=why,
+    ))
 
 
 def _apply_weather_adjustment(ranked: RankedPOI, weather) -> None:

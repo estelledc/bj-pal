@@ -120,14 +120,31 @@ def _plan_inner(user_input, persona, prefs, area_anchor,
     with trace_span("planner.summarize_area", attrs={"area": area_anchor}):
         area_ctx = summarize_area(area_anchor)
 
+    # 1.5) v2.6 D4：识别时段画像
+    from tools.time_bucket import detect_time_bucket, score_poi_for_bucket
+    time_detection = detect_time_bucket(user_input)
+
     # 2) 拉候选 POI 池
-    with trace_span("planner.search_candidates"):
+    with trace_span("planner.search_candidates",
+                    attrs={"time_bucket": time_detection.bucket}):
         constraints = _prefs_to_constraints(prefs)
         food = search_pois(area_anchor=area_anchor, category="food", constraints=constraints, limit=12)
         scenic = search_pois(area_anchor=area_anchor, category="scenic", constraints=constraints, limit=8)
         landmark = search_pois(area_anchor=area_anchor, category="landmark", constraints=constraints, limit=6)
         museum = search_pois(area_anchor=area_anchor, category="museum", constraints=constraints, limit=4)
         shopping = search_pois(area_anchor=area_anchor, category="shopping", constraints=constraints, limit=4)
+
+        # v2.6 D4：如果命中时段画像 → 按 time_bucket 对每池重排
+        if time_detection.bucket != "none":
+            def _rerank(pool: list) -> list:
+                scored = [(p, score_poi_for_bucket(p, time_detection.bucket)[0]) for p in pool]
+                scored.sort(key=lambda t: t[1], reverse=True)
+                return [t[0] for t in scored]
+            food = _rerank(food)
+            scenic = _rerank(scenic)
+            landmark = _rerank(landmark)
+            museum = _rerank(museum)
+            shopping = _rerank(shopping)
 
     # 3) 拼用户消息（含 <context> JSON 块和 <schema> 提示）
     user_msg = _build_user_message(
