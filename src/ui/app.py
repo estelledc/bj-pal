@@ -60,6 +60,7 @@ from ui.multimodal_intake import (  # noqa: E402
     apply_multimodal_to_query,
     render_multimodal_intake,
 )
+from ui.opportunity_panel import render_opportunity_panel  # noqa: E402
 from ui.radar import render_radar  # noqa: E402
 from ui.timeline import render_timeline  # noqa: E402
 from ui.trust_panel import (  # noqa: E402
@@ -400,6 +401,9 @@ def main():
         # v2.4 D1：履约可信度面板（始终显示，因为 plan() 入口已自动落库）
         render_trust_panel(p2, expanded=False)
 
+        # v2.8 D7：路线可惜度面板（chosen vs alternative）
+        render_opportunity_panel(p2, prefs=prefs, expanded=False)
+
         # 主时间轴 + 地图
         col_left, col_right = st.columns([1, 1])
         with col_left:
@@ -542,8 +546,41 @@ def _render_plan_summary(plan, label="方案"):
 
 
 def _render_broadcast_panel(responses, plan, prefs):
-    """4 人头像状态面板（改 2）。"""
+    """4 人头像状态面板（改 2）+ v2.8 D7 收敛进度 bar。"""
     st.markdown("### 📨 群发响应（4 人）")
+
+    # v2.8 D7：收敛进度 bar
+    n_total = len(responses)
+    n_confirmed = sum(1 for r in responses if r.status == "confirmed")
+    n_rejected = sum(1 for r in responses if r.status == "rejected")
+    n_waiting = sum(1 for r in responses if r.status in ("waiting", "no_reply"))
+    confirm_pct = int(100 * n_confirmed / n_total) if n_total else 0
+
+    if confirm_pct >= 80:
+        bar_color, status_text = "#10b981", "已收敛 (≥80% confirmed)"
+    elif confirm_pct >= 50:
+        bar_color, status_text = "#f59e0b", "进行中"
+    else:
+        bar_color, status_text = "#ef4444", "需 reroute"
+
+    progress_html = f"""
+    <div style='margin-bottom:12px'>
+      <div style='display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px'>
+        <span><strong>群体共识进度</strong>（v2.8 D7）</span>
+        <span style='color:{bar_color};font-weight:bold'>{confirm_pct}% · {status_text}</span>
+      </div>
+      <div style='display:flex;height:18px;border-radius:9px;overflow:hidden;background:#e5e7eb'>
+        <div style='background:#10b981;width:{100*n_confirmed/n_total}%' title='confirmed {n_confirmed}'></div>
+        <div style='background:#ef4444;width:{100*n_rejected/n_total}%' title='rejected {n_rejected}'></div>
+        <div style='background:#9ca3af;width:{100*n_waiting/n_total}%' title='waiting {n_waiting}'></div>
+      </div>
+      <div style='font-size:11px;color:#6b7280;margin-top:2px'>
+        ✅ {n_confirmed} 通过 · ❌ {n_rejected} 否决 · ⏳ {n_waiting} 待响应
+      </div>
+    </div>
+    """
+    st.markdown(progress_html, unsafe_allow_html=True)
+
     cols = st.columns(len(responses))
     for col, r in zip(cols, responses):
         with col:
