@@ -55,6 +55,10 @@ from tools.tool_call_log import clear_session, fetch_calls, set_session  # noqa:
 from tools.types import POI, SearchConstraints  # noqa: E402
 from ui.hero import render_hero  # noqa: E402
 from ui.map_view import render_map  # noqa: E402
+from ui.multimodal_intake import (  # noqa: E402
+    apply_multimodal_to_query,
+    render_multimodal_intake,
+)
 from ui.radar import render_radar  # noqa: E402
 from ui.timeline import render_timeline  # noqa: E402
 from ui.trust_panel import (  # noqa: E402
@@ -168,6 +172,10 @@ def main():
             st.rerun()
 
     # === 主区 ===
+
+    # v2.5 D2：多模态首屏
+    render_multimodal_intake()
+
     user_input = st.text_area(
         "💬 一句话告诉我你想干嘛",
         value=st.session_state.get("user_input", preset["user_input"]),
@@ -228,10 +236,12 @@ def main():
 
     # === 生成流水线 ===
     if gen_btn:
-        st.session_state.user_input = user_input
+        # v2.5 D2：把多模态信号 merge 进 user_input
+        augmented_input = apply_multimodal_to_query(user_input)
+        st.session_state.user_input = user_input  # 保留原 input 给 UI 显示
         prefs = UserPreferences(
             **{**preset["prefs"], "budget_per_person": budget, "target_start": target_start,
-               "raw_input": user_input}
+               "raw_input": augmented_input}
         )
         st.session_state.prefs = prefs
         st.session_state.area = area
@@ -240,7 +250,7 @@ def main():
         if mode_choice == "screening":
             with st.status("筛选模式：拉候选 + 理由 + 红旗 ...", expanded=True) as status:
                 result = screen_candidates(
-                    user_input=user_input, persona=persona_key,
+                    user_input=augmented_input, persona=persona_key,
                     prefs=prefs, area_anchor=area,
                     category="food", top_k=8,
                 )
@@ -258,7 +268,7 @@ def main():
             with cl:
                 st.markdown("### ✅ BJ-Pal（含 reroute / UGC / 真实路由）")
                 with st.spinner("Planner 生成方案..."):
-                    p1 = make_plan(user_input=user_input, persona=persona_key,
+                    p1 = make_plan(user_input=augmented_input, persona=persona_key,
                                    prefs=prefs, area_anchor=area)
                     st.session_state.plan_v1 = p1
                     p2, events = probe_plan(p1, prefs=prefs)
@@ -272,7 +282,7 @@ def main():
                 st.markdown("### 🟡 朴素 GPT 对照（无 UGC / 无 reroute）")
                 with st.spinner("baseline 生成..."):
                     # baseline = 跑 plan 但不 probe
-                    p_base = make_plan(user_input=user_input, persona=persona_key,
+                    p_base = make_plan(user_input=augmented_input, persona=persona_key,
                                         prefs=prefs, area_anchor=area)
                 _render_plan_summary(p_base, label="baseline 无 reroute")
                 st.caption("**差异**：未做 UGC ranking / 未触发 reroute / 缺 reasons")
@@ -281,7 +291,7 @@ def main():
         with st.status("Planner 正在生成方案 v1...", expanded=False) as status:
             t0 = time.time()
             try:
-                p1 = make_plan(user_input=user_input, persona=persona_key,
+                p1 = make_plan(user_input=augmented_input, persona=persona_key,
                                prefs=prefs, area_anchor=area)
                 st.session_state.plan_v1 = p1
                 status.update(label=f"✅ v1 方案 {len(p1.steps)} 步 ({time.time()-t0:.1f}s)",

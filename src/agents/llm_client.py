@@ -117,9 +117,35 @@ class MockLLMClient(LLMClient):
                 return self._mock_replan(user)
             if "Preference Mirror" in system:
                 return self._mock_preference_clarify(user)
+            if "Text Intake" in system:
+                return self._mock_text_intake(user)
             # fallback
             text = '{"answer": "mock-fallback"}'
             return LLMResponse(text=text, parsed=json.loads(text))
+
+    def _mock_text_intake(self, user_text: str) -> "LLMResponse":
+        """v2.5 D2：mock 文本抽取——委托给规则 fallback。"""
+        from .text_intake import _rules_extract  # local import 避免循环
+        # user_text 形如 "请按 schema...\n---\n{原文}\n---"，提取 --- 之间的原文
+        raw = user_text
+        if "---" in user_text:
+            parts = user_text.split("---")
+            if len(parts) >= 3:
+                raw = parts[1].strip()
+        r = _rules_extract(raw)
+        out = {
+            "area_anchor": r.area_anchor,
+            "poi_name": r.poi_name,
+            "taste_tags": r.taste_tags,
+            "scene_tags": r.scene_tags,
+            "risk_tags": r.risk_tags,
+            "aspects": r.aspects or [
+                {"aspect_type": "scenario_fit", "sentiment": "positive",
+                 "confidence": 0.6, "evidence_summary": "规则版 mock 抽取"},
+            ],
+        }
+        text = json.dumps(out, ensure_ascii=False)
+        return LLMResponse(text=text, parsed=out)
 
     def vision_complete(self, system, user, image_bytes, image_mime="image/jpeg",
                         json_schema=None, temperature=0.2):
