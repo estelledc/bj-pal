@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1920, initial-scale=1" />
+<title>BJ-Pal · 周六下午的决策解药 · 美团黑客松 2026</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --paper:    #f5f1e8;
+    --paper-2:  #ede7d6;
+    --ink:      #1a1a1a;
+    --muted:    #6b6b6b;
+    --line:     #d4cdb8;
+    --accent:   #9c2a25;
+    --accent-2: #c14a3f;
+  }
+  html, body { background: var(--paper); color: var(--ink); }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    font-feature-settings: "tnum" 1, "kern" 1;
+  }
+  .font-serif-cn { font-family: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", serif; }
+  .font-mono     { font-family: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace; }
+  .text-accent   { color: var(--accent); }
+  .bg-accent     { background: var(--accent); }
+  .border-ink    { border-color: var(--ink); }
+  .border-line   { border-color: var(--line); }
+  .border-accent { border-color: var(--accent); }
+
+  /* paper grain — 极细噪点，纸感 */
+  .paper-grain {
+    background-color: var(--paper);
+    background-image:
+      radial-gradient(rgba(60,40,20,0.05) 1px, transparent 1px),
+      radial-gradient(rgba(60,40,20,0.04) 1px, transparent 1px);
+    background-size: 4px 4px, 7px 7px;
+    background-position: 0 0, 2px 3px;
+  }
+
+  .slide {
+    width: 1920px;
+    height: 1080px;
+    position: relative;
+    overflow: hidden;
+  }
+  .slide-counter {
+    position: absolute; top: 60px; right: 80px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 18px; letter-spacing: 0.2em;
+    color: var(--muted);
+  }
+  .slide-counter b { color: var(--ink); font-weight: 700; }
+  .slide-tag {
+    position: absolute; top: 60px; left: 80px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 14px; letter-spacing: 0.32em;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+  .footer-mark {
+    position: absolute; bottom: 50px; left: 80px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 13px; letter-spacing: 0.28em;
+    color: var(--muted);
+  }
+  .footer-mark b { color: var(--ink); }
+
+  .rule { height: 1px; background: var(--line); }
+  .rule-ink { height: 2px; background: var(--ink); }
+  .rule-accent { height: 3px; background: var(--accent); }
+
+  .num-huge { font-size: 280px; line-height: 0.9; letter-spacing: -0.04em; font-weight: 900; }
+  .num-mega { font-size: 200px; line-height: 0.9; letter-spacing: -0.04em; font-weight: 900; }
+  .num-big  { font-size: 140px; line-height: 0.9; letter-spacing: -0.03em; font-weight: 700; }
+
+  /* tiny stamp */
+  .stamp {
+    display: inline-block;
+    border: 1.5px solid var(--accent);
+    color: var(--accent);
+    padding: 6px 14px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    transform: rotate(-2deg);
+  }
+
+  /* ascii box */
+  pre.ascii {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 18px;
+    line-height: 1.55;
+    color: var(--ink);
+    white-space: pre;
+  }
+</style>
+</head>
+<body class="paper-grain">
+
+<!-- ============= 01 封面 ============= -->
+<section class="slide paper-grain">
+  <div class="slide-tag">MEITUAN HACKATHON · 2026</div>
+  <div class="slide-counter"><b>01</b> / 10</div>
+
+  <div class="absolute" style="top: 240px; left: 160px;">
+    <div class="font-mono text-[14px] tracking-[0.4em] text-accent mb-12">// PROJECT — BJ-PAL</div>
+
+    <h1 class="font-serif-cn font-black tracking-tight" style="font-size: 280px; line-height: 0.92; letter-spacing: -0.04em;">
+      周六下午的<br/><span class="text-accent">决策解药</span>
+    </h1>
+
+    <div class="mt-20 flex items-end gap-12">
+      <div>
+        <div class="font-mono text-[13px] tracking-[0.3em] text-[color:var(--muted)]">CODENAME</div>
+        <div class="font-serif-cn text-[64px] font-medium mt-2">BJ-Pal · 北京搭子</div>
+      </div>
+      <div class="rule-ink w-[120px] mb-6"></div>
+      <div>
+        <div class="font-mono text-[13px] tracking-[0.3em] text-[color:var(--muted)]">A SHORT-TERM ACTIVITY PLANNING AGENT</div>
+        <div class="font-serif-cn text-[36px] mt-2 text-[color:var(--ink)]">短期活动规划与执行 · 情绪基础设施</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="absolute" style="bottom: 50px; right: 80px;">
+    <span class="stamp">FINALS · 决赛入围</span>
+  </div>
+
+  <div class="footer-mark"><b>JASON</b> · 2026.05 · github.com/estelledc/bj-pal</div>
+</section>
+
+<!-- ============= 02 痛点 ============= -->
+<section class="slide paper-grain">
+  <div class="slide-tag">问题 · PAIN POINT</div>
+  <div class="slide-counter"><b>02</b> / 10</div>
+
+  <div class="absolute" style="top: 200px; left: 160px; right: 160px;">
+    <div class="font-mono text-[14px] tracking-[0.3em] text-[color:var(--muted)] mb-10">SCENE — 周六 14:00 · 朝阳</div>
+
+    <!-- 引用对话框 -->
+    <div class="relative pl-12" style="border-left: 4px solid var(--accent);">
+      <div class="font-serif-cn text-[80px] leading-[1.2] font-medium" style="color: var(--ink);">
+        "周六下午，小明把手机递给老婆问<br/>
+        '<span class="text-accent">你看这样行不</span>'。"
+      </div>
+      <div class="font-serif-cn text-[56px] leading-[1.2] mt-12" style="color: var(--muted);">
+        "30 秒后老婆说：'<span style="color: var(--ink); font-weight: 600;">换一个</span>'。"
+      </div>
+    </div>
+  </div>
+
+  <!-- 底部洞察条 -->
+  <div class="absolute" style="bottom: 130px; left: 160px; right: 160px;">
+    <div class="rule-accent mb-8" style="width: 100px;"></div>
+    <div class="flex items-end gap-12">
+      <div>
+        <div class="font-mono text-[14px] tracking-[0.3em] text-[color:var(--muted)] mb-2">100 条 AI 用户访谈 · 5/5</div>
+        <div class="font-serif-cn text-[44px] font-medium leading-tight">
+          约出门最卡的不是<span class="text-[color:var(--muted)]">讨论时间</span>，<br/>
+          是<span class="text-accent font-bold">没人愿意承担选错的风险</span>。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-mark"><b>BJ-PAL</b> · 02 / 10</div>
+</section>
+
+<!-- ============= 03 元定位 · 单句宣言 ============= -->
+<section class="slide paper-grain">
+  <div class="slide-tag">元定位 · META-POSITIONING</div>
+  <div class="slide-counter"><b>03</b> / 10</div>
+
+  <!-- 大段留白 + 一句话 -->
+  <div class="absolute flex flex-col justify-center" style="top: 0; bottom: 0; left: 200px; right: 200px;">
+    <div class="font-mono text-[14px] tracking-[0.4em] text-accent mb-16">// THE ONE INSIGHT</div>
+
+    <div class="font-serif-cn text-[88px] leading-[1.25] font-medium tracking-tight" style="color: var(--ink);">
+      用户付钱不是为<span class="text-[color:var(--muted)]">"规划方案"</span>，<br/>
+      是为<span class="relative inline-block">
+        <span class="text-accent font-black">"AI 替我扛了选错的责任"</span>
+      </span>。
+    </div>
+
+    <div class="rule-ink mt-20 mb-10" style="width: 120px;"></div>
+
+    <div class="flex items-baseline gap-8">
+      <div class="font-serif-cn text-[44px] font-medium">这是<span class="text-accent font-bold">情绪基础设施</span>，</div>
+      <div class="font-serif-cn text-[44px] text-[color:var(--muted)]">不是工具产品。</div>
+    </div>
+  </div>
+
+  <!-- 角注 -->
+  <div class="absolute" style="bottom: 50px; right: 80px;">
+    <div class="font-mono text-[12px] tracking-[0.3em] text-[color:var(--muted)] text-right">
+      EMOTIONAL INFRASTRUCTURE<br/>
+      <span class="text-accent">≠ TOOL PRODUCT</span>
+    </div>
+  </div>
+
+  <div class="footer-mark"><b>BJ-PAL</b> · 03 / 10</div>
+</section>
+
+<!-- ============= 04 5 强信号 ============= -->
+<section class="slide paper-grain">
+  <div class="slide-tag">用户研究 · 5 STRONG SIGNALS</div>
+  <div class="slide-counter"><b>04</b> / 10</div>
+
+  <div class="absolute" style="top: 160px; left: 160px; right: 160px;">
+    <div class="flex items-end justify-between mb-4">
+      <h2 class="font-serif-cn text-[88px] font-bold leading-none">
+        100 条访谈，<span class="text-accent">5 个强信号</span>
+      </h2>
+      <div class="font-mono text-[14px] tracking-[0.3em] text-[color:var(--muted)]">
+        N=100 · 决策性信号阈值 ≥ 4/5
+      </div>
+    </div>
+    <div class="rule-ink mt-10" style="width: 100%;"></div>
+  </div>
+
+  <!-- 5 列 -->
+  <div class="absolute grid grid-cols-5 gap-0" style="top: 360px; left: 160px; right: 160px;">
+    <!-- 1 -->
+    <div class="px-8 border-r" style="border-color: var(--line);">
+      <div class="font-mono text-[13px] tracking-[0.3em] text-accent mb-6">SIGNAL · 01</div>
+      <div class="font-serif-cn text-[120px] font-black leading-none text-accent">5<span class="text-[40px] text-[color:var(--muted)]">/5</span></div>
+      <div class="rule mt-6 mb-6"></div>
+      <div class="font-serif-cn text-[28px] font-medium leading-snug">选错责任<br/>是群决策的痛</div>
+      <div class="font-mono text-[12px] mt-4 text-[color:var(--muted)] tracking-wider">RESPONSIBILITY</div>
+    </div>
+    <!-- 2 -->
+    <div class="px-8 border-r" style="border-color: var(--line);">
+      <div class="font-mono text-[13px] tracking-[0.3em] text-accent mb-6">SIGNAL · 02</div>
+      <div class="font-serif-cn text-[120px] font-black leading-none text-accent">5<span class="text-[40px] text-[color:var(--muted)]">/5</span></div>
+      <div class="rule mt-6 mb-6"></div>
+      <div class="font-serif-cn text-[28px] font-medium leading-snug">必须看到吐槽<br/>不只是分数</div>
+      <div class="font-mono text-[12px] mt-4 text-[color:var(--muted)] tracking-wider">UGC SOFT-SIGNAL</div>
+    </div>
+    <!-- 3 -->
+    <div class="px-8 border-r" style="border-color: var(--line);">
+      <div class="font-mono text-[13px] tracking-[0.3em] text-accent mb-6">SIGNAL · 03</div>
+      <div class="font-serif-cn text-[120px] font-black leading-none text-accent">5<span class="text-[40px] text-[color:var(--muted)]">/5</span></div>
+      <div class="rule mt-6 mb-6"></div>
+      <div class="font-serif-cn text-[28px] font-medium leading-snug">选错容忍度<br/>= <span class="text-accent">2 次</span></div>
+      <div class="font-mono text-[12px] mt-4 text-[color:var(--muted)] tracking-wider">ERROR BUDGET</div>
+    </div>
+    <!-- 4 -->
+    <div class="px-8 border-r" style="border-color: var(--line);">
+      <div class="font-mono text-[13px] tracking-[0.3em] text-[color:var(--muted)] mb-6">SIGNAL · 04</div>
+      <div class="font-serif-cn text-[120px] font-black leading-none" style="color: var(--ink);">4<span class="text-[40px] text-[color:var(--muted)]">/5</span></div>
+      <div class="rule mt-6 mb-6"></div>
+      <div class="font-serif-cn text-[28px] font-medium leading-snug">工作日<br/>不属于这个 App</div>
+      <div class="font-mono text-[12px] mt-4 text-[color:var(--muted)] tracking-wider">SCOPE BOUNDARY</div>
+    </div>
+    <!-- 5 -->
+    <div class="px-8">
+      <div class="font-mono text-[13px] tracking-[0.3em] text-accent mb-6">SIGNAL · 05</div>
+      <div class="font-serif-cn text-[120px] font-black leading-none text-accent">5<span class="text-[40px] text-[color:var(--muted)]">/5</span></div>
+      <div class="rule mt-6 mb-6"></div>
+      <div class="font-serif-cn text-[28px] font-medium leading-snug">重要场合 = 工具<br/>不是代理</div>
+      <div class="font-mono text-[12px] mt-4 text-[color:var(--muted)] tracking-wider">AGENT BOUNDARY</div>
+    </div>
+  </div>
+
+  <div class="footer-mark"><b>BJ-PAL</b> · 04 / 10</div>
+</section>
+
+<!-- ============= 05 系统架构 ============= -->
+<section class="slide paper-grain">
+  <div class="slide-tag">架构 · SYSTEM PIPELINE</div>
+  <div class="slide-counter"><b>05</b> / 10</div>
+
+  <div class="absolute" style="top: 160px; left: 160px;">
+    <h2 class="font-serif-cn text-[88px] font-bold leading-none">
+      Plan-and-Execute <span class="text-accent">流水线</span>
+    </h2>
+    <div class="font-mono text-[16px] tracking-[0.25em] text-[color:var(--muted)] mt-6">
+      USER INPUT → PLANNER → PROBE → REPLANNER → MOCK ORDER → IM CARD
+    </div>
+  </div>
+
+  <!-- ASCII 流水线 -->
+  <div class="absolute" style="top: 360px; left: 160px; right: 160px;">
+<pre class="ascii" style="font-size: 22px; line-height: 1.7;">
+┌────────────────────┐
+│  用户一句话          │   "下午想和老婆去附近转转，预算 300，避免吵闹"
+└──────────┬─────────┘
+           │
+           ▼
+┌────────────────────┐      ┌──────────────────┐
+│  <b style="color: var(--accent);">Planner</b>           │ ───► │  Plan v1          │  ToT 推导 · LongCat
+│  目标分解 · 类目召回    │      │  (3 候选 / 类目)   │
+└──────────┬─────────┘      └──────────────────┘
+           │
+           ▼
+┌────────────────────┐      ┌──────────────────┐
+│  <b style="color: var(--accent);">AvailabilityProbe</b> │ ───► │  风险信号          │  UGC[crowd] · UGC[transport]
+│  实时探针 · 8 工具    │      │  (周末爆棚/不好停车) │  营业时间 · 路况
+└──────────┬─────────┘      └──────────────────┘
+           │
+           ▼
+┌────────────────────┐      ┌──────────────────┐
+│  <b style="color: var(--accent);">Replanner</b>         │ ───► │  Plan v2          │  Reroute · 替换候选
+│  风险归因 · 重排序    │      │  (含 reasons)     │
+└──────────┬─────────┘      └──────────────────┘
+           │
+           ▼
+┌────────────────────────────────────────────────┐
+│  <b style="color: var(--accent);">Mock 下单</b>  +  <b style="color: var(--accent);">IM 话术化卡片</b>     →  小明发给老婆                    │
+└────────────────────────────────────────────────┘
+</pre>
+  </div>
+
+  <div class="footer-mark"><b>BJ-PAL</b> · 05 / 10 · LANGGRAPH + LONGCAT + TOT</div>
+</section>
+
+<!-- ============= 06 数据资产 ============= -->
+<section class="slide paper-grain">
+  <div class="slide-tag">数据资产 · DATA ASSETS</div>
+  <div class="slide-counter"><b>06</b> / 10</div>
+
+  <div class="absolute" style="top: 160px; left: 160px; right: 160px;">
+    <h2 class="font-serif-cn text-[88px] font-bold leading-none">
+      4 份原创数据，<span class="text-accent">手攒到位</span>
+    </h2>
+    <div class="rule-ink mt-10" style="width: 100%;"></div>
+  </div>
+
+  <div class="absolute grid grid-cols-4 gap-0" style="top: 380px; left: 160px; right: 160px;">
+    <!-- 1 -->
+    <div class="px-10 border-r" style="border-color: var(--line);">
+      <div class="font-mono text-[14px] tracking-[0.3em] text-accent mb-8">01 · POI</div>
+      <div class="font-serif-cn font-black text-accent" style="font-size: 200px; line-height: 0.9; letter-spacing: -0.04em;">5,656</div>
+      <div class="rule mt-8 mb-6"></div>
+      <div class="font-serif-cn text-[32px] font-medium leading-snug">北京 POI</div>
+      <div class="font-mono text-[14px] mt-3 text-[color:var(--muted)]">高德 API · 朝阳/海淀/东城/西城</div>
+    </div>
+    <!-- 2 -->
+    <div class="px-10 border-r" style="border-color: var(--line);">
+      <div class="font-mono text-[14px] tracking-[0.3em] text-accent mb-8">02 · UGC</div>
+      <div class="font-serif-cn font-black text-accent" style="font-size: 200px; line-height: 0.9; letter-spacing: -0.04em;">1,102</div>
+      <div class="rule mt-8 mb-6"></div>
+      <div class="font-serif-cn text-[32px] font-medium leading-snug">UGC 软信号</div>
+      <div class="font-mono text-[14px] mt-3 text-[color:var(--muted)]">情绪 · 拥挤 · 交通 · 性价比</div>
+    </div>
+    <!-- 3 -->
+    <div class="px-10 border-r" style="border-color: var(--line);">
+      <div class="font-mono text-[14px] tracking-[0.3em] text-accent mb-8">03 · IMG</div>
+      <div class="font-serif-cn font-black text-accent" style="font-size: 200px; line-height: 0.9; letter-spacing: -0.04em;">89</div>
+      <div class="rule mt-8 mb-6"></div>
+      <div class="font-serif-cn text-[32px] font-medium leading-snug">大众点评截图</div>
+      <div class="font-mono text-[14px] mt-3 text-[color:var(--muted)]">VLM 提取 · 评分/客单/距离</div>
+    </div>
+    <!-- 4 -->
+    <div class="px-10">
+      <div class="font-mono text-[14px] tracking-[0.3em] text-accent mb-8">04 · INT</div>
+      <div class="font-serif-cn font-black text-accent" style="font-size: 200px; line-height: 0.9; letter-spacing: -0.04em;">100</div>
+      <div class="rule mt-8 mb-6"></div>
+      <div class="font-serif-cn text-[32px] font-medium leading-snug">AI 用户访谈</div>
+      <div class="font-mono text-[14px] mt-3 text-[color:var(--muted)]">真实场景 · 决策性信号</div>
+    </div>
+  </div>
+
+  <div class="footer-mark"><b>BJ-PAL</b> · 06 / 10 · 自采 · 自洗 · 自标</div>
+</section>
+
+<!-- ============= 07 L2 公式 ============= -->
+<section class="slide paper-grain">
+  <div class="slide-tag">排序 · L2 RANKING FORMULA</div>
+  <div class="slide-counter"><b>07</b> / 10</div>
+
+  <div class="absolute" style="top: 160px; left: 160px; right: 160px;">
+    <h2 class="font-serif-cn text-[80px] font-bold leading-none">
+      可解释 · 可溯源 · <span class="text-accent">每条候选都有理由</span>
+    </h2>
+  </div>
+
+  <!-- 公式 -->
+  <div class="absolute" style="top: 340px; left: 160px; right: 160px;">
+    <div class="font-mono text-[14px] tracking-[0.3em] text-[color:var(--muted)] mb-6">SCORE FORMULA</div>
+    <div class="font-mono leading-tight" style="font-size: 38px;">
+      <span class="text-[color:var(--ink)] font-bold">score</span> = <span class="text-accent font-bold">0.35</span>·amap_rating
+      + <span class="text-accent font-bold">0.30</span>·ugc_soft⁺
+      + <span class="text-accent font-bold">0.15</span>·budget_fit<br/>
+      <span style="margin-left: 7.5ch;"></span>+ <span class="text-accent font-bold">0.10</span>·distance
+      + <span class="text-accent font-bold">0.10</span>·crowd_penalty
+    </div>
+  </div>
+
+  <!-- 5 个权重柱 -->
+  <div class="absolute grid grid-cols-5 gap-6" style="top: 580px; left: 160px; right: 160px;">
+    <div>
+      <div class="bg-accent" style="height: 175px;"></div>
+      <div class="font-mono text-[18px] mt-3"><b>0.35</b></div>
+      <div class="font-serif-cn text-[22px] font-medium mt-1">高德评分</div>
+      <div class="font-mono text-[12px] text-[color:var(--muted)] mt-1">AMAP_RATING · 主权重</div>
+    </div>
+    <div>
+      <div class="bg-accent" style="height: 150px;"></div>
+      <div class="font-mono text-[18px] mt-3"><b>0.30</b></div>
+      <div class="font-serif-cn text-[22px] font-medium mt-1">UGC 软信号</div>
+      <div class="font-mono text-[12px] text-[color:var(--muted)] mt-1">UGC_SOFT⁺ · 情绪/吐槽</div>
+    </div>
+    <div>
+      <div class="bg-accent" style="height: 75px;"></div>
+      <div class="font-mono text-[18px] mt-3"><b>0.15</b></div>
+      <div class="font-serif-cn text-[22px] font-medium mt-1">预算契合</div>
+      <div class="font-mono text-[12px] text-[color:var(--muted)] mt-1">BUDGET_FIT</div>
+    </div>
+    <div>
+      <div class="bg-accent" style="height: 50px;"></div>
+      <div class="font-mono text-[18px] mt-3"><b>0.10</b></div>
+      <div class="font-serif-cn text-[22px] font-medium mt-1">距离</div>
+      <div class="font-mono text-[12px] text-[color:var(--muted)] mt-1">DISTANCE</div>
+    </div>
+    <div>
+      <div class="bg-accent" style="height: 50px;"></div>
+      <div class="font-mono text-[18px] mt-3"><b>0.10</b></div>
+      <div class="font-serif-cn text-[22px] font-medium mt-1">拥挤惩罚</div>
+      <div class="font-mono text-[12px] text-[color:var(--muted)] mt-1">CROWD_PENALTY</div>
+    </div>
+  </div>
+
+  <!-- reasons 注脚 -->
+  <div class="absolute" style="bottom: 110px; left: 160px; right: 160px;">
+    <div class="rule mb-4"></div>
+    <div class="flex items-center gap-6">
+      <div class="font-mono text-[13px] tracking-[0.3em] text-accent">+ REASONS / EVIDENCE</div>
+      <div class="font-serif-cn text-[24px]">每条候选附 <b>reasons[]</b> + <b>evidence[]</b>，引用 UGC 原文片段，可点击溯源</div>
+    </div>
+  </div>
+
+  <div class="footer-mark"><b>BJ-PAL</b> · 07 / 10</div>
+</section>
+
+<!-- ============= 08 Demo Reroute ============= -->
+<section class="slide paper-grain">
+  <div class="slide-tag">演示时刻 · DEMO · REROUTE</div>
+  <div class="slide-counter"><b>08</b> / 10</div>
+
+  <div class="absolute" style="top: 160px; left: 160px;">
+    <h2 class="font-serif-cn text-[80px] font-bold leading-none">
+      14:00 · 系统替你<span class="text-accent">改主意</span>
+    </h2>
+    <div class="font-mono text-[16px] tracking-[0.25em] text-[color:var(--muted)] mt-6">
+      RISK DETECTED → REPLAN IN 1 SECOND
+    </div>
+  </div>
+
+  <!-- 三步时间轴 -->
+  <div class="absolute grid grid-cols-3 gap-0" style="top: 380px; left: 160px; right: 160px;">
+    <!-- step 1 -->
+    <div class="pr-12 relative">
+      <div class="font-mono text-[13px] tracking-[0.3em] text-[color:var(--muted)] mb-4">STEP · 01</div>
+      <div class="font-serif-cn text-[28px] font-medium mb-6">原方案</div>
+      <div class="border border-line p-6" style="background: var(--paper-2);">
+        <div class="font-mono text-[12px] text-[color:var(--muted)] tracking-wider mb-3">14:00 · ITEM_A</div>
+        <div class="font-serif-cn text-[40px] font-bold leading-tight">五道营胡同</div>
+        <div class="font-serif-cn text-[20px] mt-3 text-[color:var(--muted)]">逛街 / 拍照 / 文创小店</div>
+        <div class="rule mt-4 mb-4"></div>
+        <div class="font-mono text-[14px]">score · 0.71</div>
+      </div>
+      <!-- 箭头 -->
+      <div class="absolute" style="top: 50%; right: -20px; transform: translateY(-50%);">
+        <span class="text-accent" style="font-size: 60px; line-height: 1;">→</span>
+      </div>
+    </div>
+
+    <!-- step 2 -->
+    <div class="px-12 relative">
+      <div class="font-mono text-[13px] tracking-[0.3em] text-accent mb-4">STEP · 02 · 风险检测</div>
+      <div class="font-serif-cn text-[28px] font-medium mb-6 text-accent">AvailabilityProbe</div>
+      <div class="border-2 border-accent p-6">
+        <div class="font-mono text-[12px] tracking-wider mb-3 text-accent">⚠ RISK SIGNALS</div>
+        <div class="font-serif-cn text-[24px] mb-3 leading-snug">
+          <b>UGC[crowd]</b> · 周末下午爆棚<br/>
+          排队 30+ 分钟
+        </div>
+        <div class="rule mt-3 mb-3"></div>
+        <div class="font-serif-cn text-[24px] leading-snug">
+          <b>UGC[transport]</b> · 不好停车<br/>
+          周边均无车位
+        </div>
+        <div class="rule-accent mt-4" style="width: 60px;"></div>
+        <div class="font-mono text-[13px] mt-3 text-[color:var(--muted)]">REROUTE TRIGGERED · 1.2s</div>
+      </div>
+      <!-- 箭头 -->
+      <div class="absolute" style="top: 50%; right: -20px; transform: translateY(-50%);">
+        <span class="text-accent" style="font-size: 60px; line-height: 1;">→</span>
+      </div>
+    </div>
+
+    <!-- step 3 -->
+    <div class="pl-12">
+      <div class="font-mono text-[13px] tracking-[0.3em] text-[color:var(--muted)] mb-4">STEP · 03</div>
+      <div class="font-serif-cn text-[28px] font-medium mb-6">新方案 · v2</div>
+      <div class="border border-ink p-6" style="background: var(--paper);">
+        <div class="font-mono text-[12px] text-[color:var(--muted)] tracking-wider mb-3">14:00 · ITEM_A'</div>
+        <div class="font-serif-cn text-[40px] font-bold leading-tight">国子监</div>
+        <div class="font-serif-cn text-[20px] mt-3 text-[color:var(--muted)]">慢逛 / 院落 / 不挤 · 距离 +400m</div>
+        <div class="rule mt-4 mb-4"></div>
+        <div class="font-mono text-[14px]">score · <b class="text-accent">0.83</b> ↑</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 底部时间轴动画提示 -->
+  <div class="absolute" style="bottom: 110px; left: 160px; right: 160px;">
+    <div class="rule mb-4"></div>
+    <div class="flex justify-between items-center">
+      <div class="font-serif-cn text-[22px]">UI 上：时间轴卡片 <b class="text-accent">原地替换</b>，附风险标签 + reasons 浮层</div>
+      <div class="font-mono text-[13px] tracking-[0.3em] text-[color:var(--muted)]">DEMO LIVE · STREAMLIT</div>
+    </div>
+  </div>
+
+  <div class="footer-mark"><b>BJ-PAL</b> · 08 / 10</div>
+</section>
+
+<!-- ============= 09 评测 +71% ============= -->
+<section class="slide paper-grain">
+  <div class="slide-tag">评测 · EVAL · L1/L2/L3</div>
+  <div class="slide-counter"><b>09</b> / 10</div>
+
+  <div class="absolute" style="top: 160px; left: 160px;">
+    <div class="font-mono text-[14px] tracking-[0.3em] text-[color:var(--muted)] mb-4">FINAL_PASS · 100 LongCat 题</div>
+    <h2 class="font-serif-cn text-[72px] font-bold leading-none">
+      v1 → v3 三轮迭代
+    </h2>
+  </div>
+
+  <!-- 中央对比 -->
+  <div class="absolute flex items-end gap-20" style="top: 380px; left: 160px;">
+    <!-- v1 -->
+    <div>
+      <div class="font-mono text-[14px] tracking-[0.3em] text-[color:var(--muted)] mb-4">V1 · BASELINE · 40 题</div>
+      <div class="font-serif-cn font-black" style="font-size: 220px; line-height: 0.9; color: var(--muted); letter-spacing: -0.04em;">27.5<span style="font-size: 100px;">%</span></div>
+    </div>
+
+    <!-- 箭头 -->
+    <div class="font-mono text-accent self-center" style="font-size: 120px; line-height: 1;">→</div>
+
+    <!-- v3 -->
+    <div>
+      <div class="font-mono text-[14px] tracking-[0.3em] text-accent mb-4">V3 · FINAL · 100 题</div>
+      <div class="font-serif-cn font-black text-accent" style="font-size: 280px; line-height: 0.9; letter-spacing: -0.04em;">47.0<span style="font-size: 130px;">%</span></div>
+    </div>
+  </div>
+
+  <!-- +71% 大字角标 -->
+  <div class="absolute" style="top: 380px; right: 160px; text-align: right;">
+    <div class="font-mono text-[14px] tracking-[0.3em] text-accent mb-2">DELTA</div>
+    <div class="font-serif-cn font-black text-accent" style="font-size: 320px; line-height: 0.9; letter-spacing: -0.05em;">+71<span style="font-size: 140px;">%</span></div>
+    <div class="font-serif-cn text-[36px] font-medium mt-2">final_pass 提升</div>
+    <div class="font-mono text-[14px] text-[color:var(--muted)] mt-2 tracking-wider">RELATIVE · BASED ON LONGCAT 实跑</div>
+  </div>
+
+  <!-- 三轮注脚 -->
+  <div class="absolute" style="bottom: 110px; left: 160px; right: 160px;">
+    <div class="rule-ink mb-4"></div>
+    <div class="grid grid-cols-3 gap-12">
+      <div>
+        <div class="font-mono text-[13px] tracking-[0.3em] text-accent">L1 · STEP-LEVEL</div>
+        <div class="font-serif-cn text-[20px] mt-2">单步工具调用通过率 · 召回 / 兜底</div>
+      </div>
+      <div>
+        <div class="font-mono text-[13px] tracking-[0.3em] text-accent">L2 · PLAN-LEVEL</div>
+        <div class="font-serif-cn text-[20px] mt-2">规划合理性 · 时间/预算/距离闭合</div>
+      </div>
+      <div>
+        <div class="font-mono text-[13px] tracking-[0.3em] text-accent">L3 · USER-LEVEL</div>
+        <div class="font-serif-cn text-[20px] mt-2">final_pass · 100 真实用户题</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-mark"><b>BJ-PAL</b> · 09 / 10</div>
+</section>
+
+<!-- ============= 10 技术栈 + 团队 ============= -->
+<section class="slide paper-grain">
+  <div class="slide-tag">技术栈 · 团队 · TEAM &amp; STACK</div>
+  <div class="slide-counter"><b>10</b> / 10</div>
+
+  <!-- 标题 -->
+  <div class="absolute" style="top: 160px; left: 160px; right: 160px;">
+    <h2 class="font-serif-cn text-[88px] font-bold leading-none">
+      一个人，<span class="text-accent">+ 一个 AI 协作者</span>
+    </h2>
+    <div class="rule-ink mt-10" style="width: 100%;"></div>
+  </div>
+
+  <!-- 技术栈 -->
+  <div class="absolute" style="top: 380px; left: 160px; right: 160px;">
+    <div class="font-mono text-[14px] tracking-[0.3em] text-[color:var(--muted)] mb-6">// STACK</div>
+    <div class="flex flex-wrap gap-x-6 gap-y-4 items-baseline">
+      <span class="font-serif-cn text-[56px] font-bold">Python</span>
+      <span class="font-serif-cn text-[40px] text-[color:var(--muted)]">·</span>
+      <span class="font-serif-cn text-[56px] font-bold text-accent">LangGraph</span>
+      <span class="font-serif-cn text-[40px] text-[color:var(--muted)]">·</span>
+      <span class="font-serif-cn text-[56px] font-bold text-accent">LongCat</span>
+      <span class="font-serif-cn text-[40px] text-[color:var(--muted)]">·</span>
+      <span class="font-serif-cn text-[56px] font-bold">ToT</span>
+      <span class="font-serif-cn text-[40px] text-[color:var(--muted)]">·</span>
+      <span class="font-serif-cn text-[56px] font-bold">OTel</span>
+      <span class="font-serif-cn text-[40px] text-[color:var(--muted)]">·</span>
+      <span class="font-serif-cn text-[56px] font-bold">Streamlit</span>
+    </div>
+  </div>
+
+  <!-- 评测金字塔 -->
+  <div class="absolute" style="top: 600px; left: 160px;">
+    <div class="font-mono text-[14px] tracking-[0.3em] text-[color:var(--muted)] mb-6">// EVAL PYRAMID</div>
+    <div class="flex items-center gap-6">
+      <div class="border border-line px-8 py-4">
+        <div class="font-mono text-[12px] tracking-[0.3em] text-accent">L1</div>
+        <div class="font-serif-cn text-[28px] font-medium">STEP</div>
+      </div>
+      <span class="font-mono text-[40px] text-[color:var(--muted)]">→</span>
+      <div class="border border-ink px-8 py-4">
+        <div class="font-mono text-[12px] tracking-[0.3em] text-accent">L2</div>
+        <div class="font-serif-cn text-[28px] font-medium">PLAN</div>
+      </div>
+      <span class="font-mono text-[40px] text-[color:var(--muted)]">→</span>
+      <div class="border-2 border-accent px-8 py-4 bg-[color:var(--paper-2)]">
+        <div class="font-mono text-[12px] tracking-[0.3em] text-accent">L3</div>
+        <div class="font-serif-cn text-[28px] font-bold text-accent">USER</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 团队 -->
+  <div class="absolute" style="top: 600px; right: 160px; text-align: right;">
+    <div class="font-mono text-[14px] tracking-[0.3em] text-[color:var(--muted)] mb-6">// TEAM</div>
+    <div class="font-serif-cn text-[64px] font-bold leading-tight">Jason</div>
+    <div class="font-serif-cn text-[28px] mt-2 text-[color:var(--muted)]">编程零基础学习者 · 30 天</div>
+    <div class="font-serif-cn text-[28px] mt-1 text-accent">+ Claude Code 全程协作</div>
+  </div>
+
+  <!-- 底部 GitHub -->
+  <div class="absolute" style="bottom: 80px; left: 160px; right: 160px;">
+    <div class="rule-accent mb-6" style="width: 120px;"></div>
+    <div class="flex justify-between items-end">
+      <div>
+        <div class="font-mono text-[13px] tracking-[0.3em] text-[color:var(--muted)]">SOURCE</div>
+        <div class="font-mono text-[44px] font-bold mt-2 text-accent">github.com/estelledc/bj-pal</div>
+      </div>
+      <div class="text-right">
+        <span class="stamp">谢谢 · THANK YOU</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

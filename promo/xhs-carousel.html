@@ -1,0 +1,640 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1080" />
+<title>BJ-Pal · 周六下午的决策解药 · 小红书图文卡片</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;700;900&family=Noto+Sans+SC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          paper: '#F6F1E7',
+          paper2: '#EFE8DA',
+          ink: '#1A1714',
+          ink2: '#3B342C',
+          muted: '#6B6258',
+          line: '#D9CFBE',
+          red: '#9C2A25',
+          redSoft: '#F0DAD7',
+          gold: '#B8853A',
+        },
+        fontFamily: {
+          serif: ['"Noto Serif SC"', '"Source Han Serif SC"', '"Songti SC"', 'serif'],
+          sans: ['"PingFang SC"', '"Noto Sans SC"', '-apple-system', 'BlinkMacSystemFont', '"Helvetica Neue"', 'sans-serif'],
+          mono: ['"JetBrains Mono"', 'ui-monospace', 'Menlo', 'monospace'],
+        },
+      }
+    }
+  }
+</script>
+<style>
+  html, body { background: #1f1c18; }
+  body {
+    font-family: "PingFang SC", "Noto Sans SC", -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    margin: 0;
+    padding: 48px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 40px;
+  }
+  .card {
+    width: 1080px;
+    height: 1440px;
+    background: #F6F1E7;
+    color: #1A1714;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 30px 80px rgba(0,0,0,.45);
+    /* paper grain via layered SVG noise */
+    background-image:
+      radial-gradient(1200px 800px at 0% 0%, rgba(156,42,37,0.04), transparent 60%),
+      radial-gradient(1000px 700px at 100% 100%, rgba(184,133,58,0.05), transparent 60%),
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='3'/><feColorMatrix values='0 0 0 0 0.42 0 0 0 0 0.36 0 0 0 0 0.28 0 0 0 0.07 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    background-size: auto, auto, 240px 240px;
+    background-color: #F6F1E7;
+  }
+  .corner-badge {
+    position: absolute; top: 48px; right: 56px;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 22px; letter-spacing: .12em;
+    color: #6B6258;
+  }
+  .corner-badge b { color: #9C2A25; font-weight: 700; }
+  .watermark {
+    position: absolute; bottom: 48px; right: 56px;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 18px; letter-spacing: .14em;
+    color: #6B6258;
+  }
+  .stamp {
+    position: absolute; bottom: 56px; left: 56px;
+    font-family: "Noto Serif SC", serif;
+    font-size: 22px; color: #9C2A25;
+    border: 1.5px solid #9C2A25;
+    padding: 10px 18px;
+    letter-spacing: .25em;
+    transform: rotate(-3deg);
+  }
+  .eyebrow {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 22px; letter-spacing: .35em;
+    color: #9C2A25; text-transform: uppercase;
+  }
+  .rule {
+    height: 2px; background: #1A1714; width: 80px;
+  }
+  .pill {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 14px 24px; border: 1.5px solid #1A1714;
+    border-radius: 999px; font-size: 24px;
+    background: #F6F1E7;
+  }
+  .pill-red {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 16px 28px; background: #9C2A25; color: #F6F1E7;
+    border-radius: 999px; font-size: 26px; font-weight: 600;
+  }
+  .num-display {
+    font-family: "Noto Serif SC", serif;
+    font-weight: 900;
+    line-height: .85;
+    letter-spacing: -0.04em;
+    font-feature-settings: "tnum";
+  }
+  .h-display {
+    font-family: "Noto Serif SC", serif;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+  }
+  .quote-mark {
+    font-family: "Noto Serif SC", serif;
+    color: #9C2A25; line-height: .8;
+  }
+  .ascii { font-family: "JetBrains Mono", monospace; }
+  .strike-soft {
+    position: relative; display: inline-block;
+  }
+  .strike-soft::after {
+    content: ""; position: absolute; left: -4px; right: -4px; top: 55%;
+    height: 6px; background: #9C2A25; transform: rotate(-2deg);
+    opacity: .85;
+  }
+  .grain-divider {
+    border-top: 1.5px dashed #6B6258;
+  }
+  .signal-row {
+    display: grid; grid-template-columns: 80px 1fr 140px;
+    align-items: center; gap: 32px;
+    padding: 36px 0;
+    border-bottom: 1.5px solid #D9CFBE;
+  }
+  .signal-row:last-child { border-bottom: none; }
+  .signal-num {
+    font-family: "Noto Serif SC", serif;
+    font-weight: 900; font-size: 72px; color: #9C2A25;
+    line-height: 1;
+  }
+  .signal-text { font-size: 36px; color: #1A1714; line-height: 1.3; font-weight: 500; }
+  .signal-freq {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 28px; font-weight: 700; color: #1A1714;
+    text-align: right; letter-spacing: .08em;
+  }
+  .data-cell {
+    border-right: 1.5px solid #D9CFBE;
+    padding: 0 24px;
+  }
+  .data-cell:last-child { border-right: none; }
+  .chat {
+    background: #FFFCF5; border: 1.5px solid #D9CFBE;
+    border-radius: 28px; padding: 44px 48px;
+    box-shadow: 0 12px 0 -8px #EFE8DA;
+  }
+  .chat-meta { color: #6B6258; font-size: 22px; letter-spacing: .1em; }
+  .bar {
+    height: 60px; background: #1A1714; position: relative;
+  }
+  .bar.soft { background: #D9CFBE; }
+  .bar.red { background: #9C2A25; }
+  .bar-label {
+    position: absolute; right: 24px; top: 50%;
+    transform: translateY(-50%);
+    color: #F6F1E7; font-family: "JetBrains Mono", monospace;
+    font-size: 28px; font-weight: 700;
+  }
+  .timeline-step {
+    display: grid; grid-template-columns: 200px 1fr;
+    align-items: center; gap: 36px;
+    padding: 28px 0;
+  }
+  .timeline-time {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 36px; font-weight: 700; color: #9C2A25;
+    letter-spacing: .04em;
+  }
+  .timeline-body { font-size: 32px; color: #1A1714; line-height: 1.35; }
+  .timeline-arrow {
+    font-family: "JetBrains Mono", monospace;
+    color: #6B6258; font-size: 28px;
+    grid-column: 1 / -1; padding-left: 80px; padding: 8px 0 8px 80px;
+  }
+  .tag-row { display: flex; flex-wrap: wrap; gap: 14px; }
+  .tag-row .tag {
+    font-family: "JetBrains Mono", monospace; font-size: 22px;
+    color: #6B6258; padding: 8px 16px; border: 1.5px solid #D9CFBE;
+    border-radius: 999px; background: rgba(255,255,255,.4);
+  }
+  .underline-red {
+    background-image: linear-gradient(transparent 60%, #F0DAD7 60%);
+    background-size: 100% 100%; background-repeat: no-repeat;
+    padding: 0 4px;
+  }
+  .arrow-big {
+    font-family: "Noto Serif SC", serif;
+    font-weight: 900; color: #9C2A25;
+  }
+  .ev-quote {
+    font-family: "Noto Serif SC", serif;
+    font-style: italic; font-size: 32px; color: #3B342C;
+    border-left: 4px solid #9C2A25; padding-left: 24px;
+    line-height: 1.5;
+  }
+  .ev-source {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 20px; color: #6B6258; letter-spacing: .1em; margin-top: 12px;
+  }
+  /* Card-specific accents */
+  .seal {
+    width: 200px; height: 200px;
+    background: #9C2A25; color: #F6F1E7;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    transform: rotate(-6deg);
+    box-shadow: 0 0 0 4px #F6F1E7, 0 0 0 6px #9C2A25;
+    font-family: "Noto Serif SC", serif; font-weight: 900;
+    line-height: 1;
+  }
+  .check { color: #2F5D3F; }
+</style>
+</head>
+<body>
+
+<!-- =========================== CARD 1 / 9  封面 =========================== -->
+<section class="card flex flex-col p-24">
+  <div class="corner-badge"><b>01</b> / 09</div>
+
+  <header class="flex items-center gap-5">
+    <span class="eyebrow">BJ-PAL · 美团黑客松 2026</span>
+  </header>
+
+  <div class="mt-14">
+    <div class="rule"></div>
+    <h1 class="h-display mt-12" style="font-size: 156px; line-height: .98;">
+      周六下午，<br>
+      我老婆又说<br>
+      <span class="text-red">「换一个」</span>。
+    </h1>
+  </div>
+
+  <p class="mt-16 font-serif" style="font-size: 56px; color:#3B342C; font-weight: 500; line-height: 1.35;">
+    我做了一个 App<br>
+    替我扛<span class="underline-red">这个责任</span>。
+  </p>
+
+  <div class="mt-auto flex items-end justify-between">
+    <div class="flex flex-col gap-4">
+      <span class="pill-red">📓 产品研究 · 100 条访谈</span>
+      <span class="pill" style="font-size:22px;">9 张图 · 建议横滑到底</span>
+    </div>
+    <div class="seal text-center">
+      <span style="font-size:46px;">扛责任</span>
+      <span style="font-size:18px; letter-spacing:.3em; margin-top:10px;">BJ-PAL</span>
+    </div>
+  </div>
+
+  <div class="watermark">@JASON · BJ-PAL · 2026.05</div>
+</section>
+
+
+<!-- =========================== CARD 2 / 9  痛点 =========================== -->
+<section class="card flex flex-col p-24">
+  <div class="corner-badge"><b>02</b> / 09 · 痛点</div>
+  <span class="eyebrow">PAIN POINT · 100 INTERVIEWS</span>
+
+  <div class="flex items-end gap-8 mt-10">
+    <span class="num-display text-red" style="font-size: 380px;">100</span>
+    <div class="pb-8">
+      <div class="font-serif" style="font-size:48px; font-weight:700;">条访谈</div>
+      <div class="text-muted" style="font-size:28px; margin-top:6px;">真实 AI 用户 · 一对一深聊</div>
+    </div>
+  </div>
+
+  <div class="grain-divider mt-6"></div>
+
+  <div class="mt-12 relative">
+    <span class="quote-mark absolute" style="font-size: 240px; top:-40px; left:-20px;">"</span>
+    <p class="font-serif relative pl-24 pr-8" style="font-size: 64px; font-weight:700; line-height:1.25; color:#1A1714;">
+      约出门最卡的<br>
+      不是讨论时间，<br>
+      <span class="text-red">是没人愿意承担选错的风险。</span>
+    </p>
+  </div>
+
+  <div class="mt-auto flex items-center gap-6">
+    <span class="pill-red">5 / 5 用户都这么说</span>
+    <span class="text-muted" style="font-size:24px;">不是统计，是共识</span>
+  </div>
+
+  <div class="watermark">@JASON · BJ-PAL · 2026.05</div>
+</section>
+
+
+<!-- =========================== CARD 3 / 9  反常识 =========================== -->
+<section class="card flex flex-col p-24">
+  <div class="corner-badge"><b>03</b> / 09 · 反常识</div>
+  <span class="eyebrow">COUNTER-INTUITION</span>
+
+  <div class="mt-12">
+    <p class="font-serif" style="font-size:44px; color:#6B6258; font-weight:500;">
+      访谈第 47 条，我以为我懂用户了——<br>
+      直到那个被采访的妹子说：
+    </p>
+  </div>
+
+  <div class="mt-14">
+    <div style="font-size:40px; color:#6B6258;">
+      <span class="strike-soft">"我付钱是为了一份完整方案"</span>
+    </div>
+    <div class="mt-10">
+      <div style="font-size:38px; color:#3B342C;">不是。她说的是——</div>
+      <h2 class="h-display mt-8 text-red" style="font-size:128px;">
+        我付钱<br>
+        是为了 AI<br>
+        替我扛责任。
+      </h2>
+    </div>
+  </div>
+
+  <div class="mt-auto">
+    <div class="grain-divider mb-8"></div>
+    <p class="font-serif" style="font-size:36px; color:#1A1714; font-weight:600; line-height:1.4;">
+      这一句颠覆了我整个产品定位——<br>
+      <span class="text-red">BJ-Pal 不是工具产品，是情绪基础设施。</span>
+    </p>
+  </div>
+
+  <div class="watermark">@JASON · BJ-PAL · 2026.05</div>
+</section>
+
+
+<!-- =========================== CARD 4 / 9  5 个强信号 =========================== -->
+<section class="card flex flex-col p-24">
+  <div class="corner-badge"><b>04</b> / 09 · 信号</div>
+  <span class="eyebrow">5 STRONG SIGNALS · N = 5/5</span>
+
+  <h2 class="h-display mt-8" style="font-size:96px;">
+    5 个<span class="text-red">强信号</span>
+  </h2>
+  <p class="font-serif mt-4" style="font-size:30px; color:#6B6258;">
+    访谈完一遍后，我把所有原话剪开重排，剩下这 5 条。
+  </p>
+
+  <div class="mt-10">
+    <div class="signal-row">
+      <div class="signal-num">01</div>
+      <div class="signal-text">
+        <b>「选错的责任」</b>是群决策真正的痛<br>
+        <span class="text-muted" style="font-size:24px;">——比"挑活动"更前置</span>
+      </div>
+      <div class="signal-freq text-red">5/5</div>
+    </div>
+    <div class="signal-row">
+      <div class="signal-num">02</div>
+      <div class="signal-text">
+        必须看到<b>吐槽</b>，不只是分数<br>
+        <span class="text-muted" style="font-size:24px;">——4.7 分但门口堵 = 用不上</span>
+      </div>
+      <div class="signal-freq text-red">5/5</div>
+    </div>
+    <div class="signal-row">
+      <div class="signal-num">03</div>
+      <div class="signal-text">
+        选错容忍度 = <b>2 次</b><br>
+        <span class="text-muted" style="font-size:24px;">——第 3 次起换 App，不再相信</span>
+      </div>
+      <div class="signal-freq text-red">5/5</div>
+    </div>
+    <div class="signal-row">
+      <div class="signal-num">04</div>
+      <div class="signal-text">
+        工作日<b>不属于</b>这个 App<br>
+        <span class="text-muted" style="font-size:24px;">——刚需窗口在周末 + 节假日</span>
+      </div>
+      <div class="signal-freq" style="color:#B8853A;">4/5</div>
+    </div>
+    <div class="signal-row">
+      <div class="signal-num">05</div>
+      <div class="signal-text">
+        重要场合 = <b>工具不是代理</b><br>
+        <span class="text-muted" style="font-size:24px;">——求婚日不能交给 AI 拍板</span>
+      </div>
+      <div class="signal-freq text-red">5/5</div>
+    </div>
+  </div>
+
+  <div class="watermark">@JASON · BJ-PAL · 2026.05</div>
+</section>
+
+
+<!-- =========================== CARD 5 / 9  数据资产 =========================== -->
+<section class="card flex flex-col p-24">
+  <div class="corner-badge"><b>05</b> / 09 · 数据</div>
+  <span class="eyebrow">DATA ASSETS · BEIJING</span>
+
+  <h2 class="h-display mt-8" style="font-size:108px;">
+    实打实的<br>
+    <span class="text-red">数据底座</span>。
+  </h2>
+  <p class="font-serif mt-4" style="font-size:30px; color:#6B6258;">
+    黑客松最容易在这一层翻车——所以我把它先做扎实。
+  </p>
+
+  <div class="grid grid-cols-4 mt-16 flex-1">
+    <div class="data-cell flex flex-col justify-end">
+      <div class="num-display text-red" style="font-size: 156px;">5,656</div>
+      <div class="grain-divider mt-6"></div>
+      <div class="mt-6 font-serif" style="font-size:32px; font-weight:700;">北京 POI</div>
+      <div class="text-muted" style="font-size:22px; margin-top:6px;">高德地图 · 全城清洗</div>
+    </div>
+    <div class="data-cell flex flex-col justify-end">
+      <div class="num-display text-red" style="font-size: 156px;">1,102</div>
+      <div class="grain-divider mt-6"></div>
+      <div class="mt-6 font-serif" style="font-size:32px; font-weight:700;">UGC 软信号</div>
+      <div class="text-muted" style="font-size:22px; margin-top:6px;">"难停车" / "排队 2h"</div>
+    </div>
+    <div class="data-cell flex flex-col justify-end">
+      <div class="num-display text-red" style="font-size: 156px;">89</div>
+      <div class="grain-divider mt-6"></div>
+      <div class="mt-6 font-serif" style="font-size:32px; font-weight:700;">点评截图</div>
+      <div class="text-muted" style="font-size:22px; margin-top:6px;">人工标注 · 评测金标准</div>
+    </div>
+    <div class="data-cell flex flex-col justify-end">
+      <div class="num-display text-red" style="font-size: 156px;">100</div>
+      <div class="grain-divider mt-6"></div>
+      <div class="mt-6 font-serif" style="font-size:32px; font-weight:700;">用户访谈</div>
+      <div class="text-muted" style="font-size:22px; margin-top:6px;">1:1 深聊 · 不走问卷</div>
+    </div>
+  </div>
+
+  <div class="mt-10 tag-row">
+    <span class="tag">高德 API</span>
+    <span class="tag">大众点评</span>
+    <span class="tag">小红书爬取</span>
+    <span class="tag">人工核验</span>
+    <span class="tag">L2 排序公式</span>
+  </div>
+
+  <div class="watermark">@JASON · BJ-PAL · 2026.05</div>
+</section>
+
+
+<!-- =========================== CARD 6 / 9  Demo 时刻 =========================== -->
+<section class="card flex flex-col p-24">
+  <div class="corner-badge"><b>06</b> / 09 · DEMO</div>
+  <span class="eyebrow">DEMO · THE 1-SECOND PIVOT</span>
+
+  <h2 class="h-display mt-8" style="font-size:96px;">
+    14:00<br>
+    <span class="text-red">那一秒发生了什么。</span>
+  </h2>
+
+  <div class="mt-12">
+    <div class="timeline-step">
+      <div class="timeline-time">14:00</div>
+      <div class="timeline-body">
+        <b>用户：</b>下午带媳妇去五道营胡同坐坐 ☕
+      </div>
+    </div>
+    <div class="timeline-arrow ascii">│  ↓  AvailabilityProbe 启动 · 查 UGC 软信号</div>
+    <div class="timeline-step">
+      <div class="timeline-time">+1.2s</div>
+      <div class="timeline-body">
+        <span class="text-red">⚠ 检测到风险：</span>本周末同时段拥堵指数 0.82，停车困难
+      </div>
+    </div>
+    <div class="timeline-arrow ascii">│  ↓  Replanner 触发 · 同氛围候选检索</div>
+    <div class="timeline-step">
+      <div class="timeline-time">+1.8s</div>
+      <div class="timeline-body">
+        <span class="check" style="color:#2F5D3F;">✓ 切到</span> <b>国子监</b> · 距离 600m · 同氛围 · 拥堵 0.31
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-10">
+    <div class="ev-quote">
+      "周末根本停不进去，去了就是给自己找罪受。"
+    </div>
+    <div class="ev-source">— UGC 软信号 #872 · 大众点评 · 五道营胡同</div>
+  </div>
+
+  <div class="mt-auto pill-red">⚡ 总耗时 1.8 秒 · 用户没察觉，但选错没发生</div>
+
+  <div class="watermark">@JASON · BJ-PAL · 2026.05</div>
+</section>
+
+
+<!-- =========================== CARD 7 / 9  一键发老婆 =========================== -->
+<section class="card flex flex-col p-24">
+  <div class="corner-badge"><b>07</b> / 09 · 交付</div>
+  <span class="eyebrow">DELIVERY · IM-NATIVE CARD</span>
+
+  <h2 class="h-display mt-8" style="font-size:104px;">
+    <span class="text-red">一键发老婆</span>。
+  </h2>
+  <p class="font-serif mt-3" style="font-size:30px; color:#6B6258;">
+    不是 PRD，不是行程表。是她回个 OK 你就能预订的话。
+  </p>
+
+  <div class="chat mt-10">
+    <div class="flex items-center justify-between chat-meta mb-6">
+      <span>BJ-PAL · 已为你拟好</span>
+      <span class="ascii">14:02</span>
+    </div>
+    <p class="font-serif" style="font-size:42px; line-height:1.55; color:#1A1714;">
+      搞定了！下午这样安排你看行不 👇<br><br>
+      · <b>14:30 国子监</b>　散步晒太阳<br>
+      · <b>15:30 雍和宫旁咖啡</b>　好停车<br>
+      · <b>17:00 簋街晚饭</b>　订位已留<br><br>
+      回我一个 <span class="text-red"><b>OK</b></span> 我就预订 ~
+    </p>
+    <div class="grain-divider my-8"></div>
+    <div class="flex flex-wrap gap-3 chat-meta">
+      <span class="tag ascii">已避坑：拥堵</span>
+      <span class="tag ascii">已避坑：排队</span>
+      <span class="tag ascii">同氛围替换</span>
+      <span class="tag ascii">距离 ≤ 1km</span>
+    </div>
+  </div>
+
+  <div class="mt-auto flex items-center gap-6">
+    <span class="pill-red">📨 不发链接 · 不发 JSON · 发"人话"</span>
+  </div>
+
+  <div class="watermark">@JASON · BJ-PAL · 2026.05</div>
+</section>
+
+
+<!-- =========================== CARD 8 / 9  评测 =========================== -->
+<section class="card flex flex-col p-24">
+  <div class="corner-badge"><b>08</b> / 09 · 评测</div>
+  <span class="eyebrow">EVAL · v1 → v3 · 100 LONGCAT QUESTIONS</span>
+
+  <h2 class="h-display mt-8" style="font-size:96px;">
+    最关心的<br>
+    <span class="text-red">还是数。</span>
+  </h2>
+  <p class="font-serif mt-4" style="font-size:28px; color:#6B6258;">
+    100 道 LongCat 题 · final_pass 通过率 · 三轮迭代后:
+  </p>
+
+  <div class="mt-14">
+    <!-- v1 -->
+    <div class="flex items-center gap-6 mb-3">
+      <span class="ascii" style="font-size:28px; width:80px;">v1</span>
+      <span class="text-muted" style="font-size:22px;">基线 · 朴素 ReAct</span>
+    </div>
+    <div class="bar soft" style="width:55%;">
+      <span class="bar-label" style="color:#1A1714;">27.5%</span>
+    </div>
+
+    <!-- v2 -->
+    <div class="flex items-center gap-6 mb-3 mt-8">
+      <span class="ascii" style="font-size:28px; width:80px;">v2</span>
+      <span class="text-muted" style="font-size:22px;">+ AvailabilityProbe</span>
+    </div>
+    <div class="bar" style="width:74%; background:#3B342C;">
+      <span class="bar-label">38.0%</span>
+    </div>
+
+    <!-- v3 -->
+    <div class="flex items-center gap-6 mb-3 mt-8">
+      <span class="ascii" style="font-size:28px; width:80px;">v3</span>
+      <span class="text-red" style="font-size:22px; font-weight:700;">+ Replanner · IM 话术化</span>
+    </div>
+    <div class="bar red" style="width:94%;">
+      <span class="bar-label">47.0%</span>
+    </div>
+  </div>
+
+  <div class="mt-14 flex items-end gap-8">
+    <span class="num-display text-red" style="font-size:340px;">+71<span style="font-size:160px;">%</span></span>
+    <div class="pb-10">
+      <div class="font-serif" style="font-size:42px; font-weight:700; line-height:1.2;">
+        相对提升<br>
+        <span class="text-muted" style="font-size:26px; font-weight:500;">three iterations · 三周</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="watermark">@JASON · BJ-PAL · 2026.05</div>
+</section>
+
+
+<!-- =========================== CARD 9 / 9  CTA =========================== -->
+<section class="card flex flex-col p-24">
+  <div class="corner-badge"><b>09</b> / 09 · CTA</div>
+  <span class="eyebrow">YOUR TURN</span>
+
+  <h2 class="h-display mt-12" style="font-size:148px;">
+    你周末选活动，<br>
+    <span class="text-red">谁拍板？</span>
+  </h2>
+
+  <p class="font-serif mt-12" style="font-size:36px; color:#3B342C; line-height:1.5;">
+    评论区聊聊——你家是谁先松口、谁兜底？<br>
+    我把高赞回答收成下一期访谈样本。
+  </p>
+
+  <div class="mt-16 grid grid-cols-2 gap-6">
+    <div class="pill-red flex-col items-start" style="padding:28px 32px; border-radius:24px; align-items:flex-start; flex-direction:column; gap:6px;">
+      <span style="font-size:22px; letter-spacing:.2em; opacity:.85;">💬 评论</span>
+      <span style="font-size:32px;">"我家是 ___ 拍板"</span>
+    </div>
+    <div class="pill flex-col items-start" style="padding:28px 32px; border-radius:24px; align-items:flex-start; flex-direction:column; gap:6px; border-color:#1A1714;">
+      <span class="ascii" style="font-size:22px; letter-spacing:.2em; color:#9C2A25;">★ 关注</span>
+      <span style="font-size:32px;">追 BJ-Pal 全程更新</span>
+    </div>
+  </div>
+
+  <div class="mt-auto">
+    <div class="grain-divider mb-10"></div>
+    <div class="flex items-end justify-between">
+      <div>
+        <div class="font-serif" style="font-size:30px; font-weight:700;">BJ-Pal · 周六下午的决策解药</div>
+        <div class="ascii mt-3" style="font-size:24px; color:#6B6258;">
+          github.com / <span class="text-red"><b>estelledc / bj-pal</b></span>
+        </div>
+        <div class="mt-4" style="font-size:22px; color:#6B6258;">
+          编程零基础 · Claude Code 全程协作 · 美团黑客松 2026
+        </div>
+      </div>
+      <div class="seal text-center" style="width:170px; height:170px;">
+        <span style="font-size:36px;">扛了</span>
+        <span style="font-size:36px;">就回</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="watermark">@JASON · BJ-PAL · 2026.05</div>
+</section>
+
+</body>
+</html>

@@ -1,0 +1,797 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>BJ-Pal · 周六下午的决策解药 — 评委简介</title>
+<style>
+  :root {
+    --paper: #f5efe4;
+    --paper-2: #ede4d3;
+    --ink: #1a1614;
+    --ink-2: #4a3f36;
+    --muted: #8a7a6a;
+    --rule: #d9cdb9;
+    --accent: #9c2a25;
+    --accent-2: #7a1f1b;
+    --serif: "Source Han Serif SC", "Noto Serif SC", "思源宋体", "Songti SC", "STSong", serif;
+    --sans:  "PingFang SC", "苹方", "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    --mono:  "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #2a2522; }
+  body {
+    font-family: var(--sans);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    padding: 40px 0;
+    display: flex;
+    justify-content: center;
+  }
+  .page {
+    width: 1240px;
+    height: 1754px;
+    background: var(--paper);
+    background-image:
+      radial-gradient(circle at 20% 10%, rgba(156,42,37,0.025), transparent 40%),
+      radial-gradient(circle at 80% 90%, rgba(0,0,0,0.018), transparent 40%);
+    position: relative;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.4);
+    overflow: hidden;
+  }
+
+  /* ---------- HEADER (~280px) ---------- */
+  .header {
+    height: 280px;
+    padding: 48px 64px 32px;
+    border-bottom: 1.5px solid var(--ink);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .header::before {
+    content: "";
+    position: absolute;
+    top: 48px; bottom: 32px;
+    left: 32px;
+    width: 4px;
+    background: var(--accent);
+  }
+  .top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 12px;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .title-block { display: flex; align-items: flex-end; gap: 32px; }
+  .title-block h1 {
+    font-family: var(--serif);
+    font-size: 132px;
+    line-height: 1;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+  .title-block h1 .dash { color: var(--accent); }
+  .title-meta {
+    flex: 1;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .title-meta .sub {
+    font-family: var(--serif);
+    font-size: 28px;
+    color: var(--ink);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    margin-bottom: 6px;
+  }
+  .title-meta .tag {
+    font-size: 13px;
+    color: var(--muted);
+    font-family: var(--mono);
+    letter-spacing: 0.05em;
+  }
+  .lede {
+    font-family: var(--serif);
+    font-size: 17px;
+    color: var(--ink-2);
+    font-style: italic;
+    margin-top: 14px;
+  }
+  .lede .accent { color: var(--accent); font-weight: 600; font-style: normal; }
+
+  /* ---------- CALLOUT (~200px) ---------- */
+  .callout {
+    height: 200px;
+    padding: 32px 64px;
+    background:
+      linear-gradient(135deg, rgba(156,42,37,0.04), rgba(156,42,37,0.01));
+    border-bottom: 1px solid var(--rule);
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 32px;
+  }
+  .quote-mark {
+    font-family: var(--serif);
+    font-size: 180px;
+    line-height: 0.7;
+    color: var(--accent);
+    font-weight: 700;
+    align-self: flex-start;
+    margin-top: -8px;
+  }
+  .callout-body { flex: 1; }
+  .callout-body .pullquote {
+    font-family: var(--serif);
+    font-size: 30px;
+    line-height: 1.45;
+    color: var(--ink);
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+  .callout-body .pullquote em {
+    color: var(--accent);
+    font-style: normal;
+    font-weight: 700;
+    border-bottom: 2px solid var(--accent);
+  }
+  .callout-body .source {
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--muted);
+    font-family: var(--mono);
+    letter-spacing: 0.05em;
+  }
+
+  /* ---------- 3 COLUMNS (~520px) ---------- */
+  .three-col {
+    height: 520px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    border-bottom: 1px solid var(--rule);
+  }
+  .col {
+    padding: 28px 28px 24px;
+    border-right: 1px solid var(--rule);
+    display: flex;
+    flex-direction: column;
+  }
+  .col:last-child { border-right: none; }
+  .col:first-child { padding-left: 64px; }
+  .col:last-child { padding-right: 64px; }
+  .col-head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--ink);
+  }
+  .col-head .num {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.15em;
+    font-weight: 700;
+  }
+  .col-head h3 {
+    font-family: var(--serif);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: 0.02em;
+  }
+  .col p {
+    font-size: 13.5px;
+    line-height: 1.7;
+    color: var(--ink-2);
+    margin-bottom: 12px;
+  }
+  .col .strong-line {
+    font-family: var(--serif);
+    font-size: 17px;
+    line-height: 1.45;
+    color: var(--ink);
+    font-weight: 600;
+    margin-bottom: 14px;
+  }
+  .col .label {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  /* signal list */
+  .signal-list { list-style: none; counter-reset: sig; }
+  .signal-list li {
+    counter-increment: sig;
+    display: grid;
+    grid-template-columns: 26px 1fr;
+    gap: 8px;
+    padding: 9px 0;
+    border-bottom: 1px dashed var(--rule);
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  .signal-list li:last-child { border-bottom: none; }
+  .signal-list li::before {
+    content: counter(sig, decimal-leading-zero);
+    font-family: var(--mono);
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 12px;
+  }
+  .signal-list li b {
+    display: block;
+    font-family: var(--serif);
+    font-size: 14px;
+    color: var(--ink);
+    font-weight: 700;
+    margin-bottom: 1px;
+  }
+  .signal-list li span {
+    color: var(--ink-2);
+    font-size: 12px;
+  }
+  /* data assets */
+  .data-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .data-cell {
+    border: 1px solid var(--rule);
+    padding: 14px 12px;
+    background: rgba(255,255,255,0.4);
+  }
+  .data-cell .num {
+    font-family: var(--serif);
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  .data-cell .unit {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    margin-left: 4px;
+  }
+  .data-cell .name {
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--ink);
+    font-weight: 600;
+    line-height: 1.35;
+  }
+  .data-cell .desc {
+    margin-top: 3px;
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+
+  /* ---------- ARCHITECTURE (~360px) ---------- */
+  .arch {
+    height: 360px;
+    display: grid;
+    grid-template-columns: 1.15fr 1fr;
+    border-bottom: 1px solid var(--rule);
+  }
+  .arch-left, .arch-right {
+    padding: 24px 28px 24px;
+  }
+  .arch-left { padding-left: 64px; border-right: 1px solid var(--rule); }
+  .arch-right { padding-right: 64px; }
+  .sec-head {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--ink);
+  }
+  .sec-head .kicker {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.15em;
+    font-weight: 700;
+  }
+  .sec-head h3 {
+    font-family: var(--serif);
+    font-size: 22px;
+    font-weight: 700;
+  }
+  .sec-head .ja {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+  }
+  pre.ascii {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    line-height: 1.55;
+    color: var(--ink);
+    background: rgba(255,255,255,0.5);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+    padding: 14px 16px;
+    overflow: hidden;
+    white-space: pre;
+  }
+  pre.ascii .hi { color: var(--accent); font-weight: 700; }
+  pre.ascii .dim { color: var(--muted); }
+  .arch-note {
+    margin-top: 12px;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.55;
+    font-family: var(--serif);
+    font-style: italic;
+  }
+  /* tool table */
+  table.tools {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  table.tools th, table.tools td {
+    text-align: left;
+    padding: 7px 6px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  table.tools th {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    font-weight: 700;
+    text-transform: uppercase;
+    border-bottom: 1.5px solid var(--ink);
+  }
+  table.tools td.idx {
+    font-family: var(--mono);
+    color: var(--accent);
+    width: 20px;
+    font-weight: 700;
+  }
+  table.tools td.name {
+    font-family: var(--mono);
+    font-weight: 600;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+  table.tools td.desc {
+    color: var(--ink-2);
+    font-size: 11.5px;
+    line-height: 1.4;
+  }
+
+  /* ---------- EVAL + STACK (~280px) ---------- */
+  .eval {
+    height: 280px;
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    border-bottom: 1px solid var(--rule);
+  }
+  .eval-left {
+    padding: 28px 32px 24px 64px;
+    border-right: 1px solid var(--rule);
+    display: flex;
+    flex-direction: column;
+  }
+  .eval-right {
+    padding: 28px 64px 24px 32px;
+    display: flex;
+    flex-direction: column;
+  }
+  .eval-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 18px;
+    margin-top: 12px;
+  }
+  .eval-num {
+    font-family: var(--serif);
+    font-size: 96px;
+    font-weight: 700;
+    line-height: 0.9;
+    color: var(--ink);
+    letter-spacing: -0.03em;
+  }
+  .eval-num.start { color: var(--muted); }
+  .eval-num.end { color: var(--accent); }
+  .eval-arrow {
+    font-family: var(--mono);
+    font-size: 36px;
+    color: var(--accent);
+    margin-bottom: 14px;
+  }
+  .eval-meta {
+    margin-top: 14px;
+    display: flex;
+    gap: 24px;
+    font-size: 12px;
+    color: var(--ink-2);
+  }
+  .eval-meta b {
+    font-family: var(--serif);
+    font-size: 18px;
+    color: var(--accent);
+    font-weight: 700;
+    margin-right: 4px;
+  }
+  .eval-foot {
+    margin-top: auto;
+    font-size: 11.5px;
+    color: var(--muted);
+    font-family: var(--mono);
+    letter-spacing: 0.04em;
+  }
+  .stack-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .stack-cell {
+    border: 1px solid var(--rule);
+    padding: 10px 10px 9px;
+    background: rgba(255,255,255,0.4);
+  }
+  .stack-cell .role {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+  .stack-cell .name {
+    font-family: var(--serif);
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1.1;
+  }
+  .stack-cell .name .dot { color: var(--accent); }
+  .stack-cell .note {
+    margin-top: 4px;
+    font-size: 11px;
+    color: var(--ink-2);
+    line-height: 1.35;
+  }
+
+  /* ---------- FOOTER (~120px) ---------- */
+  .footer {
+    height: 114px;
+    padding: 22px 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--ink);
+    color: var(--paper);
+    position: relative;
+  }
+  .footer::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 64px; right: 64px;
+    height: 4px;
+    background: var(--accent);
+  }
+  .footer .author {
+    font-family: var(--serif);
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  .footer .author b {
+    font-weight: 700;
+    color: #fff;
+  }
+  .footer .author .sep {
+    color: var(--accent);
+    margin: 0 10px;
+  }
+  .footer .author .small {
+    display: block;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--rule);
+    letter-spacing: 0.08em;
+    margin-top: 4px;
+  }
+  .footer .mark {
+    text-align: right;
+  }
+  .footer .mark .big {
+    font-family: var(--serif);
+    font-size: 28px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 0.04em;
+  }
+  .footer .mark .big .dash { color: var(--accent); }
+  .footer .mark .small {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--rule);
+    letter-spacing: 0.1em;
+    margin-top: 2px;
+  }
+
+  /* ---------- print ---------- */
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+  @media print {
+    html, body { background: #fff; padding: 0; margin: 0; }
+    body { padding: 0; }
+    .page {
+      box-shadow: none;
+      width: 210mm;
+      height: 297mm;
+      transform-origin: top left;
+    }
+  }
+</style>
+</head>
+<body>
+  <article class="page">
+
+    <!-- HEADER -->
+    <header class="header">
+      <div class="top-row">
+        <div class="badge">● 美团黑客松 2026 · 决赛入围</div>
+        <div>github.com/estelledc/bj-pal &nbsp;·&nbsp; 一份给评委的 60 秒简介</div>
+      </div>
+      <div class="title-block">
+        <h1>BJ<span class="dash">-</span>Pal</h1>
+        <div class="title-meta">
+          <div class="sub">周六下午的决策解药</div>
+          <div class="tag">SHORT-TERM ACTIVITY PLANNING AGENT &nbsp;·&nbsp; 情绪基础设施 / EMOTIONAL INFRASTRUCTURE</div>
+          <div class="lede">一句话替你扛下选错的责任 — <span class="accent">不是工具产品，是替你做决策的那个人</span>。</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- CALLOUT -->
+    <section class="callout">
+      <div class="quote-mark">"</div>
+      <div class="callout-body">
+        <div class="pullquote">用户付钱不是为「规划方案」，是为<em>「AI 替我扛了选错的责任」</em>。</div>
+        <div class="source">— 来自 100 条 AI 用户访谈洞察 &nbsp;·&nbsp; 2026.04 — 2026.05</div>
+      </div>
+    </section>
+
+    <!-- 3 COLUMNS -->
+    <section class="three-col">
+      <!-- 痛点 -->
+      <div class="col">
+        <div class="col-head">
+          <span class="num">01 / PAIN</span>
+          <h3>痛点</h3>
+        </div>
+        <div class="strong-line">"周六下午，又要换一个。"</div>
+        <p>已规划好的活动黄了，3 小时窗口在倒计时；点评 / 小红书 / 群聊三个 tab 切换二十分钟，仍然在「会不会更好」的反刍里转圈。</p>
+        <p>真正稀缺的不是信息，是<b>替我拍板</b>的那个角色 — 在他失败时，能说一句「不怪你」。</p>
+        <div class="label">100 AI 访谈 · 5 / 5 命中</div>
+        <p style="margin-bottom:0;">即时性 · 情绪兜底 · 责任转移 · 试错成本 · 决策疲劳，五项强信号在 100 条访谈中全部命中。</p>
+      </div>
+      <!-- 解法 / 5 强信号 -->
+      <div class="col">
+        <div class="col-head">
+          <span class="num">02 / SIGNALS</span>
+          <h3>5 强信号</h3>
+        </div>
+        <ul class="signal-list">
+          <li>
+            <div><b>即时性 / Now-ness</b><span>3 小时窗口决策，不是一周后的攻略。</span></div>
+          </li>
+          <li>
+            <div><b>情绪兜底 / Comfort</b><span>失败也愿意，是因为有人陪着失败。</span></div>
+          </li>
+          <li>
+            <div><b>责任转移 / Trust</b><span>"它选的"比"我选的"心理负担轻。</span></div>
+          </li>
+          <li>
+            <div><b>试错成本 / Sunk Cost</b><span>20 分钟比对仍可能踩雷，越对比越累。</span></div>
+          </li>
+          <li>
+            <div><b>决策疲劳 / Fatigue</b><span>周六下午的脑容量只够喊一句"换一个"。</span></div>
+          </li>
+        </ul>
+      </div>
+      <!-- 数据资产 -->
+      <div class="col">
+        <div class="col-head">
+          <span class="num">03 / ASSETS</span>
+          <h3>数据资产</h3>
+        </div>
+        <div class="data-grid">
+          <div class="data-cell">
+            <div><span class="num">5,656</span><span class="unit">POI</span></div>
+            <div class="name">北京 POI 全量</div>
+            <div class="desc">高德 API · 含坐标 / 评分 / 营业时段</div>
+          </div>
+          <div class="data-cell">
+            <div><span class="num">1,102</span><span class="unit">UGC</span></div>
+            <div class="name">软信号样本</div>
+            <div class="desc">小红书 / 大众点评 文本结构化</div>
+          </div>
+          <div class="data-cell">
+            <div><span class="num">89</span><span class="unit">SHOTS</span></div>
+            <div class="name">大众点评截图</div>
+            <div class="desc">VLM 抽取「拍照点 / 排队感」</div>
+          </div>
+          <div class="data-cell">
+            <div><span class="num">100</span><span class="unit">USERS</span></div>
+            <div class="name">用户访谈</div>
+            <div class="desc">5 强信号 5/5 命中的来源</div>
+          </div>
+        </div>
+        <p style="margin-top:14px;font-size:12px;color:var(--muted);font-family:var(--mono);letter-spacing:0.04em;line-height:1.5;">
+          L2 排序公式：<br>
+          <span style="color:var(--ink);">0.35·rating + 0.30·ugc⁺ + 0.15·budget</span><br>
+          <span style="color:var(--ink);">+ 0.10·dist + 0.10·crowd_penalty</span>
+        </p>
+      </div>
+    </section>
+
+    <!-- ARCHITECTURE -->
+    <section class="arch">
+      <div class="arch-left">
+        <div class="sec-head">
+          <span class="kicker">04 / ARCHITECTURE</span>
+          <h3>系统架构</h3>
+          <span class="ja">Plan-and-Execute · LangGraph</span>
+        </div>
+<pre class="ascii">  <span class="dim">用户一句话</span>
+       │
+       ▼
+  ┌─────────────┐
+  │  <span class="hi">Planner</span>     │   ToT 多分支思考 + 偏好镜像
+  └─────┬───────┘
+        │  Plan v1
+        ▼
+  ┌─────────────┐
+  │  <span class="hi">Probe</span>       │   amap 实时 / 营业 / 距离 / 容量
+  └─────┬───────┘
+        │  可用性证据
+        ▼
+  ┌─────────────┐
+  │  <span class="hi">Replanner</span>   │   失败兜底 · 替我扛责任
+  └─────┬───────┘
+        │  Plan v2
+        ▼
+  ┌─────────────┐
+  │  <span class="hi">Mock 下单</span>    │  +  <span class="hi">IM 话术化卡片</span>
+  └─────────────┘</pre>
+        <div class="arch-note">三阶段防火墙：感知（Probe）/ 判断（Replanner）/ 执行（Mock）相互隔离，OTel 全链路 trace 落盘。</div>
+      </div>
+      <div class="arch-right">
+        <div class="sec-head">
+          <span class="kicker">05 / TOOLS</span>
+          <h3>8 个核心工具</h3>
+          <span class="ja">tool_call_log → OTel</span>
+        </div>
+        <table class="tools">
+          <thead>
+            <tr><th>#</th><th>NAME</th><th>ROLE</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="idx">1</td><td class="name">amap_search</td>          <td class="desc">高德 POI 检索 / 距离 / 营业</td></tr>
+            <tr><td class="idx">2</td><td class="name">ugc_signals</td>          <td class="desc">小红书 + 点评 软信号抽取</td></tr>
+            <tr><td class="idx">3</td><td class="name">rank_fuse</td>            <td class="desc">L2 五因子加权融合排序</td></tr>
+            <tr><td class="idx">4</td><td class="name">availability_probe</td>  <td class="desc">实时容量 / 排队 / 闭店探测</td></tr>
+            <tr><td class="idx">5</td><td class="name">mock_book</td>            <td class="desc">下单 / 占座 / 优惠券模拟</td></tr>
+            <tr><td class="idx">6</td><td class="name">mock_message</td>        <td class="desc">IM 话术化卡片 · 推给好友</td></tr>
+            <tr><td class="idx">7</td><td class="name">preference_mirror</td>   <td class="desc">用户偏好镜像 + 失败学习</td></tr>
+            <tr><td class="idx">8</td><td class="name">tool_call_log</td>        <td class="desc">OTel trace · 全链路可观测</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- EVAL + STACK -->
+    <section class="eval">
+      <div class="eval-left">
+        <div class="sec-head">
+          <span class="kicker">06 / EVAL</span>
+          <h3>评测结果</h3>
+          <span class="ja">100 LongCat questions</span>
+        </div>
+        <div class="eval-row">
+          <div class="eval-num start">27.5%</div>
+          <div class="eval-arrow">▶▶</div>
+          <div class="eval-num end">47.0%</div>
+        </div>
+        <div class="eval-meta">
+          <div><b>+71%</b> final_pass 提升</div>
+          <div><b>v1 → v3</b> 三轮迭代</div>
+        </div>
+        <div class="eval-foot">BASELINE → DIAGNOSE → REPLAN-FALLBACK · 三轮收敛过程全可追溯</div>
+      </div>
+      <div class="eval-right">
+        <div class="sec-head">
+          <span class="kicker">07 / STACK</span>
+          <h3>技术栈</h3>
+          <span class="ja">all open-source</span>
+        </div>
+        <div class="stack-grid">
+          <div class="stack-cell">
+            <div class="role">Runtime</div>
+            <div class="name">Python<span class="dot">.</span></div>
+            <div class="note">主语言 / asyncio</div>
+          </div>
+          <div class="stack-cell">
+            <div class="role">Orchestrator</div>
+            <div class="name">LangGraph<span class="dot">.</span></div>
+            <div class="note">Plan-Execute 状态图</div>
+          </div>
+          <div class="stack-cell">
+            <div class="role">LLM</div>
+            <div class="name">LongCat<span class="dot">.</span></div>
+            <div class="note">美团自研 / 推理</div>
+          </div>
+          <div class="stack-cell">
+            <div class="role">Reasoning</div>
+            <div class="name">ToT<span class="dot">.</span></div>
+            <div class="note">Tree-of-Thought 分支</div>
+          </div>
+          <div class="stack-cell">
+            <div class="role">Telemetry</div>
+            <div class="name">OTel<span class="dot">.</span></div>
+            <div class="note">全链路 trace 落盘</div>
+          </div>
+          <div class="stack-cell">
+            <div class="role">Frontend</div>
+            <div class="name">Streamlit<span class="dot">.</span></div>
+            <div class="note">演示界面 / 卡片渲染</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+      <div class="author">
+        <b>作者: Jason</b>
+        <span class="sep">·</span> 编程零基础学习者
+        <span class="sep">·</span> Claude Code 全程协作
+        <span class="small">LICENSE: APACHE 2.0 &nbsp;·&nbsp; 学一个记一个，下次能直接用</span>
+      </div>
+      <div class="mark">
+        <div class="big">BJ<span class="dash">·</span>Pal</div>
+        <div class="small">MEITUAN HACKATHON 2026 / FINALS</div>
+      </div>
+    </footer>
+
+  </article>
+</body>
+</html>

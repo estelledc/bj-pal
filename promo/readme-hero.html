@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>BJ-Pal · README Hero</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;700;900&family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:      #f5efe2;
+    --paper:   #ede4d0;
+    --fg:      #1d1816;
+    --muted:   #6b5e52;
+    --border:  #1d1816;
+    --accent:  #9c2a25;
+
+    --font-display: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'STSong', serif;
+    --font-body:    'Noto Sans SC', 'PingFang SC', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --font-mono:    'JetBrains Mono', ui-monospace, Menlo, monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: #2a2622;
+    color: var(--fg);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 32px;
+  }
+
+  /* Canvas — fixed 1280x640 */
+  .hero {
+    width: 1280px;
+    height: 640px;
+    background: var(--bg);
+    position: relative;
+    overflow: hidden;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.04) inset,
+      0 30px 60px -20px rgba(0,0,0,0.5);
+
+    /* paper grain */
+    background-image:
+      radial-gradient(transparent 1px, rgba(28,24,22,0.018) 1px),
+      radial-gradient(rgba(156,42,37,0.04) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(0,0,0,0.012), rgba(0,0,0,0));
+    background-size: 3px 3px, 5px 5px, 100% 100%;
+    background-position: 0 0, 1px 1px, 0 0;
+
+    display: grid;
+    grid-template-columns: 60% 40%;
+    grid-template-rows: 1fr 40px;
+  }
+
+  /* Subtle paper texture corner — accent rule, top-right */
+  .hero::before {
+    content: "";
+    position: absolute;
+    top: 36px;
+    right: 36px;
+    width: 64px;
+    height: 1px;
+    background: var(--accent);
+  }
+  .hero::after {
+    content: "";
+    position: absolute;
+    top: 36px;
+    right: 36px;
+    width: 1px;
+    height: 64px;
+    background: var(--accent);
+  }
+
+  /* ---------- LEFT 60% ---------- */
+  .left {
+    padding: 64px 56px 40px 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    grid-column: 1;
+    grid-row: 1;
+    position: relative;
+  }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .eyebrow::after {
+    content: "";
+    height: 1px;
+    width: 40px;
+    background: var(--accent);
+  }
+
+  .title {
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: 168px;
+    line-height: 0.92;
+    letter-spacing: -0.02em;
+    color: var(--fg);
+  }
+  .title .dot {
+    color: var(--accent);
+  }
+
+  .subtitle {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 36px;
+    line-height: 1.25;
+    letter-spacing: 0.01em;
+    color: var(--fg);
+    margin-top: 18px;
+  }
+
+  .slogan {
+    font-family: var(--font-body);
+    font-weight: 400;
+    font-size: 18px;
+    line-height: 1.6;
+    color: var(--muted);
+    margin-top: 14px;
+    padding-left: 14px;
+    border-left: 2px solid var(--accent);
+    max-width: 540px;
+  }
+  .slogan strong {
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  .meta {
+    font-family: var(--font-body);
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    display: flex;
+    gap: 14px;
+    align-items: center;
+  }
+  .meta .sep {
+    width: 4px; height: 4px;
+    background: var(--muted);
+    border-radius: 50%;
+    opacity: 0.6;
+  }
+
+  /* ---------- RIGHT 40% — stats grid ---------- */
+  .right {
+    grid-column: 2;
+    grid-row: 1;
+    padding: 64px 80px 40px 24px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 0;
+    position: relative;
+  }
+
+  /* dividing rules between cells */
+  .right::before {
+    /* vertical center line */
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 80px;
+    bottom: 56px;
+    width: 1px;
+    background: rgba(28,24,22,0.14);
+  }
+  .right::after {
+    /* horizontal mid line */
+    content: "";
+    position: absolute;
+    left: 24px;
+    right: 80px;
+    top: 50%;
+    height: 1px;
+    background: rgba(28,24,22,0.14);
+  }
+
+  .stat {
+    padding: 18px 22px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 0;
+  }
+
+  .stat-num {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 88px;
+    line-height: 0.95;
+    letter-spacing: -0.02em;
+    color: var(--fg);
+    font-variant-numeric: tabular-nums;
+  }
+  .stat-num .unit {
+    font-family: var(--font-body);
+    font-weight: 400;
+    font-size: 18px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    margin-left: 6px;
+    vertical-align: 0.5em;
+  }
+  .stat-num .plus {
+    color: var(--accent);
+    font-family: var(--font-display);
+  }
+  .stat-label {
+    font-family: var(--font-body);
+    font-size: 12px;
+    letter-spacing: 0.16em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: 12px;
+  }
+  .stat-label .cn {
+    font-family: var(--font-body);
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    color: var(--fg);
+    text-transform: none;
+    display: block;
+    margin-top: 4px;
+  }
+
+  /* highlight one stat with a subtle accent — the eval gain */
+  .stat.accent .stat-num { color: var(--accent); }
+
+  /* ---------- BOTTOM STRIP ---------- */
+  .strip {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    height: 40px;
+    background: var(--fg);
+    color: var(--paper);
+    display: flex;
+    align-items: center;
+    padding: 0 80px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    gap: 22px;
+  }
+  .strip .repo {
+    color: var(--paper);
+    font-weight: 500;
+  }
+  .strip .dot {
+    color: rgba(245, 239, 226, 0.4);
+  }
+  .strip .tag {
+    color: rgba(245, 239, 226, 0.78);
+  }
+  .strip .right-meta {
+    margin-left: auto;
+    color: rgba(245, 239, 226, 0.55);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    font-size: 10px;
+  }
+
+  /* corner badge — a serif quote mark, restrained */
+  .corner-mark {
+    position: absolute;
+    bottom: 56px;
+    left: 80px;
+    font-family: var(--font-display);
+    font-size: 14px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .corner-mark::before {
+    content: "";
+    width: 24px; height: 1px;
+    background: var(--muted);
+    opacity: 0.5;
+  }
+</style>
+</head>
+<body>
+
+  <div class="hero" role="img" aria-label="BJ-Pal README hero banner">
+
+    <!-- LEFT 60% -->
+    <section class="left">
+
+      <div class="eyebrow">Meituan Hackathon · 2026</div>
+
+      <div>
+        <h1 class="title">BJ<span class="dot">·</span>Pal</h1>
+        <p class="subtitle">周六下午的决策解药</p>
+        <p class="slogan">一句话<strong>替你扛下选错的责任</strong>——你只要出现，剩下的我安排。</p>
+      </div>
+
+      <div class="meta">
+        <span>美团黑客松 2026</span>
+        <span class="sep"></span>
+        <span>短时活动规划与执行 Agent</span>
+      </div>
+
+    </section>
+
+    <!-- RIGHT 40% — 2x2 stats -->
+    <section class="right">
+
+      <div class="stat">
+        <div class="stat-num">5,656<span class="unit">个</span></div>
+        <div class="stat-label">POI · Amap
+          <span class="cn">北京全域真实地点</span>
+        </div>
+      </div>
+
+      <div class="stat">
+        <div class="stat-num">1,102<span class="unit">条</span></div>
+        <div class="stat-label">UGC Soft Signals
+          <span class="cn">软信号·氛围画像</span>
+        </div>
+      </div>
+
+      <div class="stat">
+        <div class="stat-num">100<span class="unit">人</span></div>
+        <div class="stat-label">AI 用户访谈
+          <span class="cn">情绪基础设施洞察</span>
+        </div>
+      </div>
+
+      <div class="stat accent">
+        <div class="stat-num"><span class="plus">+</span>71<span class="unit">%</span></div>
+        <div class="stat-label">Eval Final Pass
+          <span class="cn">v1 · 27.5% → v3 · 47.0%</span>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- BOTTOM STRIP -->
+    <footer class="strip">
+      <span class="repo">github.com/estelledc/bj-pal</span>
+      <span class="dot">·</span>
+      <span class="tag">Python</span>
+      <span class="dot">·</span>
+      <span class="tag">LangGraph</span>
+      <span class="dot">·</span>
+      <span class="tag">LongCat</span>
+      <span class="dot">·</span>
+      <span class="tag">Apache 2.0</span>
+      <span class="right-meta">README · Hero</span>
+    </footer>
+
+  </div>
+
+</body>
+</html>
