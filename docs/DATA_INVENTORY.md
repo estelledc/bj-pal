@@ -1,7 +1,8 @@
 # BJ-Pal · 数据资产全盘点
 
-> 截至 2026-05-21 23:00。本文档每次大批量数据变更后更新。
+> 截至 2026-05-29（v3.1 + promo 完成后状态）。每次 v3.x 迭代后更新。
 > 全盘代码：`source .venv/bin/activate && python3 src/etl/dump_and_verify_after_etl.py`
+> 配套：`README.md`（数据画像速览段）/ `EVAL_FRAMEWORK.md`（评测数据归档约定）
 
 ## 一、SQLite 主表（运行时）
 
@@ -60,6 +61,17 @@ aspect_type 分布（top 9）：
 ### 1.4 `tool_calls.db` — 工具调用日志（**892 条**）
 
 每次 tool 调用通过 `tool_call_log.timed_call(...)` 上下文管理器记录，含 `session_id / tool_name / params / response / latency_ms / status / error / timestamp`。
+
+### 1.5 `bj_pal.db` 派生表（v2.4 + v2.7 + v3.1 新增）
+
+| 表名 | 来源 | 字段 | 用途 |
+|---|---|---|---|
+| `plan_traces` | v2.4 D1 `plan_tracer.py` | `plan_id / step_id / decision / confidence / fallback_action / created_at` | 履约 trace 内核；UI trust_panel 展开；evals/L1 S1 检查 `coverage_rate(plan_id) == 1.0` |
+| `user_memory` | v2.7 `user_memory.py` | `user_id / facet / value / confidence / updated_at` | stateful 跨 session 偏好；record/get/forget/infer/merge |
+| `calibration_history` | v3.1 `calibration_history.py` | `window_id / ece / plan_count / computed_at` | 滑窗 ECE 演化（每 N plan 算一次） |
+| `confidence_buckets` | v3.1 `calibration_history.py` | `window_id / bucket_idx / predicted_mid / actual_pass_rate / n` | 置信度直方图（10 桶 0.0-1.0） |
+| `prediction_log` | v2.4 + v3.1 | `pred_id / poi_id / predicted_value / actual_value / created_at` | record_prediction / record_actual，喂 ECE 计算 |
+| `group_member_profile` | v2.4 D5 | `group_id / member_id / role / weight / member_mode` | 4 成员模式（反复横跳 / 沉默 / 隐性领导 / 正常）+ broadcast 编排 |
 
 ---
 
