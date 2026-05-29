@@ -1,10 +1,11 @@
 # BJ-Pal · 北京下午活动管家 · 设计文档
 
 > 美团黑客松 2026 短时活动规划 Agent / 命题：`task.md` / 交付：Demo + Tool 实现 + 设计文档（≤ 2 页）
+> 配套：`EVAL_FRAMEWORK.md`（评测体系）/ `ROADMAP.md`（v3.1 → v4.0 路线）/ `100-improvements.md`（6 路调研 100 条）
 
 ## 1. Planning 策略
 
-**Plan-and-Execute + 主动 Probe + 局部 Replan**
+**Plan-and-Execute + 主动 Probe + 局部 Replan + v3.0 三分支 + v2.4 履约 trace + v3.1 ECE 校准**
 
 ```
 用户一句话 → Planner → Plan v1 (5-7 步 JSON)
@@ -29,6 +30,45 @@
     每条 Aspect 附 `evidence_age_days` + `evidence_source_count` + `decayed_confidence`（按品类半衰期：餐饮 30 天衰减 50%、景点 90 天衰减 30%、文化场所 180 天衰减 20%）
     UI 每张 POI 卡片必显示 1 条最关键吐槽（`extract_red_flags`）— 即使整体推荐这家
     当 `confidence < 0.5` 或 `evidence_age_days > 30`，UI 该标灰、降权但保留可见
+
+### 1.1 v3.0 三分支 Planner 选择树
+
+| 分支 | 入口 | 算法 | 何时选 |
+|---|---|---|---|
+| **普通** | `planner.plan()` | LLM 单轮 + rank_fuse 候选池 | 默认；query 简单 / 群人数 ≤ 2 / 时间富裕 |
+| **ToT 分支** | `planner.plan(branch_hint="balanced/culture_first/food_first", temperature=0.7)` → 内部调 `planner_tot.plan_tot()` | Tree of Thoughts（arxiv:2305.10601）K=3 候选并发 + 自评分（commonsense + hard_constraint + utility + diversity + rationale_quality） | 复杂约束 / 用户提了 ≥ 2 个偏好维度 / 评委 demo 想看"算法选择" |
+| **OPTW 分支** | `planner.plan_optw()` → `optw_solver.solve_optw()` | OPTW + OR-Tools CP-SAT，5s timeout | 候选池 ≥ 30 / 强时间窗约束 / "多 POI 最优访问序列"问题 |
+
+三分支 entry 都过 `plan_tracer.record_plan()`，下游 reroute / probe / 群投票链路一致。
+
+### 1.2 v2.4 履约 trace + v3.1 ECE 校准
+
+**plan_tracer**（`agents/plan_tracer.py`）：
+
+每步 plan 落 SQLite 时记录 `(step_id, decision, confidence, fallback_action)`。`coverage_rate(plan_id, expected_steps)` 必为 1.0；`iter_steps(plan_id)` 返回所有 trace 用于 trust_panel 展示。
+
+**calibration_history**（`agents/calibration_history.py`，v3.1）：
+
+跑完每批 plan 后用 ECE（Expected Calibration Error）量化"AI 说 70% 确定时是不是真的 70% 对"。**滑窗 ECE 演化**：每 N 个 plan 算一次 ECE，绘 7 天滑窗曲线；**置信度直方图**：把所有步骤按 `confidence` 分 10 桶（0.0-0.1 ... 0.9-1.0），看每桶实际 pass 率与 桶中位数对齐度。目标 ECE ≤ 0.15。
+
+落库表：`calibration_history(window_id, ece, plan_count, computed_at)` + `confidence_buckets(window_id, bucket_idx, predicted_mid, actual_pass_rate, n)`。
+
+UI：`ui/calibration_panel.py` 侧栏可展开，给评委看"我们不是黑盒打分，每周都在校准自己有多准"。
+
+### 1.3 v3.0 群投票（Kemeny + Borda + Pareto）
+
+**voting**（`agents/voting.py`，11/11 测试）：
+
+| 算法 | 用途 | 复杂度 |
+|---|---|---|
+| Borda | N 人对 K 候选粗排 | O(NK) 快 |
+| Kemeny-Young | 最小 Kendall tau 共识精排（ILP，`pulp`） | O(K!N) 准 |
+| Borda + Kemeny 两段 | 第一轮 Borda 粗筛 top-7 → 第二轮 Kemeny 精排 | 互补：快 + 准 |
+| 4 sub-ranker Pareto | `group_harmony.py`：每成员一个 sub-ranker，min/avg pareto 前沿 | 群体偏好可视化 |
+
+接入点：`mock_message.broadcast` 收到投票结果 → `voting.aggregate(votes, method="kemeny")` → 反馈给 `replanner` 做"1 否决重 reroute"。
+
+护城河话术："美团黑客松首次用社会选择理论（Kemeny-Young）"。
 
 ## 2. 工具调用链路
 
@@ -76,9 +116,29 @@
 - **可扩展**：v1 北京试点；amap 抓取脚本一键扩到上海/杭州；UGC 抽取双链路通用 — `agents/vision_extractor.py` 截图入口 + `etl/text_aspect_extractor.py` 文本入口；Planner / Replanner / Ranking 完全城市无关
 - **实时性路径（M1 Sprint）**：见 `explorations/ideas/bj-pal-amap-heat-research.md` — 高德组合 API（POI 详情 + 路况 + 天气）1 周 MVP 即可上线，ranking 加 `live_heat_score: 0.10` 分量
 
-## 5. 四个差异化护城河（v2.2 升级版）
+## 5. 八个差异化护城河（v3.1 升级版）
 
-1. **UGC 软信号融合 ranking + 可解释 reasons + 5 类来源透明**：每个 POI 选择附 3 条原因 + 真实 UGC 原文片段 + dataset_version 溯源；评委质问"这条 evidence 哪来的"一键展开 raw_text_excerpt 字段
-2. **主动 reroute + 动态 trap（不是硬编码）**：`compute_dynamic_trap_score` 基于 amap 评分 + UGC negative 交叉触发，全聚德等老字号自动识别；UGC 1102 条覆盖 103 片区交叉验证，不再是"演脚本"
-3. **时段画像 weekend_afternoon_intensity**：1102 条 100% 填 [0,1] 强度，ranking 公式按 intensity 加权 — "周六下午"差异化有数据支撑，不是 prompt 写死
-4. **群发投票 + 4 人偏好调和 + 1 否决重 reroute**：`mock_message.broadcast` + `agents/group_harmony.py` 4 sub-ranker pareto；命题字面要求 + 无人做
+1. **UGC 软信号融合 ranking + 可解释 reasons + 5 类来源透明**：每个 POI 选择附 3 条原因 + 真实 UGC 原文片段 + dataset_version 溯源；评委质问"这条 evidence 哪来的"一键展开 raw_text_excerpt 字段。v3.0 数据规模 **8,666 条 / 6300+ POI 信号网**（5/21 全天 R6-R100 共 95 轮扩展 +2366 条）
+2. **主动 reroute + 动态 trap（不是硬编码）**：`compute_dynamic_trap_score` 基于 amap 评分 + UGC negative 交叉触发，全聚德等老字号自动识别；UGC 8666 条交叉验证，不再是"演脚本"
+3. **时段画像 4 bucket + weekend_afternoon_intensity**：1102 条 100% 填 [0,1] 强度（v2.2 原数据）+ v2.6 4 时段扩展（工作日早 / 工作日晚 / 周末上午 / 周末下午），ranking 公式按 bucket × intensity 双重加权 — "周六下午"差异化有数据支撑，不是 prompt 写死
+4. **群发投票 + Kemeny-Young + Borda + 4 人 Pareto + 1 否决重 reroute**：`agents/voting.py`（v3.0）+ `mock_message.broadcast` + `group_harmony.py` 4 sub-ranker pareto；社会选择理论首次用于本地生活场景；命题字面要求 + 无人做
+5. **三分支 Planner 选择**（v3.0，详见 §1.1）：普通 / ToT / OPTW 三入口，按 query 复杂度自动切换；`planner_tot.py` 5/5 测试，`optw_solver.py` 7/7 测试 + 端到端（4 步 POI 路线 5s 出 FEASIBLE 解）；arxiv:2305.10601 + Vansteenwegen 2011 论文级别方法
+6. **L1/L2/L3 三层评测 + 5 信号检查 + ECE 校准**（v2.4 D3 + v3.0 + v3.1，详见 `EVAL_FRAMEWORK.md`）：每 commit 跑 anchor 5 case / 每周扫 5 模块 25 case / 每 release 跑 100 case × 5 信号 = 280 检查；v3.1 D7 滑窗 ECE 演化 + 置信度分布直方图，"AI 不是黑盒打分，每周都在校准自己"
+7. **plan_tracer 履约 trace 内核 + trust_panel 可视化**（v2.4 D1）：每步落 `(decision, confidence, fallback_action)`，UI 侧栏可展开 — "AI 这步 70% 确定，因为 UGC 厚度只 5 条"；不是空头 SLA，是可验证的"承诺-兑现"链条
+8. **stateful 跨 session 记忆 + AddOn 主动建议**（v2.7 user_memory + v2 改 7 addon_agent）：record / get / forget / infer / merge_into_prompt 五件套；"它在学你"叙事；同行人状态变化（带娃 / 老人）触发 facility / accessibility 信号
+
+## 6. v3.0 评测体系（详见 `EVAL_FRAMEWORK.md`）
+
+**为什么分三层**：评测频率 × 信号强度解耦。一刀切要么贵（全量 30min/次）要么弱（子集信号差）。
+
+| 层 | 频率 | 规模 | 耗时 | LLM | 用途 |
+|---|---|---|---|---|---|
+| L1 anchor | 每 commit | 5 case | ~30s | mock | 5 强信号冒烟 |
+| L2 integration | 每周 / 改模块 | 5 模块 × 5 = 25 | ~5min | 混合 | 行为基线 |
+| L3 full | 每 release | 100 × 5 = 280 | ~30min | LongCat | 全量分布 + TravelPlanner 4 指标 |
+
+**5 信号检查（S1-S5）**：S1 责任承担（plan_tracer 覆盖 + fallback）/ S2 红旗可见（extract_red_flags）/ S3 道歉容忍（apology_card 触发）/ S4 周末聚焦（detect_weekday_context）/ S5 重要场合（detect_screening_mode）。
+
+**通过率演进**：v1 0.275 → v2 0.275 → v3 0.470 → v3.0 L3 全量 100% pass → v3.1 ECE 进一步收敛。
+
+**防火墙原则**（参考 video-eval-agent gstack）：fixture 与 production prompt 分库 / mock 优先 / plan 缓存可观察 / ECE 是连续指标。
