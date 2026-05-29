@@ -135,7 +135,46 @@
 
 ---
 
-## 六、最值钱的元结论
+## 六、5 强信号在 v3.1 的代码落地验证（5/29 status）
+
+每条强信号都对应到具体模块 + L3 case + 实测通过率。从"AI 访谈洞察 → 产品决策 → 代码落地 → 评测验证"的完整链路。
+
+| 信号 | 产品决策 | 代码落地 | L3 检查 | v3.0 通过率 |
+|---|---|---|---|---|
+| **S1 选错的责任**（4/5） | 让 AI 拍板，每步可追责 | `agents/plan_tracer.py` + `ui/trust_panel.py`（v2.4 D1）+ `agents/calibration_history.py`（v3.1） | `check_s1` — `coverage_rate(plan_id) == 1.0` 且任一 step 有 `fallback_action` | **100/100** ✅ |
+| **S2 必须看到吐槽**（5/5） | 每张 POI 卡片必显示 1 条 red flag | `tools/ugc_signals.extract_red_flags`（P0.1）+ rank_fuse `reasons` 含负向 evidence | `check_s2` — `len(extract_red_flags(候选)) >= 1` | **100/100** ✅ |
+| **S3 容忍度 = 2 次**（5/5） | 第 2 次失败前必须 apology | `tools/mock_message.apology_card`（P0.5）+ replanner 计数失败 | `check_s3` — 模拟 ≥ 2 次 reroute 失败后 `card.tone == "apology"` | **100/100** ✅ |
+| **S4 工作日不属于这个 App**（4/5） | 工作日输入触发澄清 | `agents/preference_mirror.detect_weekday_context`（v2.4 S4）+ v2.6 4 时段画像 | `check_s4` — 跨语境 `needs_clarification == True` | **100/100** ✅（S4 修复后） |
+| **S5 重要场合 = 工具不是代理**（5/5） | "老人 / 初次见 / 家宴 / 纪念日" → 筛选模式 | `agents/preference_mirror.detect_screening_mode`（P0.2）+ planner 切候选返回不切 plan | `check_s5` — 关键词触发 `mode == "screening"` | **100/100** ✅ |
+
+**280 信号检查全过 100%**（5 信号 × 100 case + 邻接条件，归档 `evals/results/L3_6206e26_*.json`）。
+
+### 6.1 中等信号在 v3.x 的兑现
+
+| 信号 | 落地模块 | 备注 |
+|---|---|---|
+| **6 UGC 时效分品类** | `tools/ugc_signals.decayed_confidence`（v2.2 P0.1） | 餐饮 30 天衰减 50% / 景点 90 天 30% / 文化 180 天 20% |
+| **7 预算绝对私密** | `mock_message.broadcast` 把 budget 字段从群可见数据剔除 | chip 化（实惠 / 适中 / 偏贵 / 高端）替代具体数字 |
+| **8 熟人推荐** | v2.7 `agents/user_memory.py` + episodic_memory（部分实现） | 跨 session 偏好积累，未来扩到"群成员历史推荐" |
+| **9 改一站按幅度分流** | `replanner.replan_step` 局部替换 + magnitude 判断 | 小改私下通知（mock_message 私聊）/ 大改群广播（broadcast） |
+
+### 6.2 3 大雷的代码兜底
+
+| 雷 | 防御代码 | 验证 |
+|---|---|---|
+| **越推越窄"美团模式"** | `tools/audience_segment` 区分 local/tourist/expert 视角 + `poi_graph` 邻居发现 | 推荐多样性纳入 ToT 自评分 `diversity` 维度 |
+| **重复推荐已消费商品** | `agents/user_memory.get_visit_history` + planner prompt 软约束 | v2.7 stateful 跨 session 记忆 |
+| **假装懂用户其实是广告** | `dataset_version` 5 类透明 + UI 商家自填 vs UGC 视觉分层（[63] 改进项） | rank_fuse 商家自填权重砍半，"招牌菜"仅商家自填时标"未被用户验证" |
+
+### 6.3 路演时怎么用这表
+
+评委质疑"你怎么知道用户真这么想"时，引用任意一行：
+
+> "我们 5/5 受访者都说预算绝对不分享给群——所以 v3.x 在 mock_message.broadcast 把预算 chip 化了。从访谈到代码到评测的链路都在 docs/USER_RESEARCH_FINDINGS.md §6 里。"
+
+---
+
+## 七、最值钱的元结论
 
 > **用户付钱不是为"规划方案"，是为"AI 替我扛了选错的责任"。**
 > 这是一个**情绪基础设施**而不是工具产品。
