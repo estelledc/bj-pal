@@ -1,6 +1,7 @@
 # BJ-Pal · 评委 Q&A 演练手册
 
-> 15 个最可能问的问题 + 简明答案。比答错更怕"答得软"——每个回答先 1 句结论再 2 句佐证。
+> 30 个最可能问的问题 + 简明答案。比答错更怕"答得软"——每个回答先 1 句结论再 2 句佐证。
+> Q1-Q15 业务/技术/隐私核心；Q16-Q20 v2.2 数据扩展；**Q21-Q30 v2.4-v3.1 升级专属**。
 
 ## 业务 / 产品类
 
@@ -79,13 +80,49 @@
 ### Q20. clone 后能直接跑通吗？
 **A**：可以。`expanded_v2.jsonl`（UGC + routes 共 2.4MB）已进 git；clone 后 `python3 src/loader.py` 自动加载 → 1065 UGC + 1892 routes（不依赖 manual_ugc_seed.jsonl，loader graceful 跳过缺失文件）。原始 amap POI（86MB）和大众点评截图仍 gitignore。test_data_coverage.py 4 章节 16 断言全过即可证明数据完整。
 
+注：**v3.0 后 UGC 已扩到 8,666 条**（5/21 全天 R6-R100 共 95 轮共 +2366 条），`expanded_v2.jsonl` 同步更新；详见 `docs/100-improvements.md` "v2.4 → v3.1 行为级跃迁" 段。
+
+## v2.4 → v3.1 升级专属（5/22 - 5/29 加问 10 题）
+
+### Q21. 评测体系搞 L1/L2/L3 三层是不是 over-engineering？
+**A**：**不是过度设计，是成本约束逼出来的**。100 case × 5 信号 × 每 commit 跑 = LongCat token 烧不起。我们的解法：L1 anchor 5 case 全 mock 30s 跑（每 commit），L2 集成 25 case 抽样 LongCat 5min 跑（每周），L3 全量 100 × 5 = 280 检查 LongCat 30min 跑（每 release）。频率 × 规模 × 信号强度三层解耦，参考 video-eval-agent 的 gstack 三阶段防火墙。详见 `docs/EVAL_FRAMEWORK.md`。
+
+### Q22. ToT / OPTW / 普通三分支是怎么选的？
+**A**：**入口决策树写在 planner.plan() 里**：query 简单 / 群人数 ≤ 2 / 时间富裕 → 普通分支；用户提了 ≥ 2 偏好维度 / 复杂约束 → ToT 分支（K=3 候选并发自评分 5 维：commonsense + hard_constraint + utility + diversity + rationale_quality）；候选池 ≥ 30 / 强时间窗约束 / 多 POI 最优访问序列 → OPTW 分支（OR-Tools CP-SAT，5s timeout）。三分支 entry 都过 plan_tracer 接到统一下游链路。`planner_tot.py` 5/5 测试，`optw_solver.py` 7/7 测试 + 端到端 4 步 POI 5s FEASIBLE。
+
+### Q23. ECE 0.1089 真的够准吗？
+**A**：**达标但不完美，我们坦诚地说**。Global ECE 0.1089（291 paired outcomes 计算），目标 ≤ 0.15 已达成。但置信度直方图显示 79.1% 的 trace 集中在 0.7-0.8 桶——说明 plan_tracer 默认值（约 0.74-0.78）占主导，LLM 自评的细粒度还没充分用上。能 pass 是因为 mean_actual_success 刚好接近 0.7-0.8。**v4.0 改进项**：让 planner_tot 的 5 维自评分真正传到 plan_tracer.confidence。详见 `docs/eval-100-results.md` §4。
+
+### Q24. 280 信号检查 100% pass 是不是过拟合 fixture？
+**A**：**有这个风险，所以我们用 deterministic 检查 + fixture/prompt 分库**。S1-S5 都不依赖 LLM judge——S1 检查 `plan_tracer.coverage_rate == 1.0`，S2 检查 `len(extract_red_flags) >= 1`，都是接到模块返回值。fixture 用通用语境 query，与 production prompt 隔离（参考 video-eval-agent 防火墙原则）。**真实风险在 L2 / L3 case 设计**：如果 case 只覆盖"已知能 pass 的"形态，新场景就会爆。所以 ROADMAP 里把"L3 case 多样性扩展"列为 v4.0 P1 项。
+
+### Q25. v2.7 stateful 跨 session 记忆怎么处理隐私？
+**A**：**三道闸**。① user_memory 表存的是 facet 抽象（cuisine_pref / dietary / physical_limit）+ confidence，不存原始 query 文本。② 每个 facet 字段独立 visibility 配置（self_only / group / trusted_only），群推荐时 `get_visible_history(group_members)` 只取并集可见的。③ 每 session 顶部"隐私模式"toggle，开启后纯靠当下输入计算，不读历史；状态在 IM 卡片显示"小李是隐私模式"避免群友误判。`forget(user_id, facet)` 和 `forget(user_id, before=ts)` 都支持。
+
+### Q26. Kemeny-Young O(K!N) 真的能跑起来？
+**A**：**两段式优化**。第一轮 Borda O(NK) 粗排 top-7（4 人对 50 候选 < 10ms），第二轮 Kemeny-Young 用 ILP（`pulp` 库）求 top-7 的最小 Kendall tau 共识，K=7 阶乘只 5040 种排列，可枚举求最优 < 100ms。互补：Borda 快、Kemeny 准。`agents/voting.py` 11/11 测试。
+
+### Q27. promo 8 件套是 AI 自动生成还是手设计的？
+**A**：**100% AI 自动生成**——用本机 Open Design（Claude Code 调）跑了 4 个项目（pitch / landing / xhs / one-pager），总耗时 ~80 分钟（含一次 daemon 重启 + 多次重试）。失败率：3 并发 ~50%，串行 + 简化 skill ~10%。关键 fix 是避开复杂 skill（如 magazine-web-ppt）改用 article-magazine / card-xiaohongshu，prompt 末尾明确"直接 Write index.html，不要等模板探索"。详见 `promo/README.md` "生成代价 + 教训" 段。
+
+### Q28. LongCat 限流 / 改协议 / 挂了怎么办？
+**A**：**llm_client.py 多模型 fallback chain 已落地**。环境变量 `BJ_PAL_LLM=mock|longcat|anthropic` 三档，默认 longcat。limit 错误（429）走 RPM 令牌桶 + 指数退避（base=2s, jitter±0.5, max=60s, max_attempts=4），见 `agents/llm_robust.py`。极端情况 mock 全程兜底（规则化生成）。**真实演练过**：5/21 跑 100 场景 LongCat 时遇到限流连续段头 S16，[73] partial parse + [75] RPM 限流后 8/40 限流 case 压到 0。
+
+### Q29. v4.0 最关心哪个改进？
+**A**：**三个，按优先级**：① **plan_tracer.confidence 真实化**（解决 Q23 的桶集中问题，让 ToT 自评分真传到下游）；② **真实 amap 实时数据接入**（详见 `bj-pal-amap-heat-research.md`：高德 POI 详情 + 路况 + 天气组合 API 1 周 MVP，ranking 加 `live_heat_score` 分量）；③ **L2 evals 归档化**（当前只 stdout，改为写 JSON 到 `evals/results/L2_<sha>_<ts>.json` 跟 L1/L3 一致），详见 `docs/ROADMAP.md`。
+
+### Q30. 你们用 22 个 agent 模块会不会反而成本太高？
+**A**：**不会，因为 agent 不全在同一 query 跑**。一次 plan 链路只调 4-6 个 agent（preference_mirror / planner / replanner / plan_tracer，群投票场景加 voting / group_convergence），其他 agent 是 evals 或 demo 模式按需启动。Tool Call Trace 实测一次 plan ~10 次工具调用、~6 次 agent 调用、总 latency 1.5-3s（mock）/ 3-8s（LongCat）。22 个 agent 是**能力总和**，不是**单次成本**。
+
 ---
 
 ## 演练 checklist
 
 - [ ] 90s pitch 背诵 3 遍，时间控制在 85-95s
 - [ ] 5 分钟现场 demo 全跑 1 遍，本地无报错
-- [ ] Q1-Q20 每题用一句话回答（避免长篇大论）
+- [ ] Q1-Q30 每题用一句话回答（避免长篇大论）
+- [ ] **Q21-Q30 重点演练**——这是 v2.4-v3.1 升级后评委最可能挑刺的部分
 - [ ] Trace 侧栏能现场展开（带网线 / 不带都能跑）
+- [ ] **校准面板能现场展开**（`ui/calibration_panel.py`）展示 ECE 0.1089 + 置信度直方图
 - [ ] 准备一份预录视频 mp4 作为兜底（如现场 streamlit 挂掉）
-- [ ] 提前部署到云端 demo URL（fly.io / huggingface space），现场万一本机出问题切线上
+- [ ] 提前部署到云端 demo URL（GitHub Pages 用 `promo/landing-page.html`），现场万一本机出问题切线上
