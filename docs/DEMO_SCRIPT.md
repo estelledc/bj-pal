@@ -140,20 +140,21 @@
 > - ugc_soft_score: -0.065 ｜ [queue] 周末高峰排队 85 分钟（UGC conf=0.86）
 > - budget_fit: +0.150 ｜ 人均 ¥88 远低于预算 ¥120
 
-### 4:00-4:30 数据厚度展示（v2.2 新增）
+### 4:00-4:30 数据厚度展示（v2.2 新增 / **v3.0 后扩到 8,666 条**）
 > 切到 sidebar "UGC 数据厚度" 标签 / 或展开 trace 表的 dataset_version 字段：
 >
 > 旁白：
-> > "数据扩展是这次最大的工程投入——从最初 37 条扩到 **1,102 条 / 103 片区 / 5 类透明来源**：
+> > "数据扩展是这次最大的工程投入——从最初 37 条扩到 **8,666 条 / 6300+ POI 派生信号网 / 5 类透明来源**：
 > > - manual_v1 截图抽取 37 条
-> > - Class A 公开评论汇总 479 条（10+ 北京片区 LongCat 抽 aspect schema）
+> > - Class A 公开评论汇总 479 条 + R6-R100 跨片区主题 +2366 条（10+ 北京片区 LongCat 抽 aspect schema）
 > > - Class B amap 属性推理 333 条（仅基于客观字段，禁止编造）
 > > - Class C 场景主题 137 条（亲子 / 雨天 / 避暑 / 老人友好等 12 个主题）
 > > - 跨片区主题 116 条（咖啡 / 烤鸭 / 胡同 / 红叶等 11 类）
 > >
 > > 加 **weekend_afternoon_intensity 列 100% 覆盖**——'周六下午'画像有真证据，不是 prompt 写死。
 > > 加 **routes 1,892 条**（52 amap cache + 1,840 估算）覆盖 150 核心 POI 任意 1-hop 替代点。
-> > 加 **动态 trap 评分**——全聚德等老字号自动识别，不再硬编码 4 个 demo POI。"
+> > 加 **动态 trap 评分**——全聚德等老字号自动识别，不再硬编码 4 个 demo POI。
+> > 加 **v3.0 9 个北京特色派生信号**：facilities / audience_segment / seasonal / heritage_brand / reservation / weather_shelter / crowd_forecast / poi_graph / parking。"
 
 ### 4:30-5:00 商业价值收尾
 > 旁白：
@@ -183,3 +184,69 @@
 合成方案：用 Final Cut / DaVinci Resolve 合成 5 分钟主版本，并裁出 90s 版本。
 
 录屏工具推荐：macOS 自带 `cmd+shift+5`（最简单）或 OBS（多镜头切换）。
+
+---
+
+## v3.x 演化升级段（决赛版加塞用）
+
+如果时间富裕（5min 现场超时还能续 1-2min），加这两段提评测严谨度 + 算法跃迁。
+
+### A. 三分支 Planner 选择（30s · 算法亮点）
+
+切回输入框，输 **复杂约束 query**：
+
+> "今天周六下午，4 个朋友 + 1 老人 + 2 娃，15:00 起 4 小时，雨天，预算人均 ¥150-300，老人腿脚不便，娃要文化场所。"
+
+Planner 自动选 **OPTW 分支**（候选 ≥ 30 + 强时间窗 + 多硬约束）：
+
+> 旁白："看顶部 trace badge——`planner.plan_optw` → OR-Tools CP-SAT 5s 出 FEASIBLE 解。
+> 7 步访问序列全局最优，避免局部贪心。"
+
+切到 demo 模式 toggle，强制选 **ToT 分支**（branch_hint="balanced"）：
+
+> 同 query，K=3 候选并发 + 自评分（commonsense + hard_constraint + utility + diversity + rationale_quality） → 选最优分支。
+>
+> "三个分支并行思考，AI 自己挑了均衡组，不是单条 prompt 拍出来的。"
+
+### B. ECE 校准面板（30s · 信任度亮点）⭐
+
+切到 sidebar 的 **「📊 校准面板」**（`ui/calibration_panel.py`）：
+
+显示：
+
+- **Global ECE: 0.1089**（目标 ≤ 0.15，达标）
+- 滑窗 ECE 演化曲线（14 窗，0.34 → 0.06-0.25）
+- 置信度直方图（10 桶，主集中在 0.7-0.8）
+
+旁白：
+
+> "我们跑了 799 个 plan、3,885 步 trace、291 个真实 outcome 对照——AI 自评的 confidence 和真实成功率，平均偏差 11 个百分点。
+>
+> 坦诚说，置信度还过于集中在 0.7-0.8，说明 LLM 自评的细粒度还没充分用上——这是 v4.0 改进点。
+>
+> 但我们不藏拙：每周都跑滑窗 ECE 校准自己有多准。这是真正的'AI 替你扛责任'。"
+
+---
+
+## 路演物料速查（promo/）
+
+详见 `promo/README.md`。决赛当天用法：
+
+| 时刻 | 物料 | 怎么用 |
+|---|---|---|
+| 入场前 30 min | `promo/pitch-deck.pdf` | U 盘备份，应付现场设备故障 |
+| 评委桌摆 | `promo/one-pager.pdf` | 打印 A4 一份，每位评委一张 |
+| 主屏幕 | `promo/pitch-deck.html` | Chrome 全屏 F11，方向键翻页（10 张横屏 1920×1080） |
+| 答辩补料 | `promo/architecture.md` | 手机打开 GitHub 渲染 mermaid 图 |
+| 现场 demo 切换 | Streamlit + pitch-deck 双窗口 | 答评委问题时随时回跳 deck 第 7-8 页（算法 + Demo） |
+
+### 路演前 1-2 周引流
+
+- **小红书图文**：用 `promo/xhs-png/` 9 张卡片，配文见 `intern-journal/explorations/content/xiaohongshu/2026-05-26-bjpal-hackathon.md`
+- **GitHub Pages**：`promo/landing-page.html` 部署到 docs/index.html → `https://estelledc.github.io/bj-pal/`
+- **GitHub README banner**：`promo/hero-png/01.png` commit 到 `assets/hero.png`
+
+### 决赛后
+
+- 简历附 `promo/pitch-deck.pdf` + landing page 链接
+- 回顾文章附 `promo/one-pager.pdf`
