@@ -117,8 +117,56 @@
 
 3297s 跑完 100 场景（avg 33s / 场景）。脚本：`scripts/run_longcat_eval100.py`，对比表自动生成：`scripts/eval_compare.py`。
 
+### v2.4 → v3.1 行为级跃迁（5/22 - 5/29）
 
+数据扩展告一段落后转到行为基线 + 评测体系 + 履约 trace。10 轮收敛日志见 `docs/archive/V2.4_ITERATION_PLAN.md`。
 
+#### v2.4 三件套（5/22 - 5/25）⭐
+- ✅ **D3** 分层行为评测落地：`evals/behavioral/L1_anchor / L2_integration / L3_full` 三层，5 强信号通过率基线 ≥ 60% → S4 加 `detect_weekday_context` 后推到 100%
+- ✅ **D5** 群偏好收敛器：`agents/group_convergence.py` + `group_dynamics.py` + 接入 broadcast 主路径；4 成员模式（反复横跳 / 沉默 / 隐性领导 / 正常）；4 人群 reroute 收敛中位数 ≤ 2 轮
+- ✅ **D1** 履约 trace 内核：`agents/plan_tracer.py` + `ui/trust_panel.py`；plan trace 完整覆盖率 100%，置信度 ECE ≤ 0.15；不做空头 SLA 外壳
+
+#### v2.5 多模态首屏（5/22 后）⭐
+- ✅ **text_intake** 自然语言意图抽取：`agents/text_intake.py` + 槽位补全
+- ✅ **multimodal_intake** UI：截图 / 语音 fallback 降级到 text；2.5 是为 v2.4 的 D2 推延项补完
+
+#### v2.6 时段画像扩展⭐
+- ✅ **4 个 time_bucket 派生信号**：工作日早 / 工作日晚 / 周末上午 / 周末下午；不动数据层，纯派生，ranking 公式按 bucket 加权；evals/L2 `time_bucket_cases.py` 5 case 行为基线
+
+#### v2.7 stateful agent⭐
+- ✅ **user_memory 跨 session 偏好**：`agents/user_memory.py` 五件套（record / get / forget / infer / merge_into_prompt）；persona summary 压缩；MemGPT 三层记忆思路（hot/warm/cold）的简化版
+
+#### v2.8 D7 可视化升级⭐
+- ✅ **路线可惜度**：`agents/opportunity_cost.py`，3 条候选路线对比 + 多目标 Pareto；UI 给评委看"被砍的方案是什么样"
+- ✅ **群体共识进度 bar**：sub-ranker pareto 收敛动画
+
+#### v3.0 L2/L3 全量评测 + 算法跃迁（5/26 前后）⭐
+- ✅ **L2 集成评测**：5 模块 × 5 case = 25 行为基线（weekday / time_bucket / text_intake / convergence / memory），每周扫
+- ✅ **L3 全量评测**：100 case × 5 信号（S1-S5）= **280 检查全过 100%**；归档 `evals/results/L3_6206e26_*.json`
+- ✅ 三大算法落地（**[11] + [31] + [47][48]** 兑现）：
+  - `agents/planner_tot.py` ToT K=3 分支并发 + 自评分 5 维（5/5 测试）；`plan(branch_hint, temperature)` 接入主路径
+  - `agents/optw_solver.py` OPTW + OR-Tools CP-SAT，5s timeout 求 7 步最优访问序列（7/7 测试 + 端到端 4 步 POI 5s FEASIBLE）
+  - `agents/voting.py` Borda + Kemeny 两段聚合（11/11 测试）；社会选择理论替代多数暴政
+
+#### v3.1 D7 校准时序（5/27）⭐
+- ✅ **calibration_history 滑窗 ECE 演化**：`agents/calibration_history.py`，每 N 个 plan 算一次 ECE，绘 7 天滑窗曲线
+- ✅ **置信度分布直方图**：`confidence_buckets` 表 10 桶（0.0-1.0），看每桶实际 pass 率与桶中位数对齐度；UI `ui/calibration_panel.py` 侧栏可展开
+- ✅ 落库表：`calibration_history` + `confidence_buckets` + `prediction_log`（详见 `docs/DATA_INVENTORY.md` §1.5）
+- 路演话术："AI 不是黑盒打分，每周都在校准自己有多准"
+
+#### promo 8 件套（5/26）⭐
+- ✅ `pitch-deck.html` 10 张横屏 + PDF 备份（路演主屏）
+- ✅ `landing-page.html`（GitHub Pages 部署）
+- ✅ `xhs-carousel.html` 9 张图文 + `xhs-png/` 9 张截图（小红书引流）
+- ✅ `one-pager.html` A4 + PDF（评委桌摆）
+- ✅ `readme-hero.html` + `hero-png/01.png`（GitHub README banner）
+- ✅ `architecture.md`（mermaid 源）
+- ✅ Open Design 本机自动生成；总耗时 ~80 分钟（含一次 daemon 重启 + 多次重试）；详见 `promo/README.md`
+
+#### 累计 5/22 - 5/29
+- 已落地改进编号兑现新增：**[11] + [31] + [47] + [48] + [55] + [83] + [88]** 全数到位（部分早在 5/21 已落，v2.4-v3.0 期间扩展集成）
+- 行为评测三层架构 + 5 信号检查全部 deterministic（不依赖 LLM judge）
+- v3 final_pass 0.470 → v3.0 L3 全量 280 检查 100% pass → v3.1 ECE 进一步收敛（详见 `docs/eval-100-results.md`）
 
 ---
 
