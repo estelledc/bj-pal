@@ -8,12 +8,15 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;700;900&family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg:      #f5efe2;
-    --paper:   #ede4d0;
-    --fg:      #1d1816;
-    --muted:   #6b5e52;
-    --border:  #1d1816;
-    --accent:  #9c2a25;
+    --cyber:   #07111f;
+    --bg:      #07111f;
+    --paper:   #0b1728;
+    --fg:      #e8f7ff;
+    --muted:   #8aa0b8;
+    --border:  rgba(35,217,255,0.30);
+    --accent:  #23d9ff;
+    --neon:    #23d9ff;
+    --neon-2:  #51ffb8;
 
     --font-display: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'STSong', serif;
     --font-body:    'Noto Sans SC', 'PingFang SC', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
@@ -23,7 +26,7 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   html, body {
-    background: #2a2622;
+    background: #030a14;
     color: var(--fg);
     font-family: var(--font-body);
     -webkit-font-smoothing: antialiased;
@@ -34,32 +37,34 @@
     min-height: 100vh;
     display: grid;
     place-items: center;
-    padding: 32px;
+    padding: 0;
   }
 
   /* Canvas — fixed 1280x640 */
   .hero {
     width: 1280px;
     height: 640px;
-    background: var(--bg);
+    background: var(--cyber);
     position: relative;
     overflow: hidden;
     box-shadow:
       0 1px 0 rgba(255,255,255,0.04) inset,
       0 30px 60px -20px rgba(0,0,0,0.5);
 
-    /* paper grain */
     background-image:
-      radial-gradient(transparent 1px, rgba(28,24,22,0.018) 1px),
-      radial-gradient(rgba(156,42,37,0.04) 1px, transparent 1px),
-      linear-gradient(180deg, rgba(0,0,0,0.012), rgba(0,0,0,0));
-    background-size: 3px 3px, 5px 5px, 100% 100%;
-    background-position: 0 0, 1px 1px, 0 0;
+      linear-gradient(rgba(35,217,255,0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(35,217,255,0.08) 1px, transparent 1px),
+      radial-gradient(circle at 76% 18%, rgba(35,217,255,0.18), transparent 28%),
+      radial-gradient(circle at 18% 80%, rgba(81,255,184,0.12), transparent 30%);
+    background-size: 48px 48px, 48px 48px, 100% 100%, 100% 100%;
+    background-position: -1px -1px, -1px -1px, 0 0, 0 0;
 
     display: grid;
-    grid-template-columns: 60% 40%;
+    grid-template-columns: 56% 44%;
     grid-template-rows: 1fr 40px;
   }
+  .tech-grid { background: var(--cyber); }
+  .trace { box-shadow: 0 0 28px rgba(35,217,255,0.18); }
 
   /* Subtle paper texture corner — accent rule, top-right */
   .hero::before {
@@ -167,7 +172,7 @@
   .right {
     grid-column: 2;
     grid-row: 1;
-    padding: 64px 80px 40px 24px;
+    padding: 64px 44px 40px 12px;
     display: grid;
     grid-template-columns: 1fr 1fr;
     grid-template-rows: 1fr 1fr;
@@ -190,15 +195,15 @@
     /* horizontal mid line */
     content: "";
     position: absolute;
-    left: 24px;
-    right: 80px;
+    left: 12px;
+    right: 44px;
     top: 50%;
     height: 1px;
     background: rgba(28,24,22,0.14);
   }
 
   .stat {
-    padding: 18px 22px;
+    padding: 18px 14px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -208,7 +213,7 @@
   .stat-num {
     font-family: var(--font-display);
     font-weight: 700;
-    font-size: 88px;
+    font-size: 58px;
     line-height: 0.95;
     letter-spacing: -0.02em;
     color: var(--fg);
@@ -336,23 +341,23 @@
       </div>
 
       <div class="stat">
-        <div class="stat-num">1,102<span class="unit">条</span></div>
-        <div class="stat-label">UGC Soft Signals
-          <span class="cn">软信号·氛围画像</span>
+        <div class="stat-num">8,666<span class="unit">条</span></div>
+        <div class="stat-label">UGC Aspects
+          <span class="cn">BM25 · red flags · 等位预测</span>
         </div>
       </div>
 
       <div class="stat">
-        <div class="stat-num">100<span class="unit">人</span></div>
-        <div class="stat-label">AI 用户访谈
-          <span class="cn">情绪基础设施洞察</span>
+        <div class="stat-num">5,198<span class="unit">点</span></div>
+        <div class="stat-label">POI Signal Graph
+          <span class="cn">停车 / 季节 / 人群 / 拥挤</span>
         </div>
       </div>
 
       <div class="stat accent">
-        <div class="stat-num"><span class="plus">+</span>71<span class="unit">%</span></div>
-        <div class="stat-label">Eval Final Pass
-          <span class="cn">v1 · 27.5% → v3 · 47.0%</span>
+        <div class="stat-num">280/280</div>
+        <div class="stat-label">L3 + ECE 0.1089
+          <span class="cn">ToT / OPTW / Kemeny+Borda</span>
         </div>
       </div>
 
@@ -367,6 +372,8 @@
       <span class="tag">LangGraph</span>
       <span class="dot">·</span>
       <span class="tag">LongCat</span>
+      <span class="dot">·</span>
+      <span class="tag">Jason · KeepL</span>
       <span class="dot">·</span>
       <span class="tag">Apache 2.0</span>
       <span class="right-meta">README · Hero</span>

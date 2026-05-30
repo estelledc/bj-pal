@@ -9,17 +9,20 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;700;900&family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 <style>
   :root {
-    --bg: #fbf3e2;
-    --paper: #f5ead2;
-    --ink: #1a1614;
-    --ink-2: #3a3330;
-    --muted: #7a6f66;
-    --muted-2: #a89c8e;
-    --rule: #d8c9a8;
-    --rule-soft: #e7dcc1;
-    --accent: #9c2a25;
-    --accent-soft: #c25048;
-    --accent-wash: rgba(156, 42, 37, 0.06);
+    --cyber: #07111f;
+    --bg: #07111f;
+    --paper: #0b1728;
+    --ink: #e8f7ff;
+    --ink-2: #c7d7e8;
+    --muted: #8aa0b8;
+    --muted-2: #60758d;
+    --rule: rgba(35, 217, 255, 0.32);
+    --rule-soft: rgba(35, 217, 255, 0.16);
+    --accent: #23d9ff;
+    --accent-soft: #51ffb8;
+    --accent-wash: rgba(35, 217, 255, 0.11);
+    --neon: #23d9ff;
+    --neon-2: #51ffb8;
 
     --serif: "Noto Serif SC", "Source Han Serif SC", "思源宋体", "Songti SC", "STSong", serif;
     --sans:  "PingFang SC", "苹方", "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
@@ -29,19 +32,25 @@
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
   body {
-    background: var(--bg);
+    background: var(--cyber);
     color: var(--ink);
     font-family: var(--sans);
     font-size: 16px;
     line-height: 1.7;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
-    /* paper grain */
     background-image:
-      radial-gradient(circle at 18% 22%, rgba(0,0,0,0.018) 0 1px, transparent 1.2px),
-      radial-gradient(circle at 72% 64%, rgba(0,0,0,0.014) 0 1px, transparent 1.2px),
-      radial-gradient(circle at 42% 88%, rgba(156,42,37,0.020) 0 1px, transparent 1.2px);
-    background-size: 7px 7px, 11px 11px, 13px 13px;
+      linear-gradient(rgba(35,217,255,0.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(35,217,255,0.07) 1px, transparent 1px),
+      radial-gradient(circle at 82% 12%, rgba(35,217,255,0.20), transparent 28%),
+      radial-gradient(circle at 18% 78%, rgba(81,255,184,0.12), transparent 30%);
+    background-size: 56px 56px, 56px 56px, 100% 100%, 100% 100%;
+  }
+  .tech-grid { background: var(--cyber); }
+  .trace {
+    border: 1px solid var(--rule);
+    background: rgba(11, 23, 40, 0.78);
+    box-shadow: 0 0 38px rgba(35,217,255,0.12), inset 0 1px 0 rgba(255,255,255,0.06);
   }
 
   .wrap {
@@ -57,13 +66,13 @@
     z-index: 50;
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    background: rgba(251, 243, 226, 0.78);
+    background: rgba(7, 17, 31, 0.78);
     border-bottom: 1px solid transparent;
     transition: border-color .25s ease, background .25s ease;
   }
   nav.top.scrolled {
     border-bottom-color: var(--rule);
-    background: rgba(251, 243, 226, 0.95);
+    background: rgba(7, 17, 31, 0.95);
   }
   nav.top .row {
     display: flex;
@@ -583,6 +592,94 @@
     margin-top: 12px;
   }
   .eval-cell.win .arrow-mark { color: var(--bg); opacity: 0.8; }
+  .eval-rubric-board {
+    border: 1px solid var(--rule);
+    background: rgba(7, 17, 31, 0.78);
+    padding: 36px;
+    margin: 0 0 36px 0;
+  }
+  .eval-rubric-title {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .eval-rubric-title .label {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.22em;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+  .eval-rubric-title .name {
+    font-family: var(--serif);
+    font-size: 32px;
+    color: var(--ink);
+    font-weight: 700;
+  }
+  .eval-rubric-title .method {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .eval-rubric-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    border-left: 1px solid var(--rule);
+    border-top: 1px solid var(--rule);
+    margin-top: 28px;
+  }
+  .eval-rubric-item {
+    min-height: 156px;
+    padding: 24px 22px;
+    border-right: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    background: rgba(11, 23, 40, 0.72);
+  }
+  .eval-rubric-item .metric {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+  .eval-rubric-item .meaning {
+    margin-top: 14px;
+    font-family: var(--serif);
+    font-size: 20px;
+    color: var(--ink);
+    line-height: 1.45;
+  }
+  .eval-method-row {
+    display: grid;
+    grid-template-columns: 1fr 1.35fr;
+    gap: 24px;
+    margin-top: 24px;
+  }
+  .eval-method-card {
+    border: 1px solid var(--rule);
+    padding: 22px 24px;
+    background: rgba(11, 23, 40, 0.66);
+  }
+  .eval-method-card b {
+    display: block;
+    font-family: var(--serif);
+    font-size: 22px;
+    color: var(--ink);
+    margin-bottom: 10px;
+  }
+  .eval-method-card span {
+    display: block;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--muted);
+  }
 
   .eval-foot {
     margin-top: 48px;
@@ -838,7 +935,8 @@
     <div class="eyebrow">数据资产 / Dataset</div>
     <h2 class="section-title">真实北京，<br/>不是 demo 假数据。</h2>
     <p class="section-lede">
-      模型再聪明，也跑不赢「店关了」「评分虚高」「凉皮排队两小时」。BJ-Pal 在 4 类一手数据上对齐：高德 POI、UGC 软信号、大众点评原图、AI 用户访谈。
+      真实场景 Grounding 是 BJ-Pal 和普通 itinerary demo 的分水岭。模型再聪明，也跑不赢「店关了」「评分虚高」「凉皮排队两小时」。
+      我们把客观 <b>POI facts</b>、主观 <b>UGC soft signals</b>、用户访谈形成的<b>需求先验</b>接进同一条链路，让推荐能回到可验证证据。
     </p>
 
     <div class="data-grid">
@@ -848,14 +946,14 @@
         <div class="source">高德开放平台</div>
       </div>
       <div class="data-cell">
-        <div class="num">1,102</div>
-        <div class="label">UGC 软信号</div>
-        <div class="source">吐槽 / 排队 / 真实评价</div>
+        <div class="num">8,666</div>
+        <div class="label">UGC aspects</div>
+        <div class="source">吐槽 / 排队 / BM25 / red flags</div>
       </div>
       <div class="data-cell">
-        <div class="num">89</div>
-        <div class="label">大众点评截图</div>
-        <div class="source">人工标注 · 一手</div>
+        <div class="num">5,198</div>
+        <div class="label">POI 信号网</div>
+        <div class="source">parking / seasonal / crowd / facility</div>
       </div>
       <div class="data-cell">
         <div class="num">100</div>
@@ -863,6 +961,8 @@
         <div class="source">深度 30 - 60 min/人</div>
       </div>
     </div>
+
+    <div class="ornament">每条候选都必须说清楚 reasons[] + evidence[] · 用真实 POI、真实吐槽、真实用户痛点校准</div>
   </div>
 </section>
 
@@ -872,7 +972,7 @@
     <div class="eyebrow">系统架构 / Architecture</div>
     <h2 class="section-title">Plan-and-Execute<br/>+ 8 个工具。</h2>
     <p class="section-lede">
-      LangGraph 编排：Planner 出 v1 计划，AvailabilityProbe 拿真实可用性回灌，Replanner 出 v2，最后跑 Mock 下单 + IM 话术化卡片。每一步都可观测、可回放。
+      LangGraph 编排：Planner 出 v1 计划，AvailabilityProbe 拿真实可用性回灌，Replanner 出 v2，最后跑 Mock 下单 + IM 话术化卡片。ToT / OPTW / Kemeny+Borda 三条算法线接到同一条 plan_tracer，可观测、可回放。
     </p>
 
     <div class="arch-row">
@@ -883,7 +983,7 @@
 <span class="dim">└─────────────────┬────────────────────┘</span>
                   <span class="accent">▼</span>
 <span class="dim">┌──────────────────────────────────────┐</span>
-<span class="dim">│</span>  <span class="accent">Planner</span>  · LongCat + ToT          <span class="dim">│</span>
+<span class="dim">│</span>  <span class="accent">Planner</span>  · LongCat + ToT / OPTW   <span class="dim">│</span>
 <span class="dim">│</span>  → 拆任务 / 候选集 / 排序            <span class="dim">│</span>
 <span class="dim">└─────────────────┬────────────────────┘</span>
                   <span class="accent">▼</span>
@@ -910,7 +1010,7 @@
 <span class="dim">└─────────────────┬────────────────────┘</span>
                   <span class="accent">▼</span>
 <span class="dim">┌──────────────────────────────────────┐</span>
-<span class="dim">│</span>  Mock 下单 ＋ IM 话术化卡片           <span class="dim">│</span>
+<span class="dim">│</span>  Kemeny+Borda 群投票 + IM 卡片       <span class="dim">│</span>
 <span class="dim">│</span>  → 一键转发 → 群里替你扛责任          <span class="dim">│</span>
 <span class="dim">└──────────────────────────────────────┘</span>
       </div>
@@ -992,10 +1092,47 @@
 <section class="eval" id="eval">
   <div class="wrap">
     <div class="eyebrow">评测对比 / Evaluation</div>
-    <h2 class="section-title">100 道 LongCat 真实题目，<br/>跑出 +71% 的提升。</h2>
+    <h2 class="section-title">评测先看 Rubric，<br/>再看结果提升。</h2>
     <p class="section-lede">
-      以 LongCat 出题、人工双盲打分。final_pass = 计划合法 + 动作可执行 + 用户能转发的整体通过率。v1 是裸 Planner 基线，v3 是当前版本。
+      100 道 LongCat 真实场景先过 TravelPlanner 四指标，再进入 S1-S5 deterministic checks。
+      这里评的是计划能否被真实用户执行、转发、追责，而不是单纯看模型输出是否流畅。
     </p>
+
+    <div class="eval-rubric-board trace">
+      <div class="eval-rubric-title">
+        <div class="label">Rubric</div>
+        <div class="name">TravelPlanner 四指标</div>
+        <div class="method">human review + deterministic checks</div>
+      </div>
+      <div class="eval-rubric-grid">
+        <div class="eval-rubric-item">
+          <div class="metric">delivery_rate</div>
+          <div class="meaning">计划非空 + JSON 合法</div>
+        </div>
+        <div class="eval-rubric-item">
+          <div class="metric">commonsense_pass</div>
+          <div class="meaning">时间顺序 / 餐时 / 地理常识</div>
+        </div>
+        <div class="eval-rubric-item">
+          <div class="metric">hard_constraint_pass</div>
+          <div class="meaning">预算 / 时段 / 人数 / 忌口</div>
+        </div>
+        <div class="eval-rubric-item">
+          <div class="metric">final_pass</div>
+          <div class="meaning">四项同时通过，才算用户级通过</div>
+        </div>
+      </div>
+      <div class="eval-method-row">
+        <div class="eval-method-card">
+          <b>S1-S5 deterministic checks</b>
+          <span>trace / red flags / apology / weekday / screening · L3 280/280 · ECE 0.1089</span>
+        </div>
+        <div class="eval-method-card">
+          <b>技术方案对照</b>
+          <span>v1 = 裸 Planner 基线 · v2 = Planner + AvailabilityProbe · v3 = Planner + AvailabilityProbe + Replanner + IM 卡片</span>
+        </div>
+      </div>
+    </div>
 
     <div class="eval-grid">
       <div class="eval-cell">
@@ -1015,7 +1152,7 @@
           <div class="num">47.0<span class="pct">%</span></div>
         </div>
         <div>
-          <div class="desc">+ AvailabilityProbe + Replanner + L2 排序 + 偏好镜像。<br/>替你扛下选错的责任。</div>
+          <div class="desc">Planner + AvailabilityProbe + Replanner + IM 卡片。<br/>可用性与风险回灌后再交付。</div>
           <div class="arrow-mark">↗ 当前</div>
         </div>
       </div>
@@ -1033,8 +1170,8 @@
     </div>
 
     <div class="eval-foot">
-      <span>评测集 · 100 题 · LongCat 出题 · 人工双盲</span>
-      <span>最近一次回归 · 2026.05.21</span>
+      <span>评测集 · L3 100 case · 280/280 信号检查 · ECE 0.1089</span>
+      <span>最近一次回归 · v3.1 / 2026.05.27</span>
     </div>
   </div>
 </section>
@@ -1067,7 +1204,7 @@
 
       <div class="col">
         <h4>Made by</h4>
-        <div class="item">Jason</div>
+        <div class="item">Jason · KeepL</div>
         <div class="item">Claude Code 全程协作</div>
         <div class="item muted">Beijing · 2026</div>
       </div>
@@ -1080,7 +1217,7 @@
         <span class="accent-dot"></span>
         <span>Apache 2.0</span>
         <span class="accent-dot"></span>
-        <span>Jason × Claude Code</span>
+        <span>Jason · KeepL × Claude Code</span>
       </div>
     </div>
   </div>

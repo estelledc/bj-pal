@@ -1,18 +1,18 @@
 # BJ-Pal 宣传物料
 
 > 美团黑客松 2026 / deadline 6/06
-> 用 Open Design 本机 Claude Code 自动生成
-> 完成时间：2026-05-26
+> 用 Open Design 本机 Claude Code 自动生成；2026-05-30 更新为黑客松科技风
+> 当前作者栏：Jason · KeepL
 
 ## 物料清单
 
 | 文件 | 用途 | 尺寸 | 大小 |
 |---|---|---|---|
-| `pitch-deck.html` | 决赛路演幻灯片（10 张横屏） | 1920×1080 ×10 | 32KB |
+| `pitch-deck.html` | 决赛路演幻灯片（10 张横屏 / 科技风） | 1920×1080 ×10 | 32KB+ |
 | `pitch-deck.pdf` | PDF 备份 / U 盘 | A4 横向 | — |
-| `landing-page.html` | 项目主页（GitHub Pages 部署用） | 1920× 长滚动 | 33KB |
-| `xhs-carousel.html` | 小红书图文（9 张） | 1080×1440 ×9 | 24KB |
-| `one-pager.html` | A4 单页评委简介 | 1240×1754 | 23KB |
+| `landing-page.html` | 项目主页（GitHub Pages 部署用 / 深色科技风） | 1920× 长滚动 | 33KB+ |
+| `xhs-carousel.html` | 小红书图文（9 张 / 深色卡片） | 1080×1440 ×9 | 24KB+ |
+| `one-pager.html` | A4 单页技术摘要（科技风） | 1240×1754 | 23KB+ |
 | `one-pager.pdf` | A4 PDF（打印 / 邮件附件） | A4 纵向 | — |
 | `readme-hero.html` | GitHub README 顶部 banner | 1280×640 | 9KB |
 | `architecture.md` | 系统架构图（mermaid 源） | text | — |
@@ -27,11 +27,19 @@ PNG 截图目录：
 
 ## 各物料使用场景
 
+## 当前内容口径（v3.1）
+
+- 数据：`5,656` 北京 POI / `8,666` UGC aspects / `5,198` POI 信号网 / `1,892` routes
+- 算法：`ToT` / `OPTW` / `Kemeny+Borda`
+- 评测：L3 `100 case × 5 信号 = 280/280`
+- 校准：Global ECE `0.1089`
+- 作者：`Jason · KeepL`
+
 ### 决赛路演当天
 
 - **主屏幕**：`pitch-deck.html` 用 Chrome 全屏（F11），方向键翻页
 - **PDF 备份**：`pitch-deck.pdf` 拷 U 盘，应付现场设备故障
-- **桌摆 A4**：`one-pager.pdf` 打印一份摆桌上给评委
+- **桌摆 A4**：`one-pager.pdf` 用于现场快速说明
 - **答辩补料**：`pitch-deck.html` 第 7-8 页（算法 + Demo）随时回跳
 - **架构问答**：`architecture.md` 在 GitHub 渲染 mermaid 图，手机上随手打开
 
@@ -69,7 +77,7 @@ cd ~/intern-journal/explorations/open-design
 # 编辑 prompts/bj-pal/<slug>.txt
 # 串行重跑（避免并发失败）
 bash run-bjpal.sh
-# 重新截图
+# 重新截图（HTML 改版后，PNG/PDF 需要重导出才会同步）
 node screenshot-cards.mjs ./.od/projects/bjpal-03-xhs-carousel/index.html \
   ~/intern-journal/explorations/mini-apps/bj-pal/promo/xhs-png/
 node screenshot-flex.mjs ./.od/projects/bjpal-01-pitch-deck/index.html \
@@ -80,7 +88,7 @@ node pdf-export.mjs promo/one-pager.html promo/one-pager.pdf A4
 
 ## 元数据回填（决赛后）
 
-| 物料 | 用了几次 | 评委反馈 | 复用价值 |
+| 物料 | 用了几次 | 现场反馈 | 复用价值 |
 |---|---|---|---|
 | pitch-deck | | | |
 | landing-page | | | |
