@@ -11,6 +11,7 @@ Planner / Replanner 通过 search_pois() 拉候选 POI 列表。
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 import sys
 from functools import lru_cache
@@ -44,8 +45,20 @@ AREA_CENTERS: dict[str, tuple[float, float]] = {
     "王府井-东单片区":     (116.4174, 39.9094),
     "什刹海-鼓楼片区":     (116.3877, 39.9456),
     "天安门-故宫片区":     (116.3974, 39.9087),
+    "三里屯片区":           (116.4540, 39.9368),
+    "798艺术区片区":       (116.494784, 39.985063),
     "景山-什刹海片区":     (116.3909, 39.9288),
     "东四-本地餐饮片区":   (116.4178, 39.9265),
+    "前门-大栅栏片区":     (116.3990, 39.8959),
+    "西单片区":             (116.37296, 39.910884),
+    "东直门-簋街片区":     (116.424768, 39.941746),
+    "五道口片区":           (116.338611, 39.992552),
+    "望京片区":             (116.481075, 39.996743),
+    "亮马桥片区":           (116.46343, 39.949958),
+    "国贸-CBD片区":         (116.459288, 39.910882),
+    "朝阳公园片区":         (116.482276, 39.944093),
+    "中国美术馆-五四大街片区": (116.408939, 39.925255),
+    "牛街片区":             (116.363972, 39.884264),
 }
 
 
@@ -76,11 +89,33 @@ def resolve_area_center(area_anchor: str) -> Optional[tuple[float, float]]:
     _load_inferred_centers()
     if area_anchor in _INFERRED_CENTERS:
         return _INFERRED_CENTERS[area_anchor]
-    # 模糊匹配（兼容老命名风格）
+    # 模糊匹配（兼容手动输入、空格、V3 后缀和老命名风格）
     for key, center in AREA_CENTERS.items():
-        if any(part in key for part in area_anchor.split("-")) or area_anchor in key:
+        if _area_anchor_matches(area_anchor, key):
+            return center
+    for key, center in _INFERRED_CENTERS.items():
+        if _area_anchor_matches(area_anchor, key):
             return center
     return None
+
+
+def _area_anchor_matches(area_anchor: str, known_anchor: str) -> bool:
+    requested = _normalize_area_anchor(area_anchor)
+    known = _normalize_area_anchor(known_anchor)
+    if not requested or not known:
+        return False
+    if requested in known or known in requested:
+        return True
+    parts = [p for p in re.split(r"[-—_/]", requested) if p]
+    known_parts = [p for p in re.split(r"[-—_/]", known) if p]
+    return any(part in known for part in parts) or any(part in requested for part in known_parts)
+
+
+def _normalize_area_anchor(value: str) -> str:
+    normalized = re.sub(r"\s+", "", value or "")
+    for suffix in ("片区V3", "片区", "V3", "联动"):
+        normalized = normalized.replace(suffix, "")
+    return normalized
 
 
 # ============================================================
@@ -134,8 +169,10 @@ def search_pois(
     sql = "SELECT * FROM pois"
     if where:
         sql += " WHERE " + " AND ".join(where)
-    # 多取一些先做半径过滤，避免被分页截掉
-    sql += f" ORDER BY rating DESC LIMIT {max(limit * 5, 200)}"
+    # 多取一些先做半径过滤。真实 POI 数据扩到数千条后，如果仍只取
+    # 全库高分前 200 条，部分片区会在半径过滤前被截掉。
+    prefilter_limit = max(limit * (25 if area_anchor else 5), 1000 if area_anchor else 200)
+    sql += f" ORDER BY rating DESC LIMIT {prefilter_limit}"
 
     rows = conn.execute(sql, params).fetchall()
     conn.close()
