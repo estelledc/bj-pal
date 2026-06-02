@@ -134,6 +134,18 @@ def resolve_area_input(selected_area: str, manual_area: str, fallback_area: str)
     return manual_area.strip() or fallback_area
 
 
+def resolve_llm_backend_label() -> str:
+    """Return the short runtime label shown in the task bar."""
+    backend = (os.environ.get("BJ_PAL_LLM") or "mock").strip().lower()
+    return {
+        "mock": "Mock",
+        "longcat": "LongCat",
+        "dpsk": "DPSK",
+        "deepseek": "DeepSeek",
+        "anthropic": "Anthropic",
+    }.get(backend, backend or "Mock")
+
+
 def collect_reroute_memory_names(plan, events=None) -> set[str]:
     """Collect POI names that have already appeared in the current plan session."""
     names: set[str] = set()
@@ -637,7 +649,7 @@ def _render_task_bar(auto_mode: str):
                 horizontal=True,
             )
         with col_status:
-            backend = "LongCat" if os.environ.get("BJ_PAL_LLM") == "longcat" else "Mock"
+            backend = resolve_llm_backend_label()
             st.markdown(
                 f"<div class='bjpal-runtime'>LLM: <b>{backend}</b><br/>"
                 f"片区: <b>{area}</b></div>",

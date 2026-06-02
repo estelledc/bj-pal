@@ -1,6 +1,8 @@
 from types import SimpleNamespace
 import inspect
+import os
 import unittest
+from unittest.mock import patch
 
 
 class UIRefactorTest(unittest.TestCase):
@@ -37,6 +39,12 @@ class UIRefactorTest(unittest.TestCase):
             ("persona", "area", "budget", "start_time", "duration", "mode", "generate"),
         )
         self.assertEqual(app.SIDEBAR_SECTIONS, ("演示开关", "记忆与校准"))
+
+    def test_runtime_backend_label_supports_dpsk(self) -> None:
+        from src.ui import app
+
+        with patch.dict(os.environ, {"BJ_PAL_LLM": "dpsk"}, clear=False):
+            self.assertEqual(app.resolve_llm_backend_label(), "DPSK")
 
     def test_duration_control_overrides_preset_preferences(self) -> None:
         from src.ui import app

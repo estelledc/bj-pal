@@ -3,6 +3,7 @@
 环境变量 BJ_PAL_LLM 控制后端：
     mock     — 默认；规则 + 模板生成结构化输出，不联网，离线可跑
     longcat  — 美团自研（占位，TODO 接入）
+    dpsk     — DeepSeek API（Anthropic 兼容协议，独立 DPSK_* 配置）
     anthropic — Claude API（你 .env 里有 ANTHROPIC_API_KEY 就能用）
 
 接口：
@@ -63,6 +64,14 @@ class LLMResponse:
     text: str
     parsed: Optional[dict] = None  # 当 json_schema 给定时，pre-parsed dict
     raw: Optional[Any] = None      # 原 response 对象，调试用
+
+
+@dataclass(frozen=True)
+class ProviderConfig:
+    api_key: str
+    base_url: str
+    model: str
+    max_tokens: int
 
 
 class LLMClient(ABC):
@@ -498,6 +507,102 @@ class LongCatClient(LLMClient):
 
 
 # ============================================================
+# DPSK / DeepSeek：Anthropic 兼容协议（独立配置，不复用 LongCat 变量）
+# ============================================================
+
+class DpskClient(LLMClient):
+    """DeepSeek API client.
+
+    使用独立 DPSK_* 环境变量，避免和 LONGCAT_* 混用：
+        - DPSK_API_KEY
+        - DPSK_BASE_URL（默认 https://api.deepseek.com/anthropic）
+        - DPSK_MODEL（默认 deepseek-v4-flash）
+        - DPSK_MAX_TOKENS（默认 8192）
+
+    同时兼容 DEEPSEEK_* 变量名，但不会读取 LONGCAT_*。
+    """
+
+    @property
+    def name(self) -> str:
+        return "dpsk"
+
+    def config(self) -> ProviderConfig:
+        api_key = os.environ.get("DPSK_API_KEY") or os.environ.get("DEEPSEEK_API_KEY")
+        if not api_key:
+            raise RuntimeError(
+                "DPSK_API_KEY 未设置。可在 .env 中配置 DPSK_API_KEY=...，"
+                "或使用 DEEPSEEK_API_KEY=..."
+            )
+        max_tokens_raw = (
+            os.environ.get("DPSK_MAX_TOKENS")
+            or os.environ.get("DEEPSEEK_MAX_TOKENS")
+            or "8192"
+        )
+        return ProviderConfig(
+            api_key=api_key,
+            base_url=(
+                os.environ.get("DPSK_BASE_URL")
+                or os.environ.get("DEEPSEEK_BASE_URL")
+                or "https://api.deepseek.com/anthropic"
+            ),
+            model=(
+                os.environ.get("DPSK_MODEL")
+                or os.environ.get("DEEPSEEK_MODEL")
+                or "deepseek-v4-flash"
+            ),
+            max_tokens=int(max_tokens_raw),
+        )
+
+    def complete(self, system, user, json_schema=None, temperature=0.3):
+        from .tracing import trace_span
+        with trace_span("llm.dpsk.complete", attrs={
+            "temperature": temperature, "user_chars": len(user),
+        }) as _sp:
+            return self._complete_inner(system, user, json_schema, temperature, _sp)
+
+    def _complete_inner(self, system, user, json_schema, temperature, _sp):
+        try:
+            import anthropic  # type: ignore
+            import httpx  # type: ignore
+        except ImportError:
+            raise RuntimeError("pip install anthropic httpx（已在 requirements 里）")
+
+        config = self.config()
+        client = anthropic.Anthropic(
+            api_key=config.api_key,
+            base_url=config.base_url,
+            http_client=httpx.Client(trust_env=True, timeout=60.0),
+        )
+
+        from .llm_robust import get_global_limiter, repair_json, retry_with_backoff
+
+        def _call():
+            with get_global_limiter():
+                return client.messages.create(
+                    model=config.model,
+                    max_tokens=config.max_tokens,
+                    temperature=temperature,
+                    system=system,
+                    messages=[{"role": "user", "content": user}],
+                )
+
+        msg = retry_with_backoff(_call, max_attempts=4, base_delay=2.0, max_delay=60.0)
+        text = "".join(getattr(b, "text", "") for b in msg.content)
+        parsed = repair_json(text) if json_schema is not None else None
+        if _sp is not None:
+            _sp.set_attribute("response_chars", len(text))
+            usage = getattr(msg, "usage", None)
+            if usage is not None:
+                in_tok = getattr(usage, "input_tokens", None)
+                out_tok = getattr(usage, "output_tokens", None)
+                if in_tok is not None:
+                    _sp.set_attribute("input_tokens", in_tok)
+                if out_tok is not None:
+                    _sp.set_attribute("output_tokens", out_tok)
+        return LLMResponse(text=text, parsed=parsed, raw=msg)
+
+
+# ============================================================
 # Anthropic：可选 fallback（开发期实测用）
 # ============================================================
 
@@ -544,9 +649,11 @@ def get_llm_client(override: Optional[str] = None) -> LLMClient:
         return MockLLMClient()
     if backend == "longcat":
         return LongCatClient()
+    if backend in {"dpsk", "deepseek"}:
+        return DpskClient()
     if backend == "anthropic":
         return AnthropicClient()
-    raise ValueError(f"未知 LLM 后端：{backend}（支持：mock / longcat / anthropic）")
+    raise ValueError(f"未知 LLM 后端：{backend}（支持：mock / longcat / dpsk / deepseek / anthropic）")
 
 
 # ============================================================
