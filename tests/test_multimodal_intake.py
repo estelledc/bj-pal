@@ -90,6 +90,16 @@ class MultimodalIntakeTest(unittest.TestCase):
         self.assertEqual(_sample_text_for_index(0), "")
         self.assertIn("五道营", _sample_text_for_index(1))
 
+    def test_widget_keys_are_namespaced_by_render_location(self) -> None:
+        from src.ui.multimodal_intake import _mm_key
+
+        self.assertEqual(_mm_key("mm_inline", "sample_idx"), "mm_inline_sample_idx")
+        self.assertEqual(_mm_key("mm_supporting", "sample_idx"), "mm_supporting_sample_idx")
+        self.assertNotEqual(
+            _mm_key("mm_inline", "sample_idx"),
+            _mm_key("mm_supporting", "sample_idx"),
+        )
+
     def test_ui_image_intake_falls_back_to_mock_when_vision_fails(self) -> None:
         from src.ui.multimodal_intake import extract_image_for_ui
 

@@ -78,6 +78,8 @@ AGENT_SKILL_PANEL_LABEL = "Agent 能力目录"
 TASK_BAR_FIELDS = ("persona", "area", "budget", "start_time", "duration", "mode", "generate")
 SIDEBAR_SECTIONS = ("演示开关", "记忆与校准")
 REROUTE_MEMORY_KEY = "reroute_memory_poi_names"
+INLINE_MULTIMODAL_KEY_PREFIX = "mm_inline"
+SUPPORTING_MULTIMODAL_KEY_PREFIX = "mm_supporting"
 PRODUCT_PAGE_TITLE = "BJ-Pal · 周末闲时活动规划"
 PRODUCT_KICKER = "BJ-Pal · 北京周末闲时规划"
 PRODUCT_HEADLINE = "把周末半天，排成一条能出发的路线"
@@ -263,7 +265,7 @@ def main():
 
     if "plan_v2" not in st.session_state and "screening_result" not in st.session_state:
         with st.expander("补充材料，可选", expanded=False):
-            render_multimodal_intake()
+            render_multimodal_intake(key_prefix=INLINE_MULTIMODAL_KEY_PREFIX)
 
     if gen_btn:
         augmented_input = apply_multimodal_to_query(user_input)
@@ -783,7 +785,7 @@ def _render_share_panel(plan, prefs, preset: dict) -> None:
 def _render_supporting_inputs() -> None:
     st.markdown("### 补充材料")
     st.caption("这里保留原来的用户侧能力：文本/截图抽偏好，以及点评截图入库。")
-    render_multimodal_intake()
+    render_multimodal_intake(key_prefix=SUPPORTING_MULTIMODAL_KEY_PREFIX)
     _render_ugc_upload_panel()
 
 

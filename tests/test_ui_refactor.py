@@ -30,6 +30,10 @@ class UIRefactorTest(unittest.TestCase):
         self.assertEqual(app.SECONDARY_RESULT_TABS, ("发送", "补充材料", "诊断"))
         self.assertEqual(app.DIAGNOSTIC_LABEL, "诊断")
         self.assertEqual(app.AGENT_SKILL_PANEL_LABEL, "Agent 能力目录")
+        self.assertNotEqual(
+            app.INLINE_MULTIMODAL_KEY_PREFIX,
+            app.SUPPORTING_MULTIMODAL_KEY_PREFIX,
+        )
 
     def test_task_bar_contains_primary_user_controls(self) -> None:
         from src.ui import app

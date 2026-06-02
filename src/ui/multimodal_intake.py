@@ -40,6 +40,15 @@ SAMPLE_PASTES = [
 ]
 
 
+DEFAULT_KEY_PREFIX = "mm"
+
+
+def _mm_key(key_prefix: str, name: str) -> str:
+    """Build a Streamlit widget key scoped to one render location."""
+    prefix = (key_prefix or DEFAULT_KEY_PREFIX).strip()
+    return f"{prefix}_{name}"
+
+
 def extract_text_for_ui(text: str, *, client=None) -> TextIntakeResult:
     """Extract text signals with the configured LLM, with rules as fallback."""
     return extract_from_text(text, client=client, use_llm=True)
@@ -100,7 +109,7 @@ def _result_from_vision_payload(extracted: dict, *, source: str) -> TextIntakeRe
     return result
 
 
-def render_multimodal_intake() -> None:
+def render_multimodal_intake(key_prefix: str = DEFAULT_KEY_PREFIX) -> None:
     """Render optional text/image context extraction."""
     with st.container(border=True):
         st.markdown("### 从文本或截图补充偏好")
@@ -113,40 +122,42 @@ def render_multimodal_intake() -> None:
         ])
 
         with tab_text:
-            _render_text_tab()
+            _render_text_tab(key_prefix)
         with tab_image:
-            _render_image_tab()
+            _render_image_tab(key_prefix)
         with tab_signals:
             _render_signals_tab()
 
 
-def _render_text_tab() -> None:
+def _render_text_tab(key_prefix: str) -> None:
     """文本输入 tab。"""
     sample_idx = st.selectbox(
         "示例",
         options=range(len(SAMPLE_PASTES) + 1),
         format_func=lambda i: "（清空）" if i == 0 else SAMPLE_PASTES[i - 1]["label"],
-        key="mm_sample_idx",
+        key=_mm_key(key_prefix, "sample_idx"),
     )
     default_text = ""
     if sample_idx > 0:
         default_text = _sample_text_for_index(sample_idx)
 
-    if st.session_state.get("mm_sample_applied_idx") != sample_idx:
-        st.session_state["mm_text_input"] = default_text
-        st.session_state["mm_sample_applied_idx"] = sample_idx
+    sample_applied_key = _mm_key(key_prefix, "sample_applied_idx")
+    text_input_key = _mm_key(key_prefix, "text_input")
+    if st.session_state.get(sample_applied_key) != sample_idx:
+        st.session_state[text_input_key] = default_text
+        st.session_state[sample_applied_key] = sample_idx
 
     text = st.text_area(
         "贴文本",
         value=default_text,
         height=140,
         placeholder="贴攻略片段、朋友圈、微信对话，或别人推荐过的店。",
-        key="mm_text_input",
+        key=text_input_key,
     )
 
     col_extract, col_clear = st.columns([1, 1])
     with col_extract:
-        if st.button("抽取偏好", type="primary", key="mm_extract_btn"):
+        if st.button("抽取偏好", type="primary", key=_mm_key(key_prefix, "extract_btn")):
             if text and text.strip():
                 with st.spinner("正在用 LLM 抽取..."):
                     result = extract_text_for_ui(text)
@@ -162,21 +173,21 @@ def _render_text_tab() -> None:
             else:
                 st.info("请先贴一段文本")
     with col_clear:
-        if st.button("清空已识别", key="mm_clear_btn"):
+        if st.button("清空已识别", key=_mm_key(key_prefix, "clear_btn")):
             st.session_state.pop("multimodal_signals", None)
             st.info("已清空")
 
 
-def _render_image_tab() -> None:
+def _render_image_tab(key_prefix: str) -> None:
     """图片上传 tab — 复用 vision_extractor。"""
     uploaded = st.file_uploader(
         "上传点评或攻略截图",
         type=["png", "jpg", "jpeg"],
-        key="mm_image_input",
+        key=_mm_key(key_prefix, "image_input"),
     )
     if uploaded is not None:
         st.image(uploaded, use_column_width=True)
-        if st.button("抽取截图偏好", key="mm_extract_image_btn"):
+        if st.button("抽取截图偏好", key=_mm_key(key_prefix, "extract_image_btn")):
             with st.spinner("正在抽取截图偏好..."):
                 raw_bytes = uploaded.getvalue()
                 result = extract_image_for_ui(
