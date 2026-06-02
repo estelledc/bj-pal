@@ -38,6 +38,7 @@ from agents.preference_mirror import (  # noqa: E402
     detect_screening_mode,
 )
 from agents.replanner import probe_plan, replan_step  # noqa: E402
+from agents.skills import describe_skills  # noqa: E402
 from agents.types import UserPreferences  # noqa: E402
 from agents.vision_extractor import upload_and_index  # noqa: E402
 from tools.amap_search import resolve_area_center, search_pois  # noqa: E402
@@ -73,6 +74,7 @@ from ui.trust_panel import (  # noqa: E402
 PRIMARY_WORKSPACE_COLUMNS = ("plan", "map")
 SECONDARY_RESULT_TABS = ("发送", "补充材料", "诊断")
 DIAGNOSTIC_LABEL = "诊断"
+AGENT_SKILL_PANEL_LABEL = "Agent 能力目录"
 TASK_BAR_FIELDS = ("persona", "area", "budget", "start_time", "duration", "mode", "generate")
 SIDEBAR_SECTIONS = ("演示开关", "记忆与校准")
 REROUTE_MEMORY_KEY = "reroute_memory_poi_names"
@@ -838,6 +840,7 @@ def _render_diagnostics(plan, prefs, area: str) -> None:
     render_opportunity_panel(plan, prefs=prefs, expanded=False)
     render_calibration_timeline_panel(window_size=10, expanded=False)
     _render_top_pick_radar(area, prefs)
+    _render_agent_skills_panel()
 
     with st.expander("Tool Call Trace", expanded=False):
         calls = fetch_calls(session_id=st.session_state.session_id, limit=200)
@@ -857,6 +860,18 @@ def _render_diagnostics(plan, prefs, area: str) -> None:
 
     with st.expander("北京下午足迹", expanded=False):
         _render_footprint_panel()
+
+
+def _render_agent_skills_panel() -> None:
+    """Show reusable agent skills in diagnostics without changing the main flow."""
+    with st.expander(AGENT_SKILL_PANEL_LABEL, expanded=False):
+        st.caption("当前 agent 可复用能力单元。UI、测试和后续编排器都可以通过统一入口调用。")
+        for skill in describe_skills():
+            st.markdown(f"**{skill['label']}** · `{skill['name']}`")
+            st.caption(skill["description"])
+            input_keys = "、".join(skill.get("input_keys") or []) or "-"
+            output_keys = "、".join(skill.get("output_keys") or []) or "-"
+            st.caption(f"输入：{input_keys}　输出：{output_keys}")
 
 
 # ============================================================
