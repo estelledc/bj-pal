@@ -30,6 +30,7 @@ def replan_step(
     failed_step_idx: int,
     probe_result: ProbeResult,
     prefs: Optional[UserPreferences] = None,
+    excluded_poi_names: Optional[set[str]] = None,
 ) -> tuple[Plan, RerouteEvent]:
     """把 original.steps[failed_step_idx] 替换为同片区同类型的备选。"""
     prefs = prefs or UserPreferences()
@@ -47,7 +48,8 @@ def replan_step(
     )
     # 排除：failed POI / trap POI / plan 里其他 step 已选的 POI（避免重复）
     used_names = {s.poi_name for s in new_plan.steps if s.poi_name and s.step_index != failed.step_index}
-    trap_set = {failed.poi_name, *list_trap_pois(), *used_names}
+    session_exclusions = set(excluded_poi_names or set())
+    trap_set = {failed.poi_name, *list_trap_pois(), *used_names, *session_exclusions}
     candidates = [c for c in candidates if c.name not in trap_set]
     # snack（小吃 / 茶饮 / 甜品）不要选成正餐
     if failed.kind == "snack":
@@ -59,7 +61,11 @@ def replan_step(
     if not candidates:
         # 极端情况：找不到替补，把 step 标记为 cancel
         failed.is_rerouted = True
-        failed.rationale = f"⚠️ 无法 reroute（无可用替补），原因：{probe_result.status} wait={probe_result.wait_min}min"
+        failed.rationale = _no_alternative_rationale(
+            failed,
+            probe_result,
+            had_session_exclusions=bool(session_exclusions),
+        )
         unchanged = [i for i in range(len(new_plan.steps)) if i != failed_step_idx]
         return new_plan, RerouteEvent(
             failed_step_idx=failed_step_idx,
@@ -163,6 +169,30 @@ def _classify_magnitude(failed: Step, new, original_area: str, new_area: str) ->
     if new_kind_match or same_area:
         return "medium"
     return "large"
+
+
+def _no_alternative_rationale(
+    failed: Step,
+    probe_result: ProbeResult,
+    *,
+    had_session_exclusions: bool,
+) -> str:
+    """User-facing copy when reroute cannot find a fresh replacement."""
+    if probe_result.reason == "user_dissent":
+        scope = "已经看过或换过的地点" if had_session_exclusions else "当前方案里的地点"
+        return (
+            f"⚠️ 暂时没有新的同类替补。系统已避开{scope}，"
+            f"当前第 {failed.step_index} 站先保留为 {failed.poi_name}。"
+        )
+    if probe_result.reason == "queue":
+        return (
+            f"⚠️ 暂时没有可替换的同类地点。原 POI 预计排队 "
+            f"{probe_result.wait_min} 分钟，第 {failed.step_index} 站先保留但请留意风险。"
+        )
+    return (
+        f"⚠️ 暂时没有可替换的同类地点，第 {failed.step_index} 站先保留为 "
+        f"{failed.poi_name}，请留意现场状态。"
+    )
 
 
 def _category_matches_kind(category: str, kind: str) -> bool:

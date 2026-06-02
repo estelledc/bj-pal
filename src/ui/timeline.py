@@ -29,6 +29,8 @@ REROUTE_REASON_LABELS = {
 def render_timeline(
     plan: Plan,
     on_dissent: Optional[Callable[[int], None]] = None,
+    *,
+    show_red_flags: bool = False,
 ):
     """v2 升级版时间轴。
 
@@ -65,7 +67,7 @@ def render_timeline(
                 if s.risk_tags:
                     st.caption(f"⚠️ risk: {', '.join(s.risk_tags)}")
                 # P0.1 red flags：吐槽面板（信号 2，5/5 一致：必须把吐槽点出来）
-                if s.poi_name and s.kind != "depart":
+                if show_red_flags and s.poi_name and s.kind != "depart":
                     _render_red_flags(s.poi_name)
             with cols[2]:
                 if on_dissent and s.poi_id and s.kind != "depart":

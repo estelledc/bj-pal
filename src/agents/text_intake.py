@@ -38,7 +38,7 @@ schema：
 {
   "area_anchor": "<五道营-雍和宫片区 / 三里屯片区 / 什刹海-鼓楼片区 / 王府井-东单片区 / 798 / 南锣鼓巷 / ... / 空字符串>",
   "poi_name": "<文本中提到的具体店名 / 空字符串>",
-  "taste_tags": ["coffee", "dessert", "meat", "spicy", "yogurt", "fruit", "drink"],
+  "taste_tags": ["coffee", "dessert", "meat", "spicy", "yogurt", "fruit", "drink", "light"],
   "scene_tags": ["citywalk", "photo", "indoor", "outdoor", "quiet", "loud", "kid_friendly", "elderly_friendly"],
   "risk_tags": ["queue_long", "expensive", "loud", "crowded", "closed_often"],
   "aspects": [
@@ -73,11 +73,11 @@ class TextIntakeResult:
     scene_tags: list[str] = field(default_factory=list)
     risk_tags: list[str] = field(default_factory=list)
     aspects: list[dict] = field(default_factory=list)
-    source: str = "llm"   # "llm" | "rules" | "empty"
+    source: str = "llm"   # "llm" | "rules" | "empty" | "vision" | "vision_mock"
 
     def is_empty(self) -> bool:
         return not (self.poi_name or self.area_anchor or self.taste_tags
-                    or self.scene_tags or self.aspects)
+                    or self.scene_tags or self.risk_tags or self.aspects)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -105,6 +105,7 @@ TASTE_KEYWORDS = {
     "yogurt": ["酸奶"],
     "fruit": ["水果", "鲜果", "果切"],
     "drink": ["酒吧", "鸡尾酒", "餐酒", "红酒", "精酿"],
+    "light": ["清淡", "减脂", "低脂", "低糖", "健康", "轻食", "少油"],
 }
 
 SCENE_KEYWORDS = {
@@ -122,7 +123,7 @@ RISK_KEYWORDS = {
     "queue_long": ["排队", "等位", "排号", "排很久", "等了 1 小时"],
     "expensive": ["贵", "肉痛", "人均 500", "人均一千", "踩雷价"],
     "loud": ["吵", "嘈杂", "闹"],
-    "crowded": ["挤", "人满", "爆满"],
+    "crowded": ["挤", "人多", "人太多", "人满", "爆满"],
     "closed_often": ["不开门", "经常关", "不规律营业"],
 }
 
@@ -209,7 +210,9 @@ def extract_from_text(
             )
             parsed = resp.parsed or _safe_parse_json(resp.text)
             if parsed and isinstance(parsed, dict) and "aspects" in parsed:
-                return _result_from_parsed(parsed)
+                result = _result_from_parsed(parsed)
+                if not result.is_empty():
+                    return result
         except Exception:
             pass
         # LLM 失败 → 规则 fallback

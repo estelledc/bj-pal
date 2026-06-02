@@ -1,12 +1,11 @@
-# BJ-Pal v2 改 5：自定义主题
-# 选色：北京宫墙红 + 青砖灰，避开支付宝蓝/美团黄/微信绿等主流互联网色
+# BJ-Pal product theme: quiet neutral surface + brick accent.
 
 [theme]
-primaryColor = "#C8302D"               # 宫墙红
-backgroundColor = "#FAF6EE"            # 米白（宣纸）
-secondaryBackgroundColor = "#EDE4D2"   # 柔米黄（卡片背景）
-textColor = "#2A2A2A"                  # 墨色
-font = "serif"
+primaryColor = "#9F3D34"
+backgroundColor = "#F7F6F2"
+secondaryBackgroundColor = "#ECEFEB"
+textColor = "#1F2522"
+font = "sans serif"
 
 [server]
 headless = false
