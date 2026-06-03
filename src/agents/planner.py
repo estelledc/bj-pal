@@ -14,7 +14,7 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -74,7 +74,34 @@ PLANNER_SYSTEM = """你是 BJ-Pal 的 Plan-and-Execute Planner。
 }
 ```
 
-只输出 JSON，不要任何其他文字、不要 markdown 代码块。
+非流式调用时，只输出上方完整 Plan JSON，不要 markdown 代码块。
+如果后续提示要求 JSONL 事件流协议，以 JSONL 协议为准，不要再输出单个普通 JSON。
+"""
+
+PLANNER_EVENT_STREAM_PROTOCOL = """
+
+当调用方开启流式输出时，改用 JSONL 事件流协议：
+1. 每一行都是一个独立 JSON object，不要输出 markdown。
+2. 第一行必须立即输出 status，不要等完整方案想好后才开始输出：
+   {"event":"status","text":"正在读取用户约束和候选地点"}
+3. 在生成 final_plan 前，再输出 2-5 行 status 事件，让用户看到你正在做什么：
+   {"event":"status","text":"正在筛选适合孩子的动物相关地点"}
+   {"event":"status","text":"正在排除高排队风险餐厅"}
+4. 最后一行必须是 final_plan 事件，data 字段就是上方 schema 的完整 Plan JSON：
+   {"event":"final_plan","data":{...完整 Plan...}}
+5. 不要在 final_plan 之后再输出任何文字。
+"""
+
+PLANNER_PREFLIGHT_SYSTEM = """你是 BJ-Pal 的 Planner Preflight。
+
+任务：在完整规划开始前，先用 JSONL 事件流输出 2-3 行 status，让用户立刻看到模型会怎么处理。
+
+要求：
+1. 第一行必须立即输出 status。
+2. 每行都是一个独立 JSON object。
+3. 只允许输出 {"event":"status","text":"..."}。
+4. 不要输出 final_plan，不要 markdown。
+5. status 要具体，比如正在筛选亲子友好地点、正在避开高排队餐厅、正在平衡步行距离和预算。
 """
 
 
@@ -91,6 +118,9 @@ def plan(
     branch_hint: str = "",
     temperature: float = 0.3,
     user_id: Optional[str] = None,
+    on_token: Optional[Callable[[str], None]] = None,
+    on_progress: Optional[Callable[[str], None]] = None,
+    on_stream_event: Optional[Callable[[str], None]] = None,
 ) -> Plan:
     """生成方案。
 
@@ -102,19 +132,17 @@ def plan(
         client: 注入 LLM client；默认 get_llm_client()
         branch_hint: ToT 分支提示词（append 到 user message extra_hint）
         temperature: 采样温度；ToT 不同分支用不同温度增加多样性
-        user_id: v2.7 D6 — 跨 session 用户标识。提供时：
-                 1. user_memory.merge_into_prompt 给 LLM 注入历史偏好
-                 2. user_memory.infer_from_user_input 自动从本次 query 沉淀新偏好
+        user_id: 跨 session 用户标识。提供时只读取并注入已有记忆；
+                 新记忆必须由 UI 的手动记忆入口显式写入。
                  None 时跳过（保持 stateless 行为）
     """
     prefs = prefs or UserPreferences(persona=persona, raw_input=user_input)
     client = client or get_llm_client()
 
-    # v2.7 D6：注入 user_memory + 自动 infer
+    # 注入 user_memory；不在规划过程中自动写记忆，避免 rerun/reroute 误沉淀。
     augmented_input = user_input
     if user_id:
-        from .user_memory import infer_from_user_input, merge_into_prompt
-        infer_from_user_input(user_id, user_input)
+        from .user_memory import merge_into_prompt
         augmented_input = merge_into_prompt(user_input, user_id)
 
     with trace_span("planner.plan", attrs={
@@ -123,20 +151,29 @@ def plan(
         "client": client.name, "user_id": user_id or "",
     }):
         return _plan_inner(augmented_input, persona, prefs, area_anchor,
-                            client, branch_hint, temperature)
+                            client, branch_hint, temperature, on_token, on_progress, on_stream_event)
 
 
 def _plan_inner(user_input, persona, prefs, area_anchor,
-                client, branch_hint, temperature):
+                client, branch_hint, temperature, on_token=None, on_progress=None,
+                on_stream_event=None):
+    _emit_progress(
+        on_progress,
+        f"查询人数和约束：{prefs.party_size} 人，预算 {prefs.budget_per_person or '不限'}，"
+        f"出发 {prefs.target_start}，游玩 {prefs.duration_hours:g} 小时",
+    )
     # 1) 拉片区 summary（场景标签 / 风险 / 已提及 POI）
+    _emit_progress(on_progress, f"查询片区画像：{area_anchor}")
     with trace_span("planner.summarize_area", attrs={"area": area_anchor}):
         area_ctx = summarize_area(area_anchor)
 
     # 1.5) v2.6 D4：识别时段画像
     from tools.time_bucket import detect_time_bucket, score_poi_for_bucket
+    _emit_progress(on_progress, "识别时间场景：周末/雨天/夜间/餐时等")
     time_detection = detect_time_bucket(user_input)
 
     # 2) 拉候选 POI 池
+    _emit_progress(on_progress, "查询POI候选：餐饮、景点、地标、博物馆、购物")
     with trace_span("planner.search_candidates",
                     attrs={"time_bucket": time_detection.bucket}):
         constraints = _prefs_to_constraints(prefs)
@@ -159,6 +196,7 @@ def _plan_inner(user_input, persona, prefs, area_anchor,
             shopping = _rerank(shopping)
 
     # 3) 拼用户消息（含 <context> JSON 块和 <schema> 提示）
+    _emit_progress(on_progress, "整理候选上下文：合并片区信号和用户约束")
     user_msg = _build_user_message(
         user_input=user_input,
         prefs=prefs,
@@ -175,15 +213,31 @@ def _plan_inner(user_input, persona, prefs, area_anchor,
     )
 
     # 4) 调 LLM
+    if on_token is not None:
+        _run_preflight_status(
+            client=client,
+            user_input=user_input,
+            prefs=prefs,
+            area_anchor=area_anchor,
+            on_token=on_token,
+            on_progress=on_progress,
+            on_stream_event=on_stream_event,
+        )
+
+    _emit_progress(on_progress, f"调用LLM生成结构化方案：{client.name}")
+    system_prompt = PLANNER_SYSTEM + (PLANNER_EVENT_STREAM_PROTOCOL if on_token else "")
     resp = client.complete(
-        system=PLANNER_SYSTEM,
+        system=system_prompt,
         user=user_msg,
         json_schema={"plan": "Plan"},  # 标记，提示 client 尝试解析 JSON
         temperature=temperature,
+        on_token=on_token,
+        on_stream_event=on_stream_event,
     )
 
     # 5) 解析
-    plan_dict = resp.parsed or _safe_parse_json(resp.text)
+    _emit_progress(on_progress, "解析模型输出：校验 steps、时间和 POI 字段")
+    plan_dict = resp.parsed if resp.parsed and "steps" in resp.parsed else parse_plan_response_text(resp.text)
     if not plan_dict or "steps" not in plan_dict:
         raise RuntimeError(
             f"Planner LLM 返回不可解析。前 300 字：\n{resp.text[:300]}"
@@ -194,11 +248,51 @@ def _plan_inner(user_input, persona, prefs, area_anchor,
     _dedup_and_renumber(plan)
 
     # 7) 用真实路由数据填 travel_time（v2 改 1）+ 4 模式对比（v2 改 6B）
+    _emit_progress(on_progress, "查询路线时间：步行/骑行/驾车/公交")
     _fill_real_travel_times(plan, prefs)
 
     # 8) v2.4 D1：每步落 plan_tracer（失败不抛）
+    _emit_progress(on_progress, "写入计划追踪：用于诊断和校准")
     _record_plan_to_tracer(plan)
     return plan
+
+
+def _emit_progress(callback, message: str) -> None:
+    if callback is not None:
+        callback(message)
+
+
+def _run_preflight_status(
+    *,
+    client,
+    user_input: str,
+    prefs: UserPreferences,
+    area_anchor: str,
+    on_token,
+    on_progress,
+    on_stream_event,
+) -> None:
+    """Small streaming call that surfaces model-visible planning intent before full JSON."""
+    _emit_progress(on_progress, f"启动模型预分析：{client.name}")
+    preflight_user = (
+        f"用户需求：{user_input}\n"
+        f"片区：{area_anchor}\n"
+        f"人数：{prefs.party_size}\n"
+        f"孩子：{'有' if prefs.has_child else '无'}"
+        f"{f'，{prefs.child_age} 岁' if prefs.child_age else ''}\n"
+        f"预算：{prefs.budget_per_person or '不限'}\n"
+        f"时间：{prefs.target_start} 出发，约 {prefs.duration_hours:g} 小时\n"
+        f"忌口/偏好：{', '.join(prefs.diet_flags) if prefs.diet_flags else '无'}\n"
+        "请立即输出 2-3 行 status JSONL。"
+    )
+    client.complete(
+        system=PLANNER_PREFLIGHT_SYSTEM,
+        user=preflight_user,
+        json_schema=None,
+        temperature=0.1,
+        on_token=on_token,
+        on_stream_event=on_stream_event,
+    )
 
 
 # ============================================================
@@ -645,6 +739,40 @@ def screen_candidates(
         "candidates": out_candidates,
         "decision_hint": "AI 只筛了候选，最终选哪家由您决定 ✋",
     }
+
+
+def parse_plan_response_text(text: str) -> Optional[dict]:
+    """Parse either plain Plan JSON or JSONL status/final_plan event stream."""
+    raw = str(text or "").strip()
+    if not raw:
+        return None
+
+    for line in raw.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if (
+            isinstance(event, dict)
+            and event.get("event") == "final_plan"
+        ):
+            payload = event.get("data") if isinstance(event.get("data"), dict) else event.get("plan")
+            if isinstance(payload, dict):
+                return payload
+
+    parsed = _safe_parse_json(raw)
+    if not isinstance(parsed, dict):
+        return None
+    if "steps" in parsed:
+        return parsed
+    if parsed.get("event") == "final_plan":
+        payload = parsed.get("data") if isinstance(parsed.get("data"), dict) else parsed.get("plan")
+        if isinstance(payload, dict):
+            return payload
+    return parsed
 
 
 def _safe_parse_json(text: str) -> Optional[dict]:

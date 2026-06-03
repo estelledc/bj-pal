@@ -325,6 +325,9 @@ def _summarize_intake(output: dict[str, Any]) -> str:
         len(output.get("taste_tags") or [])
         + len(output.get("scene_tags") or [])
         + len(output.get("risk_tags") or [])
+        + len(output.get("diet_flags") or [])
+        + len(output.get("preference_tags") or [])
+        + len(output.get("avoid_tags") or [])
     )
     if tag_count:
         bits.append(f"{tag_count} 个偏好/风险标签")
@@ -365,9 +368,12 @@ _SKILLS: dict[str, AgentSkill] = {
     "preference_intake": AgentSkill(
         name="preference_intake",
         label="偏好抽取",
-        description="从用户粘贴文本、截图 OCR 文本或口头偏好中抽取片区、口味、场景和风险标签。",
+        description="从用户粘贴文本、截图 OCR 文本或口头偏好中抽取片区、口味、场景、忌口和规避标签。",
         input_keys=("text", "use_llm", "client"),
-        output_keys=("area_anchor", "poi_name", "taste_tags", "scene_tags", "risk_tags", "aspects"),
+        output_keys=(
+            "area_anchor", "poi_name", "taste_tags", "scene_tags", "risk_tags",
+            "diet_flags", "preference_tags", "avoid_tags", "aspects",
+        ),
         handler=_run_preference_intake,
     ),
     "poi_search": AgentSkill(

@@ -6,12 +6,12 @@ v2.7 加 user_memory 层：
 - record_preference(user_id, key, value)  写入 / 累计 mention_count
 - get_preferences(user_id)                 读全部活跃偏好
 - forget(user_id, key)                     用户明确"AI 别记这个"
-- infer_from_user_input(user_id, raw)      从 query 自动抽取并沉淀偏好
+- infer_from_user_input(user_id, raw)      仅在显式记忆入口中用 LLM 抽取并沉淀偏好
 - merge_into_prompt(base, user_id)         给 planner 注入"用户长期偏好"段落
 
 设计原则：
 - 用户拥有所有数据（forget 必须有效）
-- 偏好分级：mention_count 越高 confidence 越大
+- 偏好分级：confidence 表示抽取可靠度；mention_count 仅作内部累计，不直接展示
 - 偏好衰减：30 天没复现的 confidence × 0.5
 - 复用现有 SQLite（tool_calls.db），新增 user_memory 表
 """
@@ -19,6 +19,7 @@ v2.7 加 user_memory 层：
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 import sys
 import threading
@@ -210,93 +211,93 @@ def forget_all(user_id: str) -> int:
         return cur.rowcount
 
 
-# ============================================================
-# 自动抽取：复用 text_intake 关键词字典
-# ============================================================
-
-DIET_PATTERNS: list[tuple[str, list[str]]] = [
-    ("light_diet", ["减脂", "轻食", "低油", "清淡", "少油"]),
-    ("no_spicy", ["不吃辣", "不能吃辣", "怕辣", "受不了辣"]),
-    ("vegetarian", ["素食", "吃素", "纯素"]),
-    ("no_seafood", ["不吃海鲜", "海鲜过敏"]),
-    ("no_pork", ["不吃猪肉", "回民", "穆斯林"]),
-]
-
-PARTY_PATTERNS: list[tuple[str, list[str]]] = [
-    ("with_child", ["带娃", "带孩子", "带 5 岁", "带小朋友", "亲子"]),
-    ("with_elderly", ["带老人", "父母", "长辈", "爹妈"]),
-    ("couple", ["和老婆", "和女朋友", "夫妻", "情侣"]),
-]
+def _normalize_memory_tag(tag: object) -> str:
+    text = str(tag or "").strip().lower()
+    if not text:
+        return ""
+    text = re.sub(r"[\s\-\\/]+", "_", text)
+    text = re.sub(r"_+", "_", text)
+    return text.strip("_")
 
 
-def infer_from_user_input(user_id: str, raw: str) -> list[MemoryEntry]:
-    """从 query 自动抽取并沉淀偏好。返回新写入的条目。"""
+def _diet_memory_kind(tag: str) -> str:
+    if tag.startswith(("no_", "avoid_")):
+        return "dislike"
+    if any(marker in tag for marker in ("allergy", "intoler", "taboo", "forbidden", "过敏", "忌口")):
+        return "dislike"
+    return "preference"
+
+
+def _record_intake_memory(user_id: str, intake) -> list[MemoryEntry]:
+    written: list[MemoryEntry] = []
+
+    def _record(kind: str, key_prefix: str, tag: object,
+                *, confidence: float = 0.72, value: object = True) -> None:
+        normalized = _normalize_memory_tag(tag)
+        if not normalized:
+            return
+        written.append(record_preference(
+            user_id,
+            key=f"{key_prefix}:{normalized}",
+            value=value,
+            kind=kind,
+            confidence=confidence,
+        ))
+
+    for tag in getattr(intake, "diet_flags", []) or []:
+        normalized = _normalize_memory_tag(tag)
+        if not normalized:
+            continue
+        written.append(record_preference(
+            user_id,
+            key=f"diet:{normalized}",
+            value=True,
+            kind=_diet_memory_kind(normalized),
+            confidence=0.82,
+        ))
+    for tag in getattr(intake, "taste_tags", []) or []:
+        _record("preference", "taste", tag, confidence=0.68)
+    for tag in getattr(intake, "preference_tags", []) or []:
+        _record("preference", "preference", tag, confidence=0.72)
+    for tag in getattr(intake, "scene_tags", []) or []:
+        _record("preference", "scene", tag, confidence=0.62)
+    for tag in getattr(intake, "avoid_tags", []) or []:
+        _record("dislike", "avoid", tag, confidence=0.78)
+    for tag in getattr(intake, "risk_tags", []) or []:
+        _record("dislike", "risk", tag, confidence=0.68)
+
+    return written
+
+
+def infer_from_user_input(
+    user_id: str,
+    raw: str,
+    *,
+    client=None,
+    use_llm: bool = True,
+) -> list[MemoryEntry]:
+    """从 query 用 LLM 抽取并沉淀偏好。返回新写入的条目。
+
+    记忆沉淀不做关键词规则兜底：LLM 没抽到就不写，避免把上下文词误当长期偏好。
+    """
     if not raw or not user_id:
         return []
 
     written: list[MemoryEntry] = []
 
-    for diet_key, kws in DIET_PATTERNS:
-        if any(kw in raw for kw in kws):
-            written.append(record_preference(
-                user_id, key=f"diet:{diet_key}", value=True,
-                kind="preference", confidence=0.75,
-            ))
-
-    for party_key, kws in PARTY_PATTERNS:
-        if any(kw in raw for kw in kws):
-            written.append(record_preference(
-                user_id, key=f"party:{party_key}", value=True,
-                kind="preference", confidence=0.75,
-            ))
-
-    # 复用 text_intake 关键词字典（taste / scene / risk）
-    # 否定上下文：keyword 前 6 字内出现否定词 → 不抽 positive，转 dislike
-    NEG_CTX = ["不", "无", "别", "不要", "避开", "受不了", "怕", "不能"]
-
-    def _is_negated(kw: str, text: str) -> bool:
-        idx = text.find(kw)
-        if idx < 0:
-            return False
-        prefix = text[max(0, idx - 6):idx]
-        return any(neg in prefix for neg in NEG_CTX)
-
+    if not use_llm:
+        return []
     try:
-        from agents.text_intake import (
-            RISK_KEYWORDS,
-            SCENE_KEYWORDS,
-            TASTE_KEYWORDS,
+        from agents.text_intake import extract_from_text
+        intake = extract_from_text(
+            raw,
+            client=client,
+            use_llm=True,
+            fallback_to_rules=False,
         )
-        for tag, kws in TASTE_KEYWORDS.items():
-            hit_kw = next((kw for kw in kws
-                            if kw in raw or kw.lower() in raw.lower()), None)
-            if hit_kw is None:
-                continue
-            if _is_negated(hit_kw, raw):
-                # 否定语义 → 抽到 dislike
-                written.append(record_preference(
-                    user_id, key=f"taste:{tag}", value=False,
-                    kind="dislike", confidence=0.70,
-                ))
-            else:
-                written.append(record_preference(
-                    user_id, key=f"taste:{tag}", value=True,
-                    confidence=0.65,
-                ))
-        for tag, kws in SCENE_KEYWORDS.items():
-            if any(kw in raw for kw in kws):
-                written.append(record_preference(
-                    user_id, key=f"scene:{tag}", value=True,
-                    confidence=0.60,
-                ))
-        for tag, kws in RISK_KEYWORDS.items():
-            if any(kw in raw for kw in kws):
-                written.append(record_preference(
-                    user_id, key=f"risk:{tag}", value=True,
-                    kind="dislike", confidence=0.65,
-                ))
-    except ImportError:
-        pass
+        written.extend(_record_intake_memory(user_id, intake))
+    except Exception:
+        return []
 
     return written
 
@@ -344,6 +345,27 @@ def merge_into_prompt(
 
 if __name__ == "__main__":
     import uuid
+    from agents.llm_client import LLMResponse
+
+    class _SelfTestMemoryClient:
+        @property
+        def name(self):
+            return "user-memory-self-test"
+
+        def complete(self, *args, **kwargs):
+            parsed = {
+                "area_anchor": "",
+                "poi_name": "",
+                "taste_tags": ["coffee"],
+                "scene_tags": ["kid_friendly"],
+                "risk_tags": [],
+                "diet_flags": ["light_diet", "no_spicy"],
+                "preference_tags": [],
+                "avoid_tags": [],
+                "aspects": [],
+            }
+            return LLMResponse(text="{}", parsed=parsed)
+
     uid = f"u-{uuid.uuid4().hex[:8]}"
 
     # Case 1: record + get
@@ -386,13 +408,14 @@ if __name__ == "__main__":
     written = infer_from_user_input(
         uid2,
         "今天下午带 5 岁娃出去玩，老婆减脂不吃辣，想找个咖啡店",
+        client=_SelfTestMemoryClient(),
     )
     print(f"✓ Case 6 infer: {len(written)} 条")
     keys = [w.mem_key for w in written]
     kinds = {w.mem_key: w.kind for w in written}
     assert any("light_diet" in k for k in keys)
     assert any("no_spicy" in k for k in keys)
-    assert any("with_child" in k for k in keys)
+    assert any("kid_friendly" in k for k in keys)
     assert any("coffee" in k for k in keys)
     # taste:spicy 应被否定上下文识别为 dislike，不应是 preference
     if "taste:spicy" in kinds:

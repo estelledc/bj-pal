@@ -5,7 +5,9 @@
 - 朋友圈 / 微信对话截图的 OCR 后文本
 - 用户手贴的"我朋友说 xxx 那家不错"
 
-输出与 vision 一致的 schema：{area_anchor, poi_name, aspects, taste_tags, scene_tags}
+输出与 vision 一致的 schema，并扩展通用偏好/忌口字段：
+{area_anchor, poi_name, aspects, taste_tags, scene_tags, risk_tags,
+ diet_flags, preference_tags, avoid_tags}
 让下游 ranking / preference_mirror 可以用同一套消费链路。
 
 设计：
@@ -38,15 +40,26 @@ schema：
 {
   "area_anchor": "<五道营-雍和宫片区 / 三里屯片区 / 什刹海-鼓楼片区 / 王府井-东单片区 / 798 / 南锣鼓巷 / ... / 空字符串>",
   "poi_name": "<文本中提到的具体店名 / 空字符串>",
-  "taste_tags": ["coffee", "dessert", "meat", "spicy", "yogurt", "fruit", "drink", "light"],
-  "scene_tags": ["citywalk", "photo", "indoor", "outdoor", "quiet", "loud", "kid_friendly", "elderly_friendly"],
-  "risk_tags": ["queue_long", "expensive", "loud", "crowded", "closed_often"],
+  "taste_tags": ["coffee", "dessert", "meat", "spicy", "yogurt", "fruit", "drink", "light", "sour", "..."],
+  "scene_tags": ["citywalk", "photo", "indoor", "outdoor", "quiet", "loud", "kid_friendly", "elderly_friendly", "..."],
+  "risk_tags": ["queue_long", "expensive", "loud", "crowded", "closed_often", "medical_diet_risk", "..."],
+  "diet_flags": ["no_seafood", "no_shellfish", "no_lactose", "low_purine", "halal", "vegetarian", "..."],
+  "preference_tags": ["sour_food", "vinegar_flavor", "window_seat", "..."],
+  "avoid_tags": ["raw_seafood", "buffet", "smoky_room", "..."],
   "aspects": [
     {
       "aspect_type": "environment | comfort | food | budget | crowd | transport | scenario_fit",
       "sentiment": "positive | negative | mixed",
       "confidence": 0.0-1.0,
-      "evidence_summary": "<30-60 字 用户原话或概括>"
+      "evidence_summary": "<30-60 字 用户原话或概括>",
+      "normalized_value": {
+        "taste_tags": ["..."],
+        "scene_tags": ["..."],
+        "risk_tags": ["..."],
+        "diet_flags": ["..."],
+        "preference_tags": ["..."],
+        "avoid_tags": ["..."]
+      }
     }
   ]
 }
@@ -54,7 +67,14 @@ schema：
 
 抽取要点：
 - 一段 100-500 字的文本通常给 2-5 条 aspect
-- 没明确证据的字段不要编造，taste_tags / scene_tags / risk_tags 都可以为空数组
+- 没有北京片区或 POI 也可以抽取用户长期偏好/忌口，不要因为没有地点就返回空
+- 不要被示例枚举限制：用户提到任何忌口、过敏、疾病相关饮食限制、口味偏好、座位/环境偏好，都要抽成简短 snake_case tag
+- 医疗/过敏/忌口类优先放 diet_flags 和 avoid_tags；如果有出行风险，也补 risk_tags
+- 手动记忆输入可能是逗号分隔短语，每个短语都要独立判断，不要只抽其中一两项
+- 例："乳糖不耐受，寻麻疹，喜欢吃西瓜，自助餐" 应抽取 diet_flags=["no_lactose"], risk_tags=["urticaria"], taste_tags=["watermelon"], preference_tags=["buffet"]
+- "寻麻疹"/"荨麻疹" 是健康风险，抽 risk_tags=["urticaria"]；不要推断成 no_seafood，除非用户明确提到海鲜过敏/不吃海鲜
+- "自助餐" 未被否定时抽 preference_tags=["buffet"]；明确说不想/避开自助餐时抽 avoid_tags=["buffet"]
+- 没明确证据的字段不要编造，各 tag 数组都可以为空数组
 - 只输出 JSON，不要任何其他文字、不要 markdown 包裹
 
 只输出 JSON。
@@ -72,12 +92,16 @@ class TextIntakeResult:
     taste_tags: list[str] = field(default_factory=list)
     scene_tags: list[str] = field(default_factory=list)
     risk_tags: list[str] = field(default_factory=list)
+    diet_flags: list[str] = field(default_factory=list)
+    preference_tags: list[str] = field(default_factory=list)
+    avoid_tags: list[str] = field(default_factory=list)
     aspects: list[dict] = field(default_factory=list)
     source: str = "llm"   # "llm" | "rules" | "empty" | "vision" | "vision_mock"
 
     def is_empty(self) -> bool:
         return not (self.poi_name or self.area_anchor or self.taste_tags
-                    or self.scene_tags or self.risk_tags or self.aspects)
+                    or self.scene_tags or self.risk_tags or self.diet_flags
+                    or self.preference_tags or self.avoid_tags or self.aspects)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -106,6 +130,7 @@ TASTE_KEYWORDS = {
     "fruit": ["水果", "鲜果", "果切"],
     "drink": ["酒吧", "鸡尾酒", "餐酒", "红酒", "精酿"],
     "light": ["清淡", "减脂", "低脂", "低糖", "健康", "轻食", "少油"],
+    "sour": ["酸口", "酸味", "爱吃醋", "喜欢醋", "醋碟", "醋味"],
 }
 
 SCENE_KEYWORDS = {
@@ -125,6 +150,9 @@ RISK_KEYWORDS = {
     "loud": ["吵", "嘈杂", "闹"],
     "crowded": ["挤", "人多", "人太多", "人满", "爆满"],
     "closed_often": ["不开门", "经常关", "不规律营业"],
+    "no_seafood": ["不吃海鲜", "不能吃海鲜", "海鲜过敏", "避开海鲜", "不要海鲜"],
+    "allergy": ["过敏"],
+    "urticaria": ["荨麻疹", "寻麻疹"],
 }
 
 
@@ -179,6 +207,7 @@ def extract_from_text(
     *,
     client: Optional[LLMClient] = None,
     use_llm: bool = True,
+    fallback_to_rules: bool = True,
 ) -> TextIntakeResult:
     """从文本抽取结构化信号。
 
@@ -186,6 +215,7 @@ def extract_from_text(
         raw: 用户原文（公众号片段 / 朋友圈 / 聊天）
         client: LLM client（None 走默认）
         use_llm: False 时直接走规则 fallback，跳过 LLM
+        fallback_to_rules: LLM 失败/空结果时是否用关键词规则兜底
 
     Returns:
         TextIntakeResult；失败/空文本返回 source="empty"
@@ -214,22 +244,68 @@ def extract_from_text(
                 if not result.is_empty():
                     return result
         except Exception:
-            pass
+            if not fallback_to_rules:
+                return TextIntakeResult(source="empty")
         # LLM 失败 → 规则 fallback
+        if not fallback_to_rules:
+            return TextIntakeResult(source="empty")
         return _rules_extract(text)
 
 
 def _result_from_parsed(d: dict) -> TextIntakeResult:
     """LLM 返回 dict → TextIntakeResult。"""
+    aspects = list(d.get("aspects", []) or [])
+    taste_tags = _tags_from(d, "taste_tags")
+    scene_tags = _tags_from(d, "scene_tags")
+    risk_tags = _tags_from(d, "risk_tags")
+    diet_flags = _tags_from(d, "diet_flags")
+    preference_tags = _tags_from(d, "preference_tags")
+    avoid_tags = _tags_from(d, "avoid_tags")
+    for aspect in aspects:
+        normalized = aspect.get("normalized_value") or {}
+        if isinstance(normalized, dict):
+            taste_tags.extend(_tags_from(normalized, "taste_tags"))
+            scene_tags.extend(_tags_from(normalized, "scene_tags"))
+            risk_tags.extend(_tags_from(normalized, "risk_tags"))
+            diet_flags.extend(_tags_from(normalized, "diet_flags"))
+            preference_tags.extend(_tags_from(normalized, "preference_tags"))
+            avoid_tags.extend(_tags_from(normalized, "avoid_tags"))
     return TextIntakeResult(
         area_anchor=d.get("area_anchor", "") or "",
         poi_name=d.get("poi_name", "") or "",
-        taste_tags=list(d.get("taste_tags", []) or []),
-        scene_tags=list(d.get("scene_tags", []) or []),
-        risk_tags=list(d.get("risk_tags", []) or []),
-        aspects=list(d.get("aspects", []) or []),
+        taste_tags=_dedupe(taste_tags),
+        scene_tags=_dedupe(scene_tags),
+        risk_tags=_dedupe(risk_tags),
+        diet_flags=_dedupe(diet_flags),
+        preference_tags=_dedupe(preference_tags),
+        avoid_tags=_dedupe(avoid_tags),
+        aspects=aspects,
         source="llm",
     )
+
+
+def _tags_from(d: dict, key: str) -> list[str]:
+    value = d.get(key)
+    if value is None:
+        return []
+    if isinstance(value, str):
+        value = [value]
+    if not isinstance(value, list):
+        return []
+    return [_normalize_tag(v) for v in value if _normalize_tag(v)]
+
+
+def _normalize_tag(value: object) -> str:
+    text = str(value or "").strip().lower()
+    if not text:
+        return ""
+    text = re.sub(r"[\s\-\\/]+", "_", text)
+    text = re.sub(r"_+", "_", text)
+    return text.strip("_")
+
+
+def _dedupe(values: list[str]) -> list[str]:
+    return list(dict.fromkeys(v for v in values if v))
 
 
 def _safe_parse_json(text: str) -> Optional[dict]:
@@ -282,6 +358,12 @@ def merge_into_user_input(
         lines.append(f"- 场景标签: {', '.join(intake.scene_tags)}")
     if intake.risk_tags:
         lines.append(f"- 需要规避: {', '.join(intake.risk_tags)}")
+    if intake.diet_flags:
+        lines.append(f"- 饮食约束: {', '.join(intake.diet_flags)}")
+    if intake.preference_tags:
+        lines.append(f"- 补充偏好: {', '.join(intake.preference_tags)}")
+    if intake.avoid_tags:
+        lines.append(f"- 明确避开: {', '.join(intake.avoid_tags)}")
     if intent_hint:
         lines.append(f"- 用户意图: {intent_hint}")
 
