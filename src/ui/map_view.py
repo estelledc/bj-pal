@@ -39,6 +39,7 @@ MAP_TILE_URL = (
 MAP_TILE_ATTRIBUTION = "高德地图"
 MAP_SHOW_SCALE_CONTROL = False
 MAP_SHOW_ATTRIBUTION_CONTROL = False
+MAP_VISUALIZATION_CAPTION = "规划结果可视化图"
 
 
 def render_map(plan: Plan, center: Optional[tuple[float, float]] = None):
@@ -116,7 +117,7 @@ def render_map(plan: Plan, center: Optional[tuple[float, float]] = None):
         ).add_to(m)
 
     st_folium(m, height=480, width=None, returned_objects=[])
-    st.caption(f"底图：{MAP_TILE_ATTRIBUTION}。路线和站点为 BJ-Pal 规划结果。")
+    st.caption(MAP_VISUALIZATION_CAPTION)
 
 
 def _numbered_marker_html(step_index: int, *, color: str, is_rerouted: bool = False) -> str:

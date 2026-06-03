@@ -56,7 +56,7 @@ def render_hero(show: bool = True):
       <div class="tagline">周末半天，把事做完——不是搜索推荐能解决的</div>
       <div class="bjpal-chat-from-me">
         <div class="who" style="color:#fee;text-align:right">小明 (我)</div>
-        这周末有半天空，想和老婆和 5 岁娃出去玩，别离家太远，帮安排一下
+        今天下午带老婆和 5 岁娃出去玩，别离家太远，4 小时左右。老婆减脂，娃喜欢动物。
       </div>
       <div class="bjpal-chat">
         <div class="who">老婆</div>

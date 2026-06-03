@@ -95,6 +95,9 @@ def _result_from_vision_payload(extracted: dict, *, source: str) -> TextIntakeRe
         taste_tags=list(extracted.get("taste_tags", []) or []),
         scene_tags=list(extracted.get("scene_tags", []) or []),
         risk_tags=list(extracted.get("risk_tags", []) or []),
+        diet_flags=list(extracted.get("diet_flags", []) or []),
+        preference_tags=list(extracted.get("preference_tags", []) or []),
+        avoid_tags=list(extracted.get("avoid_tags", []) or []),
         aspects=list(extracted.get("aspects", []) or []),
         source=source,
     )
@@ -103,9 +106,15 @@ def _result_from_vision_payload(extracted: dict, *, source: str) -> TextIntakeRe
         result.scene_tags += normalized_value.get("scene_tags", []) or []
         result.taste_tags += normalized_value.get("taste_tags", []) or []
         result.risk_tags += normalized_value.get("risk_tags", []) or []
+        result.diet_flags += normalized_value.get("diet_flags", []) or []
+        result.preference_tags += normalized_value.get("preference_tags", []) or []
+        result.avoid_tags += normalized_value.get("avoid_tags", []) or []
     result.scene_tags = list(dict.fromkeys(result.scene_tags))
     result.taste_tags = list(dict.fromkeys(result.taste_tags))
     result.risk_tags = list(dict.fromkeys(result.risk_tags))
+    result.diet_flags = list(dict.fromkeys(result.diet_flags))
+    result.preference_tags = list(dict.fromkeys(result.preference_tags))
+    result.avoid_tags = list(dict.fromkeys(result.avoid_tags))
     return result
 
 
@@ -223,6 +232,12 @@ def _render_signals_tab() -> None:
             st.markdown(f"**场景**：{', '.join(sig.scene_tags)}")
         if sig.risk_tags:
             st.markdown(f"**规避**：{', '.join(sig.risk_tags)}")
+        if sig.diet_flags:
+            st.markdown(f"**饮食约束**：{', '.join(sig.diet_flags)}")
+        if sig.preference_tags:
+            st.markdown(f"**补充偏好**：{', '.join(sig.preference_tags)}")
+        if sig.avoid_tags:
+            st.markdown(f"**明确避开**：{', '.join(sig.avoid_tags)}")
 
     if sig.aspects:
         with st.expander(f"展开 {len(sig.aspects)} 条 aspect 原文"):

@@ -25,6 +25,10 @@ REROUTE_REASON_LABELS = {
     "none": ("ℹ️", "其它"),
 }
 
+DISSENT_BUTTON_LABEL = "换一个"
+DISSENT_BUTTON_USE_CONTAINER_WIDTH = True
+TIMELINE_COLUMN_WEIGHTS = [1, 5, 1.7]
+
 
 def render_timeline(
     plan: Plan,
@@ -46,7 +50,7 @@ def render_timeline(
         # 2) Step 主卡片
         with st.container(border=True):
             icon = KIND_ICON.get(s.kind, "📍")
-            cols = st.columns([1, 5, 1])
+            cols = st.columns(TIMELINE_COLUMN_WEIGHTS)
             with cols[0]:
                 st.markdown(f"### {icon}")
                 st.caption(s.start_time)
@@ -72,8 +76,12 @@ def render_timeline(
             with cols[2]:
                 if on_dissent and s.poi_id and s.kind != "depart":
                     st.markdown("&nbsp;", unsafe_allow_html=True)
-                    if st.button("换一个", key=f"dissent_{s.step_index}",
-                                 help="主动 reroute 这一步", use_container_width=True):
+                    if st.button(
+                        DISSENT_BUTTON_LABEL,
+                        key=f"dissent_{s.step_index}",
+                        help="主动 reroute 这一步",
+                        use_container_width=DISSENT_BUTTON_USE_CONTAINER_WIDTH,
+                    ):
                         on_dissent(i)
 
 

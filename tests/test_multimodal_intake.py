@@ -38,6 +38,39 @@ class _EmptyTextClient:
         return LLMResponse(text="{}", parsed=parsed)
 
 
+class _GenericDietTextClient:
+    @property
+    def name(self) -> str:
+        return "generic-diet-text"
+
+    def complete(self, *args, **kwargs):
+        from src.agents.llm_client import LLMResponse
+
+        parsed = {
+            "area_anchor": "",
+            "poi_name": "",
+            "taste_tags": [],
+            "scene_tags": [],
+            "risk_tags": ["medical_diet_risk"],
+            "diet_flags": ["no_shellfish", "low_purine"],
+            "preference_tags": ["sour_food", "vinegar_flavor"],
+            "avoid_tags": ["raw_seafood", "buffet"],
+            "aspects": [
+                {
+                    "aspect_type": "food",
+                    "sentiment": "negative",
+                    "confidence": 0.9,
+                    "evidence_summary": "用户有健康相关忌口，需要避开特定食材",
+                    "normalized_value": {
+                        "diet_flags": ["no_shellfish", "low_purine"],
+                        "avoid_tags": ["raw_seafood"],
+                    },
+                }
+            ],
+        }
+        return LLMResponse(text="{}", parsed=parsed)
+
+
 class MultimodalIntakeTest(unittest.TestCase):
     def test_risk_only_text_is_not_empty(self) -> None:
         from src.agents.text_intake import TextIntakeResult
@@ -83,6 +116,21 @@ class MultimodalIntakeTest(unittest.TestCase):
 
         self.assertEqual(result.source, "rules")
         self.assertIn("queue_long", result.risk_tags)
+
+    def test_ui_text_intake_keeps_llm_extracted_generic_diet_constraints(self) -> None:
+        from src.ui.multimodal_intake import extract_text_for_ui
+
+        result = extract_text_for_ui(
+            "我有痛风，还乳糖不耐受，但喜欢酸口和醋味，别安排自助餐",
+            client=_GenericDietTextClient(),
+        )
+
+        self.assertEqual(result.source, "llm")
+        self.assertIn("no_shellfish", result.diet_flags)
+        self.assertIn("low_purine", result.diet_flags)
+        self.assertIn("sour_food", result.preference_tags)
+        self.assertIn("raw_seafood", result.avoid_tags)
+        self.assertIn("buffet", result.avoid_tags)
 
     def test_sample_selector_can_clear_and_fill_text(self) -> None:
         from src.ui.multimodal_intake import _sample_text_for_index

@@ -19,7 +19,11 @@ v2 新增：
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
+from html import escape
+import json
 import sys
+from threading import Lock
 import time
 import uuid
 import os
@@ -40,7 +44,7 @@ from agents.preference_mirror import (  # noqa: E402
 from agents.replanner import probe_plan, replan_step  # noqa: E402
 from agents.skills import describe_skills  # noqa: E402
 from agents.types import UserPreferences  # noqa: E402
-from agents.vision_extractor import upload_and_index  # noqa: E402
+from agents.user_memory import infer_from_user_input  # noqa: E402
 from tools.amap_search import resolve_area_center, search_pois  # noqa: E402
 from tools.availability_probe import user_dissent_probe  # noqa: E402
 from tools.footprint import cumulative_stats, fetch_recent_sessions  # noqa: E402
@@ -57,38 +61,64 @@ from tools.types import POI, SearchConstraints  # noqa: E402
 from ui.calibration_timeline import render_calibration_timeline_panel  # noqa: E402
 from ui.map_view import render_map  # noqa: E402
 from ui.memory_panel import render_memory_panel  # noqa: E402
-from ui.multimodal_intake import (  # noqa: E402
-    apply_multimodal_to_query,
-    render_multimodal_intake,
-)
 from ui.opportunity_panel import render_opportunity_panel  # noqa: E402
 from ui.radar import render_radar  # noqa: E402
 from ui.timeline import render_timeline  # noqa: E402
 from ui.trust_panel import (  # noqa: E402
-    render_global_ece,
     render_member_weights_panel,
     render_trust_panel,
 )
 
 
 PRIMARY_WORKSPACE_COLUMNS = ("plan", "map")
-SECONDARY_RESULT_TABS = ("发送", "补充材料", "诊断")
+SECONDARY_RESULT_TABS = ("发送", "诊断")
 DIAGNOSTIC_LABEL = "诊断"
 AGENT_SKILL_PANEL_LABEL = "Agent 能力目录"
 TASK_BAR_FIELDS = ("persona", "area", "budget", "start_time", "duration", "mode", "generate")
-SIDEBAR_SECTIONS = ("演示开关", "记忆与校准")
+SIDEBAR_SECTIONS = ("记忆",)
 REROUTE_MEMORY_KEY = "reroute_memory_poi_names"
-INLINE_MULTIMODAL_KEY_PREFIX = "mm_inline"
-SUPPORTING_MULTIMODAL_KEY_PREFIX = "mm_supporting"
 PRODUCT_PAGE_TITLE = "BJ-Pal · 周末闲时活动规划"
 PRODUCT_KICKER = "BJ-Pal · 北京周末闲时规划"
 PRODUCT_HEADLINE = "把周末半天，排成一条能出发的路线"
 PRODUCT_SUBTITLE = "面向北京本地 3-5 小时闲时出行，自动统筹片区、预算、路线、排队风险和可发送话术。"
+DEFAULT_SHOWCASE_QUERY = "今天下午带老婆和 5 岁娃出去玩，别离家太远，4 小时左右。老婆减脂，娃喜欢动物。"
+PLAN_STREAM_STEPS = (
+    "正在理解你的偏好、片区和时间窗口...",
+    "正在读取左侧已确认记忆，只作为约束参考...",
+    "正在调用 LLM 生成可执行路线...",
+    "正在整理时间轴、路线和可发送文案...",
+)
+SCREENING_STREAM_STEPS = (
+    "正在理解筛选目标...",
+    "查询POI候选：餐饮服务",
+    "调用排序器：预算、距离、偏好和拥挤风险",
+)
+PROBE_STREAM_STEPS = (
+    "调用排队探针：检查热门地点等待时间",
+    "调用天气工具：判断户外路线是否受影响",
+    "检查商家状态：营业、预约和拒单风险",
+)
+REROUTE_STREAM_STEPS = (
+    "正在锁定当前不想去的地点...",
+    "排除本轮已经出现过的地点...",
+    "查询同类替补POI并重排路线...",
+)
+TRACE_WINDOW_TITLE = "模型执行过程"
+TRACE_WINDOW_MAX_LINES = 5
+TRACE_WINDOW_HEIGHT_PX = 118
+TRACE_WINDOW_TICK_INTERVAL_S = 0.45
+TRACE_TOKEN_CHARS_PER_TOKEN = 2
+TRACE_TOKEN_PER_SECOND_ESTIMATE = 18
+TRACE_STREAM_PREVIEW_CHARS = 280
+PLAN_STATUS_LABEL = "正在生成方案"
+PLAN_POSTCHECK_LABEL = "正在检查排队、天气和商家状态"
+PLAN_STATUS_EXPANDED_WHILE_RUNNING = True
+PLAN_STATUS_EXPANDED_AFTER_DONE = False
 
 PRESETS = {
     "family": {
         "label": "家庭出行",
-        "user_input": "今天下午带老婆和 5 岁娃出去玩，别离家太远，4 小时左右。老婆减脂，娃喜欢动物。",
+        "user_input": DEFAULT_SHOWCASE_QUERY,
         "prefs": dict(persona="family", party_size=3, has_child=True, child_age=5,
                       diet_flags=["light_diet"], walk_radius_km=1.5,
                       budget_per_person=120, target_start="14:00", duration_hours=4.5),
@@ -148,6 +178,234 @@ def resolve_llm_backend_label() -> str:
     }.get(backend, backend or "Mock")
 
 
+def estimate_trace_tokens(lines, *, elapsed_s: float = 0.0) -> int:
+    """Estimate visible progress tokens until provider usage can be surfaced in UI."""
+    chars = sum(len(str(line)) for line in lines)
+    text_tokens = max(len(lines), chars // TRACE_TOKEN_CHARS_PER_TOKEN)
+    wait_tokens = int(max(elapsed_s, 0.0) * TRACE_TOKEN_PER_SECOND_ESTIMATE)
+    return max(1, text_tokens + wait_tokens)
+
+
+def build_trace_window_html(
+    lines,
+    *,
+    token_count: int,
+    title: str = TRACE_WINDOW_TITLE,
+    max_lines: int = TRACE_WINDOW_MAX_LINES,
+    stream_text: str = "",
+) -> str:
+    """Build a fixed-height trace window that only shows the latest progress lines."""
+    all_lines = [str(line) for line in lines if str(line).strip()]
+    visible = all_lines[-max_lines:]
+    rows = "\n".join(
+        f"<div class='bjpal-trace-line'>{escape(line)}</div>"
+        for line in visible
+    )
+    stream_preview = str(stream_text or "")[-TRACE_STREAM_PREVIEW_CHARS:]
+    stream_block = ""
+    if stream_preview:
+        stream_block = (
+            "<div class='bjpal-trace-stream'>"
+            "<span>模型输出</span>"
+            f"<code>{escape(stream_preview)}</code>"
+            "</div>"
+        )
+    hidden_count = max(0, len(all_lines) - len(visible))
+    hidden_label = (
+        f"<span class='bjpal-trace-hidden'>已滑过 {hidden_count} 行</span>"
+        if hidden_count
+        else "<span class='bjpal-trace-hidden'>实时更新</span>"
+    )
+    return (
+        "<div class='bjpal-trace-window'>"
+        "<div class='bjpal-trace-meta'>"
+        f"<span>{escape(title)}</span>"
+        f"<span>token 估算 {int(token_count)}</span>"
+        "</div>"
+        f"<div class='bjpal-trace-lines'>{rows}</div>"
+        f"{stream_block}"
+        f"{hidden_label}"
+        "</div>"
+    )
+
+
+def upsert_trace_waiting_line(lines: list[str], waiting_idx: int | None, *, elapsed_s: float) -> int:
+    """Insert or update the single waiting line so long calls do not repeat templates."""
+    message = f"等待模型或工具返回中 {elapsed_s:.1f}s"
+    if waiting_idx is None or waiting_idx >= len(lines):
+        lines.append(message)
+        return len(lines) - 1
+    lines[waiting_idx] = message
+    return waiting_idx
+
+
+def extract_model_status_events(stream_text: str) -> list[str]:
+    """Extract completed JSONL status events from model stream text."""
+    events: list[str] = []
+    for raw_line in str(stream_text or "").splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(event, dict) or event.get("event") != "status":
+            continue
+        text = str(event.get("text") or "").strip()
+        if text:
+            events.append(f"模型：{text}")
+    return events
+
+
+def _render_trace_window(
+    placeholder,
+    lines,
+    *,
+    started_at: float,
+    title: str,
+    stream_text: str = "",
+) -> None:
+    token_count = estimate_trace_tokens(
+        [*lines, stream_text],
+        elapsed_s=time.time() - started_at,
+    )
+    placeholder.markdown(
+        build_trace_window_html(
+            lines,
+            token_count=token_count,
+            title=title,
+            stream_text=stream_text,
+        ),
+        unsafe_allow_html=True,
+    )
+
+
+def _run_with_progress_trace(
+    steps: tuple[str, ...],
+    func,
+    *,
+    title: str = TRACE_WINDOW_TITLE,
+    accepts_stream_callbacks: bool = False,
+):
+    """Run a blocking operation while keeping a fixed-height progress trace alive."""
+    placeholder = st.empty()
+    started_at = time.time()
+    lock = Lock()
+    lines: list[str] = []
+    stream_parts: list[str] = []
+    for line in steps:
+        lines.append(line)
+        _render_trace_window(placeholder, lines, started_at=started_at, title=title)
+        time.sleep(0.06)
+
+    def on_progress(message: str) -> None:
+        with lock:
+            lines.append(str(message))
+
+    def on_token(token: str) -> None:
+        if not token:
+            return
+        with lock:
+            stream_parts.append(str(token))
+
+    def on_stream_event(message: str) -> None:
+        if not message:
+            return
+        with lock:
+            lines.append(str(message))
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        if accepts_stream_callbacks:
+            future = executor.submit(func, on_token, on_progress, on_stream_event)
+        else:
+            future = executor.submit(func)
+        waiting_idx: int | None = None
+        model_status_count = 0
+        while True:
+            try:
+                result = future.result(timeout=TRACE_WINDOW_TICK_INTERVAL_S)
+            except TimeoutError:
+                elapsed = time.time() - started_at
+                with lock:
+                    stream_text = "".join(stream_parts)
+                    status_events = extract_model_status_events(stream_text)
+                    new_status_events = status_events[model_status_count:]
+                    if new_status_events:
+                        if waiting_idx is not None and waiting_idx < len(lines):
+                            lines.pop(waiting_idx)
+                            waiting_idx = None
+                        lines.extend(new_status_events)
+                        model_status_count = len(status_events)
+                    waiting_idx = upsert_trace_waiting_line(
+                        lines,
+                        waiting_idx,
+                        elapsed_s=elapsed,
+                    )
+                    current_lines = list(lines)
+                _render_trace_window(
+                    placeholder,
+                    current_lines,
+                    started_at=started_at,
+                    title=title,
+                    stream_text=stream_text,
+                )
+                continue
+            except Exception:
+                with lock:
+                    stream_text = "".join(stream_parts)
+                    status_events = extract_model_status_events(stream_text)
+                    new_status_events = status_events[model_status_count:]
+                    if new_status_events:
+                        if waiting_idx is not None and waiting_idx < len(lines):
+                            lines.pop(waiting_idx)
+                            waiting_idx = None
+                        lines.extend(new_status_events)
+                        model_status_count = len(status_events)
+                    lines.append("调用异常，正在展示错误信息...")
+                    current_lines = list(lines)
+                _render_trace_window(
+                    placeholder,
+                    current_lines,
+                    started_at=started_at,
+                    title=title,
+                    stream_text=stream_text,
+                )
+                raise
+            with lock:
+                stream_text = "".join(stream_parts)
+                status_events = extract_model_status_events(stream_text)
+                new_status_events = status_events[model_status_count:]
+                if new_status_events:
+                    if waiting_idx is not None and waiting_idx < len(lines):
+                        lines.pop(waiting_idx)
+                        waiting_idx = None
+                    lines.extend(new_status_events)
+                    model_status_count = len(status_events)
+                lines.append("完成，正在渲染结果...")
+                current_lines = list(lines)
+            _render_trace_window(
+                placeholder,
+                current_lines,
+                started_at=started_at,
+                title=title,
+                stream_text=stream_text,
+            )
+            return result
+
+
+def remember_manual_preference(user_id: str, raw: str, *, client=None):
+    """Use LLM intake to persist manually entered preferences for the current user."""
+    if not user_id or not raw or not raw.strip():
+        return []
+    return infer_from_user_input(
+        user_id,
+        raw.strip(),
+        client=client,
+        use_llm=True,
+    )
+
+
 def collect_reroute_memory_names(plan, events=None) -> set[str]:
     """Collect POI names that have already appeared in the current plan session."""
     names: set[str] = set()
@@ -197,6 +455,36 @@ def build_user_preferences(
     )
 
 
+def _render_manual_memory_input(user_id: str) -> None:
+    """Render the simple right-side memory capture control."""
+    with st.container(border=True):
+        st.markdown("### 记住我的偏好")
+        st.caption("写下口味、忌口、过敏、偏爱的环境或明确不想要的安排，LLM 会抽取并保存到左侧记忆。")
+        feedback = st.session_state.pop("manual_memory_feedback", None)
+        if feedback:
+            st.success(feedback)
+        raw = st.text_area(
+            "偏好/禁忌",
+            value=st.session_state.get("manual_memory_input", ""),
+            height=72,
+            placeholder="比如：我乳糖不耐受，喜欢酸口，别安排自助餐；爸妈不吃辣，想坐安静一点。",
+            key="manual_memory_input",
+        )
+        col_save, col_clear = st.columns([1, 1])
+        with col_save:
+            if st.button("交给 LLM 记住", type="primary", key="manual_memory_save"):
+                entries = remember_manual_preference(user_id, raw)
+                if entries:
+                    st.session_state["manual_memory_feedback"] = f"已沉淀 {len(entries)} 条记忆，左侧面板已更新。"
+                    st.rerun()
+                else:
+                    st.info("没有抽取到可沉淀的偏好或禁忌。")
+        with col_clear:
+            if st.button("清空输入", key="manual_memory_clear"):
+                st.session_state["manual_memory_input"] = ""
+                st.rerun()
+
+
 def main():
     st.set_page_config(
         page_title=PRODUCT_PAGE_TITLE,
@@ -214,39 +502,21 @@ def main():
         st.session_state.user_id = "demo-user-default"
     if "persona" not in st.session_state:
         st.session_state.persona = "family"
+    current_user_id = st.session_state.user_id
 
     with st.sidebar:
-        st.markdown("## 高级")
-
-        with st.expander(SIDEBAR_SECTIONS[0], expanded=False):
-            enable_weather = st.checkbox("模拟小阵雨", value=True)
-            enable_closed = st.checkbox("模拟商家临时停业", value=True)
-            compare_with_gpt = st.checkbox("显示基线对照", value=False)
-        st.session_state["enable_weather"] = enable_weather
-        st.session_state["enable_closed"] = enable_closed
-        st.session_state["compare_with_gpt"] = compare_with_gpt
-
-        with st.expander(SIDEBAR_SECTIONS[1], expanded=False):
-            new_uid = st.text_input(
-                "user_id",
-                value=st.session_state.user_id,
-                help="切换 user_id 可查看不同用户记忆。",
-            )
-            if new_uid != st.session_state.user_id:
-                st.session_state.user_id = new_uid
-                st.rerun()
-
-            render_memory_panel(st.session_state.user_id)
-            render_global_ece(samples_threshold=5)
-
-        st.caption(f"session {st.session_state.session_id[:12]}")
-        if st.button("重置当前会话", use_container_width=True):
-            for k in ["plan_v1", "plan_v2", "events", "card", "send_result",
-                      "broadcast_responses", "addons", "screening_result",
-                      "member_profiles", REROUTE_MEMORY_KEY]:
-                st.session_state.pop(k, None)
-            clear_session(st.session_state.session_id)
+        st.markdown("## 记忆")
+        st.caption("当前用户画像会影响后续方案生成。")
+        new_uid = st.text_input(
+            "当前用户",
+            value=st.session_state.user_id,
+            help="切换用户后会展示对应的偏好和禁忌记忆。",
+        )
+        if new_uid != st.session_state.user_id:
+            st.session_state.user_id = new_uid
             st.rerun()
+        current_user_id = st.session_state.user_id
+        render_memory_panel(current_user_id)
 
     _render_product_header()
 
@@ -256,6 +526,7 @@ def main():
         height=96,
         placeholder="比如：今天下午带家人逛一逛，别太远，想吃清淡一点。",
     )
+    _render_manual_memory_input(current_user_id)
 
     auto_mode = "screening" if detect_screening_mode(user_input) else "planning"
     persona_key, preset, area, budget, target_start, duration_hours, mode_choice, gen_btn = _render_task_bar(
@@ -263,12 +534,8 @@ def main():
     )
     st.session_state["mode"] = mode_choice
 
-    if "plan_v2" not in st.session_state and "screening_result" not in st.session_state:
-        with st.expander("补充材料，可选", expanded=False):
-            render_multimodal_intake(key_prefix=INLINE_MULTIMODAL_KEY_PREFIX)
-
     if gen_btn:
-        augmented_input = apply_multimodal_to_query(user_input)
+        augmented_input = user_input
         st.session_state.user_input = user_input
         prefs = build_user_preferences(
             preset,
@@ -284,10 +551,13 @@ def main():
             st.session_state.pop("plan_v2", None)
             st.session_state.pop(REROUTE_MEMORY_KEY, None)
             with st.status("正在筛选候选", expanded=False) as status:
-                result = screen_candidates(
-                    user_input=augmented_input, persona=persona_key,
-                    prefs=prefs, area_anchor=area,
-                    category="food", top_k=8,
+                result = _run_with_progress_trace(
+                    SCREENING_STREAM_STEPS,
+                    lambda: screen_candidates(
+                        user_input=augmented_input, persona=persona_key,
+                        prefs=prefs, area_anchor=area,
+                        category="food", top_k=8,
+                    ),
                 )
                 st.session_state.screening_result = result
                 status.update(
@@ -297,56 +567,52 @@ def main():
         else:
             st.session_state.pop("screening_result", None)
 
-            if compare_with_gpt:
-                cl, cr = st.columns(2)
-                with cl:
-                    st.markdown("### BJ-Pal")
-                    with st.spinner("生成方案中"):
-                        p1 = make_plan(user_input=augmented_input, persona=persona_key,
-                                       user_id=st.session_state.user_id, prefs=prefs,
-                                       area_anchor=area)
-                        st.session_state.plan_v1 = p1
-                        p2, events = probe_plan(p1, prefs=prefs)
-                        st.session_state.plan_v2 = p2
-                        st.session_state.events = events
-                        _seed_reroute_memory(p2, events)
-                        addons = suggest_addons(p2, prefs)
-                        st.session_state.addons = addons
-                        st.session_state.card = render_im_card(p2, audience=preset["audience"])
-                    _render_plan_summary(p2, label="含真实信号")
-                with cr:
-                    st.markdown("### 基线对照")
-                    with st.spinner("生成基线中"):
-                        p_base = make_plan(user_input=augmented_input, persona=persona_key,
-                                           user_id=st.session_state.user_id, prefs=prefs,
-                                           area_anchor=area)
-                    _render_plan_summary(p_base, label="无探针调整")
-                return
-
-            with st.status("正在生成方案", expanded=False) as status:
+            with st.status(PLAN_STATUS_LABEL, expanded=PLAN_STATUS_EXPANDED_WHILE_RUNNING) as status:
                 t0 = time.time()
                 try:
-                    p1 = make_plan(user_input=augmented_input, persona=persona_key,
-                                   user_id=st.session_state.user_id, prefs=prefs,
-                                   area_anchor=area)
+                    p1 = _run_with_progress_trace(
+                        PLAN_STREAM_STEPS,
+                        lambda on_token, on_progress, on_stream_event: make_plan(
+                            user_input=augmented_input,
+                            persona=persona_key,
+                            user_id=current_user_id,
+                            prefs=prefs,
+                            area_anchor=area,
+                            on_token=on_token,
+                            on_progress=on_progress,
+                            on_stream_event=on_stream_event,
+                        ),
+                        accepts_stream_callbacks=True,
+                    )
                     st.session_state.plan_v1 = p1
                     status.update(label=f"初版方案完成，{len(p1.steps)} 步，{time.time()-t0:.1f}s",
-                                  state="complete")
+                                  state="running", expanded=PLAN_STATUS_EXPANDED_WHILE_RUNNING)
                 except Exception as e:
-                    status.update(label=f"生成失败：{e}", state="error")
+                    status.update(label=f"生成失败：{e}", state="error", expanded=True)
                     st.exception(e)
                     return
 
-            with st.status("正在检查排队、天气和商家状态", expanded=False) as status:
-                time.sleep(0.4)
-                p2, events = probe_plan(p1, prefs=prefs)
+                status.update(label=PLAN_POSTCHECK_LABEL, state="running",
+                              expanded=PLAN_STATUS_EXPANDED_WHILE_RUNNING)
+                p2, events = _run_with_progress_trace(
+                    PROBE_STREAM_STEPS,
+                    lambda: probe_plan(p1, prefs=prefs),
+                )
                 st.session_state.plan_v2 = p2
                 st.session_state.events = events
                 _seed_reroute_memory(p2, events)
                 if events:
-                    status.update(label=f"已自动调整 {len(events)} 处", state="complete")
+                    status.update(
+                        label=f"方案已生成，已自动调整 {len(events)} 处",
+                        state="complete",
+                        expanded=PLAN_STATUS_EXPANDED_AFTER_DONE,
+                    )
                 else:
-                    status.update(label="无需调整", state="complete")
+                    status.update(
+                        label="方案已生成，无需调整",
+                        state="complete",
+                        expanded=PLAN_STATUS_EXPANDED_AFTER_DONE,
+                    )
 
             addons = suggest_addons(p2, prefs)
             st.session_state.addons = addons
@@ -387,8 +653,6 @@ def main():
         with tabs[0]:
             _render_share_panel(p2, prefs, PRESETS[st.session_state.persona])
         with tabs[1]:
-            _render_supporting_inputs()
-        with tabs[2]:
             _render_diagnostics(p2, prefs, area)
 
 
@@ -424,34 +688,39 @@ def _inject_product_css() -> None:
           }
           .bjpal-topline {
             display: flex;
-            align-items: end;
-            justify-content: space-between;
-            gap: 1.25rem;
+            align-items: flex-start;
+            flex-direction: column;
+            gap: 0.46rem;
             border-bottom: 1px solid var(--bjpal-line);
-            padding-bottom: 0.9rem;
-            margin-bottom: 1rem;
+            padding: 0.25rem 0.05rem 1.05rem;
+            margin-bottom: 1.05rem;
+          }
+          .bjpal-topline > div {
+            min-width: 0;
           }
           .bjpal-kicker {
             color: var(--bjpal-accent);
             font-size: 0.72rem;
             font-weight: 700;
             letter-spacing: 0;
-            margin-bottom: 0.2rem;
+            margin-bottom: 0.22rem;
           }
           .bjpal-title {
             color: var(--bjpal-ink);
-            font-size: clamp(1.45rem, 2.5vw, 2.2rem);
+            font-size: clamp(1.52rem, 2.5vw, 2.18rem);
             line-height: 1.08;
             font-weight: 760;
+            letter-spacing: 0;
             margin: 0;
+            white-space: nowrap;
           }
           .bjpal-subtitle {
             color: var(--bjpal-muted);
             font-size: 0.92rem;
             line-height: 1.55;
-            max-width: 460px;
+            max-width: 560px;
             margin: 0;
-            text-align: right;
+            text-align: left;
           }
           .bjpal-taskbar-label {
             color: var(--bjpal-muted);
@@ -524,6 +793,68 @@ def _inject_product_css() -> None:
             border-radius: 8px;
             min-height: 42px;
             font-weight: 650;
+            white-space: nowrap;
+          }
+          .stButton > button p {
+            white-space: nowrap;
+            word-break: keep-all;
+            overflow-wrap: normal;
+          }
+          .bjpal-trace-window {
+            height: 118px;
+            overflow: hidden;
+            border: 1px solid var(--bjpal-line);
+            border-radius: 8px;
+            background: rgba(249,250,251,0.74);
+            color: #6b7280;
+            padding: 0.56rem 0.68rem;
+            margin: 0.25rem 0 0.45rem;
+            font-size: 0.76rem;
+            line-height: 1.42;
+          }
+          .bjpal-trace-meta {
+            display: flex;
+            gap: 0.75rem;
+            color: #6b7280;
+            font-weight: 650;
+            white-space: nowrap;
+          }
+          .bjpal-trace-meta span:last-child {
+            margin-left: auto;
+          }
+          .bjpal-trace-lines {
+            margin-top: 0.34rem;
+          }
+          .bjpal-trace-line {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+          .bjpal-trace-stream {
+            margin-top: 0.34rem;
+            border-top: 1px solid rgba(107,114,128,0.18);
+            padding-top: 0.3rem;
+          }
+          .bjpal-trace-stream span {
+            display: block;
+            color: #9ca3af;
+            font-size: 0.69rem;
+            margin-bottom: 0.12rem;
+          }
+          .bjpal-trace-stream code {
+            display: block;
+            color: #6b7280;
+            background: transparent;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 0.71rem;
+          }
+          .bjpal-trace-hidden {
+            display: block;
+            margin-top: 0.24rem;
+            color: #9ca3af;
+            font-size: 0.69rem;
           }
           .stTabs [data-baseweb="tab-list"] {
             gap: 0.25rem;
@@ -536,11 +867,13 @@ def _inject_product_css() -> None:
           }
           @media (max-width: 760px) {
             .bjpal-topline {
-              align-items: start;
-              flex-direction: column;
+              gap: 0.42rem;
+            }
+            .bjpal-title {
+              font-size: clamp(0.98rem, 4.9vw, 1.42rem);
             }
             .bjpal-subtitle {
-              text-align: left;
+              max-width: 100%;
             }
             .bjpal-summary-grid {
               grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -733,20 +1066,10 @@ def _render_reroute_banner(events) -> None:
 
 def _render_map_summary(plan) -> None:
     snap = build_plan_snapshot(plan, st.session_state.get("events", []))
-    first_stop = next(
-        (s for s in getattr(plan, "steps", []) if getattr(s, "kind", "") != "depart"),
-        None,
-    )
-    last_stop = next(
-        (s for s in reversed(getattr(plan, "steps", [])) if getattr(s, "kind", "") != "depart"),
-        None,
-    )
     cols = st.columns(3)
     cols[0].metric("停靠点", snap["stop_count"])
     cols[1].metric("路上", snap["travel_label"])
     cols[2].metric("调整", snap["reroute_count"])
-    if first_stop and last_stop:
-        st.caption(f"起点：{first_stop.poi_name} · 终点：{last_stop.poi_name}")
 
 
 def _render_share_panel(plan, prefs, preset: dict) -> None:
@@ -780,51 +1103,6 @@ def _render_share_panel(plan, prefs, preset: dict) -> None:
                 render_member_weights_panel(st.session_state.member_profiles)
 
     st.caption("当前是演示环境：发送、预订和下单都调用 mock 接口。")
-
-
-def _render_supporting_inputs() -> None:
-    st.markdown("### 补充材料")
-    st.caption("这里保留原来的用户侧能力：文本/截图抽偏好，以及点评截图入库。")
-    render_multimodal_intake(key_prefix=SUPPORTING_MULTIMODAL_KEY_PREFIX)
-    _render_ugc_upload_panel()
-
-
-def _render_ugc_upload_panel() -> None:
-    with st.expander("上传点评截图并写入本地信号库", expanded=False):
-        uploaded = st.file_uploader(
-            "上传大众点评 / 美团 / 小红书截图",
-            type=["jpg", "jpeg", "png"],
-            key="ugc_index_upload",
-        )
-        if not uploaded:
-            st.caption("上传后会抽取 area_anchor、poi_name 和 aspect，并加入 SQLite。")
-            return
-
-        if st.button("抽取并入库", type="primary", key="ugc_index_btn"):
-            with st.spinner("正在抽取并写入本地库"):
-                try:
-                    image_bytes = uploaded.read()
-                    extracted, n = upload_and_index(
-                        image_bytes,
-                        image_mime=uploaded.type or "image/jpeg",
-                    )
-                except Exception as exc:
-                    st.error(f"抽取失败：{type(exc).__name__}: {exc}")
-                    return
-
-            st.success(f"已写入 {n} 条信号")
-            st.markdown(f"**片区**：`{extracted.get('area_anchor') or '?'}`")
-            st.markdown(f"**地点**：`{extracted.get('poi_name') or '?'}`")
-            for aspect in extracted.get("aspects", [])[:8]:
-                sentiment = aspect.get("sentiment", "mixed")
-                label = {"positive": "正向", "negative": "风险", "mixed": "混合"}.get(
-                    sentiment, sentiment
-                )
-                st.caption(
-                    f"{label} / {aspect.get('aspect_type', '?')} / "
-                    f"{aspect.get('confidence', 0):.2f} · "
-                    f"{aspect.get('evidence_summary', '')}"
-                )
 
 
 def _handle_group_broadcast(plan) -> None:
@@ -1107,30 +1385,35 @@ def _on_user_dissent(step_idx: int, prefs: UserPreferences):
     """用户点"换一个"按钮——构造 user_dissent_probe + replan。"""
     p2 = st.session_state.plan_v2
     target = p2.steps[step_idx]
-    excluded_names = (
-        _read_reroute_memory()
-        | collect_reroute_memory_names(p2, st.session_state.get("events", []))
-    )
-    cat_lv1 = {
-        "meal": "餐饮服务", "snack": "餐饮服务", "rest": "餐饮服务",
-        "shopping": "购物服务", "culture": "科教文化服务",
-        "citywalk": "风景名胜",
-    }.get(target.kind, "风景名胜")
-    poi = POI(id=target.poi_id or "x", name=target.poi_name,
-              category_lv1=cat_lv1,
-              category_lv2=None, category_lv3=None, typecode=None, district=None,
-              business_area=None, address=None, longitude=None, latitude=None,
-              rating=None, avg_price=None, open_time=None, phone=None, photos=[])
-    probe_r = user_dissent_probe(poi, party_size=prefs.party_size,
-                                  target_time=target.start_time,
-                                  reason_text="不想去这个，换一个")
-    new_plan, event = replan_step(
-        p2,
-        step_idx,
-        probe_r,
-        prefs=prefs,
-        excluded_poi_names=excluded_names,
-    )
+    with st.status("正在换一个", expanded=True) as status:
+        excluded_names = (
+            _read_reroute_memory()
+            | collect_reroute_memory_names(p2, st.session_state.get("events", []))
+        )
+        cat_lv1 = {
+            "meal": "餐饮服务", "snack": "餐饮服务", "rest": "餐饮服务",
+            "shopping": "购物服务", "culture": "科教文化服务",
+            "citywalk": "风景名胜",
+        }.get(target.kind, "风景名胜")
+        poi = POI(id=target.poi_id or "x", name=target.poi_name,
+                  category_lv1=cat_lv1,
+                  category_lv2=None, category_lv3=None, typecode=None, district=None,
+                  business_area=None, address=None, longitude=None, latitude=None,
+                  rating=None, avg_price=None, open_time=None, phone=None, photos=[])
+        probe_r = user_dissent_probe(poi, party_size=prefs.party_size,
+                                      target_time=target.start_time,
+                                      reason_text="不想去这个，换一个")
+        new_plan, event = _run_with_progress_trace(
+            REROUTE_STREAM_STEPS,
+            lambda: replan_step(
+                p2,
+                step_idx,
+                probe_r,
+                prefs=prefs,
+                excluded_poi_names=excluded_names,
+            ),
+        )
+        status.update(label="已完成替换检查", state="complete")
     st.session_state.plan_v2 = new_plan
     st.session_state.events.append(event)
     _write_reroute_memory(

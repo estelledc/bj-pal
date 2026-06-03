@@ -23,17 +23,146 @@ class UIRefactorTest(unittest.TestCase):
         self.assertIn("周末闲时活动规划", hero_source)
         self.assertNotIn("北京下午活动管家", hero_source)
 
+    def test_default_query_uses_best_showcase_case(self) -> None:
+        from src.ui import app
+        from src.ui import hero
+
+        expected = "今天下午带老婆和 5 岁娃出去玩，别离家太远，4 小时左右。老婆减脂，娃喜欢动物。"
+        hero_source = inspect.getsource(hero.render_hero)
+
+        self.assertEqual(app.DEFAULT_SHOWCASE_QUERY, expected)
+        self.assertEqual(app.PRESETS["family"]["user_input"], expected)
+        self.assertIn(expected, hero_source)
+        self.assertNotIn("这周末有半天空", hero_source)
+
     def test_workspace_keeps_map_persistent(self) -> None:
         from src.ui import app
+        from src.ui import map_view
+        from src.ui import timeline
 
         self.assertEqual(app.PRIMARY_WORKSPACE_COLUMNS, ("plan", "map"))
-        self.assertEqual(app.SECONDARY_RESULT_TABS, ("发送", "补充材料", "诊断"))
+        self.assertEqual(app.SECONDARY_RESULT_TABS, ("发送", "诊断"))
         self.assertEqual(app.DIAGNOSTIC_LABEL, "诊断")
         self.assertEqual(app.AGENT_SKILL_PANEL_LABEL, "Agent 能力目录")
-        self.assertNotEqual(
-            app.INLINE_MULTIMODAL_KEY_PREFIX,
-            app.SUPPORTING_MULTIMODAL_KEY_PREFIX,
+        self.assertEqual(map_view.MAP_VISUALIZATION_CAPTION, "规划结果可视化图")
+        self.assertEqual(timeline.DISSENT_BUTTON_LABEL, "换一个")
+        self.assertTrue(timeline.DISSENT_BUTTON_USE_CONTAINER_WIDTH)
+        self.assertGreaterEqual(timeline.TIMELINE_COLUMN_WEIGHTS[-1], 1.6)
+
+    def test_memory_panel_uses_chinese_display_labels(self) -> None:
+        from src.ui import memory_panel
+
+        self.assertEqual(memory_panel.MEMORY_PANEL_EMPTY_TITLE, "记忆（暂无）")
+        self.assertEqual(memory_panel.KIND_LABELS["preference"], "偏好")
+        self.assertEqual(memory_panel.KIND_LABELS["dislike"], "禁忌")
+        self.assertEqual(memory_panel.KIND_LABELS["fact"], "事实")
+        self.assertEqual(memory_panel.KIND_LABELS["identity"], "身份")
+        self.assertEqual(memory_panel.display_memory_key("diet:no_lactose"), "饮食：乳糖不耐受")
+        self.assertEqual(memory_panel.display_memory_key("taste:vinegar_flavor"), "口味：醋味")
+        self.assertEqual(memory_panel.display_memory_key("taste:watermelon"), "口味：西瓜")
+        self.assertEqual(memory_panel.display_memory_key("risk:urticaria"), "风险：荨麻疹")
+        self.assertEqual(memory_panel.display_memory_key("preference:buffet"), "偏好：自助餐")
+        self.assertEqual(memory_panel.display_memory_key("diet:no_beef"), "饮食：不吃牛肉")
+        self.assertEqual(memory_panel.display_memory_key("preference:pet_friendly"), "偏好：其他偏好")
+        self.assertNotIn("未命名", memory_panel.display_memory_key("risk:custom_llm_tag"))
+        self.assertNotIn("mention_count", inspect.getsource(memory_panel.render_memory_panel))
+
+    def test_action_buttons_keep_single_line_at_narrow_widths(self) -> None:
+        from src.ui import app
+        from src.ui import memory_panel
+        from src.ui import timeline
+
+        css_source = inspect.getsource(app._inject_product_css)
+
+        self.assertEqual(memory_panel.MEMORY_FORGET_BUTTON_LABEL, "忘记")
+        self.assertTrue(memory_panel.MEMORY_FORGET_BUTTON_USE_CONTAINER_WIDTH)
+        self.assertGreaterEqual(memory_panel.MEMORY_ROW_COLUMNS[-1], 1.45)
+        self.assertTrue(timeline.DISSENT_BUTTON_USE_CONTAINER_WIDTH)
+        self.assertGreaterEqual(timeline.TIMELINE_COLUMN_WEIGHTS[-1], 1.6)
+        self.assertIn(".stButton > button p", css_source)
+        self.assertIn("word-break: keep-all", css_source)
+        self.assertIn("overflow-wrap: normal", css_source)
+
+    def test_header_layout_stacks_subtitle_below_title_to_prevent_overlap(self) -> None:
+        from src.ui import app
+
+        css_source = inspect.getsource(app._inject_product_css)
+
+        self.assertIn("flex-direction: column", css_source)
+        self.assertIn("align-items: flex-start", css_source)
+        self.assertIn("white-space: nowrap", css_source)
+        self.assertIn("max-width: 560px", css_source)
+        self.assertNotIn("justify-content: space-between", css_source)
+        self.assertNotIn("text-align: right", css_source)
+
+    def test_runtime_streaming_progress_is_configured(self) -> None:
+        from src.ui import app
+
+        main_source = inspect.getsource(app.main)
+        dissent_source = inspect.getsource(app._on_user_dissent)
+
+        self.assertGreaterEqual(len(app.PLAN_STREAM_STEPS), 3)
+        self.assertGreaterEqual(len(app.REROUTE_STREAM_STEPS), 3)
+        self.assertEqual(app.TRACE_WINDOW_TITLE, "模型执行过程")
+        self.assertGreaterEqual(app.TRACE_WINDOW_MAX_LINES, 4)
+        self.assertIn("正在理解你的偏好", app.PLAN_STREAM_STEPS[0])
+        self.assertIn("_run_with_progress_trace", main_source)
+        self.assertIn("_run_with_progress_trace", dissent_source)
+
+    def test_planning_status_uses_one_expanded_then_collapsed_block(self) -> None:
+        from src.ui import app
+
+        main_source = inspect.getsource(app.main)
+
+        self.assertEqual(app.PLAN_STATUS_LABEL, "正在生成方案")
+        self.assertEqual(app.PLAN_POSTCHECK_LABEL, "正在检查排队、天气和商家状态")
+        self.assertTrue(app.PLAN_STATUS_EXPANDED_WHILE_RUNNING)
+        self.assertFalse(app.PLAN_STATUS_EXPANDED_AFTER_DONE)
+        self.assertIn(
+            "with st.status(PLAN_STATUS_LABEL, expanded=PLAN_STATUS_EXPANDED_WHILE_RUNNING)",
+            main_source,
         )
+        self.assertNotIn(
+            'with st.status("正在检查排队、天气和商家状态"',
+            main_source,
+        )
+        self.assertIn(
+            "expanded=PLAN_STATUS_EXPANDED_AFTER_DONE",
+            main_source,
+        )
+
+    def test_progress_worker_uses_captured_session_values(self) -> None:
+        from src.ui import app
+
+        main_source = inspect.getsource(app.main)
+
+        self.assertIn("current_user_id = st.session_state.user_id", main_source)
+        self.assertNotIn("user_id=st.session_state.user_id", main_source)
+
+    def test_progress_trace_window_slides_and_shows_tokens(self) -> None:
+        from src.ui import app
+
+        lines = [f"阶段 {i}" for i in range(1, app.TRACE_WINDOW_MAX_LINES + 3)]
+        html = app.build_trace_window_html(
+            lines,
+            token_count=128,
+            title="模型执行过程",
+            stream_text='{"steps":[{"kind":"meal"',
+        )
+
+        self.assertIn("bjpal-trace-window", html)
+        self.assertIn("模型执行过程", html)
+        self.assertIn("token 估算 128", html)
+        self.assertIn("模型输出", html)
+        self.assertIn("&quot;steps&quot;", html)
+        self.assertNotIn("阶段 1", html)
+        self.assertNotIn("阶段 2", html)
+        self.assertIn(f"阶段 {app.TRACE_WINDOW_MAX_LINES + 2}", html)
+
+        css_source = inspect.getsource(app._inject_product_css)
+        self.assertIn(".bjpal-trace-window", css_source)
+        self.assertIn("height:", css_source)
+        self.assertIn("overflow: hidden", css_source)
 
     def test_task_bar_contains_primary_user_controls(self) -> None:
         from src.ui import app
@@ -42,7 +171,7 @@ class UIRefactorTest(unittest.TestCase):
             app.TASK_BAR_FIELDS,
             ("persona", "area", "budget", "start_time", "duration", "mode", "generate"),
         )
-        self.assertEqual(app.SIDEBAR_SECTIONS, ("演示开关", "记忆与校准"))
+        self.assertEqual(app.SIDEBAR_SECTIONS, ("记忆",))
 
     def test_runtime_backend_label_supports_dpsk(self) -> None:
         from src.ui import app
@@ -136,6 +265,46 @@ class UIRefactorTest(unittest.TestCase):
             names,
             {"当前餐厅", "当前咖啡", "初始餐厅", "旧咖啡"},
         )
+
+    def test_manual_memory_capture_uses_llm_intake(self) -> None:
+        from src.agents.llm_client import LLMResponse
+        from src.agents.user_memory import forget_all, get_preferences
+        from src.ui.app import remember_manual_preference
+
+        class Client:
+            @property
+            def name(self):
+                return "manual-memory-test"
+
+            def complete(self, *args, **kwargs):
+                return LLMResponse(text="{}", parsed={
+                    "area_anchor": "",
+                    "poi_name": "",
+                    "taste_tags": ["vinegar_flavor"],
+                    "scene_tags": [],
+                    "risk_tags": ["medical_diet_risk"],
+                    "diet_flags": ["no_lactose"],
+                    "preference_tags": ["sour_food"],
+                    "avoid_tags": ["buffet"],
+                    "aspects": [],
+                })
+
+        user_id = "u-ui-memory-test"
+        try:
+            entries = remember_manual_preference(
+                user_id,
+                "乳糖不耐受，爱吃醋，不想吃自助",
+                client=Client(),
+            )
+            keys = {entry.mem_key for entry in get_preferences(user_id)}
+
+            self.assertGreaterEqual(len(entries), 1)
+            self.assertIn("diet:no_lactose", keys)
+            self.assertIn("taste:vinegar_flavor", keys)
+            self.assertIn("preference:sour_food", keys)
+            self.assertIn("avoid:buffet", keys)
+        finally:
+            forget_all(user_id)
 
 
 if __name__ == "__main__":
