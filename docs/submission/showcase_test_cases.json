@@ -1,0 +1,1592 @@
+{
+  "generated_at": "2026-06-02T19:41:18+08:00",
+  "backend": "dpsk",
+  "source_path": "data/showcase_candidates_dpsk.json",
+  "total_candidates_run": 39,
+  "selected_count": 8,
+  "excluded_scenarios": [],
+  "selection_criteria": [
+    "端到端成功交付，且最终方案保留 4-8 个清晰步骤",
+    "POI 不重复，步骤时间、类型、理由适合直接展示",
+    "能体现用户画像、偏好、禁忌、预算、亲子/父母/朋友等差异化需求",
+    "优先保留发生 reroute 或风险处理的案例，展示 agent 可调整能力",
+    "最终 4-10 条尽量覆盖不同 persona、片区和任务类型"
+  ],
+  "selected_cases": [
+    {
+      "rank": 1,
+      "scenario": "S01",
+      "title": "亲子周末·五道营",
+      "persona": "family",
+      "persona_zh": "亲子/家庭",
+      "area_anchor": "五道营-雍和宫片区",
+      "user_input": "今天下午带老婆和 5 岁娃出去玩，别离家太远，4 小时左右。老婆减脂，娃喜欢动物。",
+      "prefs": {
+        "persona": "family",
+        "party_size": 3,
+        "has_child": true,
+        "child_age": 5,
+        "diet_flags": [
+          "light_diet"
+        ],
+        "walk_radius_km": 1.5,
+        "budget_per_person": 120,
+        "target_start": "14:00",
+        "duration_hours": 4.5
+      },
+      "why_selected": [
+        "端到端成功返回规划结果",
+        "步骤数 5，适合文档展示",
+        "POI 无重复，路线结构清楚",
+        "每个核心步骤都有可解释理由",
+        "包含 2 次 reroute/风险处理，可展示 agent 调整能力",
+        "覆盖偏好/禁忌：light_diet"
+      ],
+      "metrics": {
+        "showcase_score": 28.0,
+        "ok": true,
+        "step_count": 5,
+        "real_step_count": 4,
+        "unique_poi_count": 4,
+        "duplicate_poi_count": 0,
+        "rationale_coverage": 1.0,
+        "reroute_count": 2,
+        "has_diet_or_memory_signal": true,
+        "total_seconds": 24.2
+      },
+      "observed_result": {
+        "summary": "下午带家人在五道营-雍和宫片区轻松漫步，体验胡同文化、参观雍和宫、地坛公园看小动物，最后在金鼎轩享用清淡晚餐，4小时尽享家庭乐趣。",
+        "steps": [
+          {
+            "order": 1,
+            "time": "14:00",
+            "kind": "citywalk",
+            "poi_name": "国子监",
+            "duration_min": 40,
+            "mode_to_here": "walking",
+            "travel_time_min": 0,
+            "rationale": "⚠️ reroute（原 POI 排队 65min，超阈值）→ 切换到 国子监（风景名胜, rating 4.7, 免费/不详）",
+            "is_rerouted": true
+          },
+          {
+            "order": 2,
+            "time": "14:50",
+            "kind": "culture",
+            "poi_name": "北京孔庙",
+            "duration_min": 40,
+            "mode_to_here": "walking",
+            "travel_time_min": 0,
+            "rationale": "⚠️ reroute（原 POI 排队 85min，超阈值）→ 切换到 北京孔庙（风景名胜, rating 4.6, 免费/不详）",
+            "is_rerouted": true
+          },
+          {
+            "order": 3,
+            "time": "15:40",
+            "kind": "rest",
+            "poi_name": "地坛公园",
+            "duration_min": 40,
+            "mode_to_here": "walking",
+            "travel_time_min": 0,
+            "rationale": "地坛公园开阔绿地，常有鸽子、松鼠等小动物，娃可以奔跑观察；老婆饭后散步有助于减脂，且公园免门票、离家近。",
+            "is_rerouted": false
+          },
+          {
+            "order": 4,
+            "time": "16:30",
+            "kind": "meal",
+            "poi_name": "金鼎轩(地坛店)",
+            "duration_min": 50,
+            "mode_to_here": "walking",
+            "travel_time_min": 0,
+            "rationale": "金鼎轩提供清淡蒸菜和粥品，满足老婆减脂饮食需求；儿童友好环境，价格亲民，且紧邻地坛，步行即达。",
+            "is_rerouted": false
+          },
+          {
+            "order": 5,
+            "time": "17:20",
+            "kind": "depart",
+            "poi_name": "返程",
+            "duration_min": 30,
+            "mode_to_here": "walking",
+            "travel_time_min": 0,
+            "rationale": "步行回家，沿路可消化舒缓，时间可控，确保4小时内结束行程，不影响娃的作息。",
+            "is_rerouted": false
+          }
+        ],
+        "reroute_events": [
+          {
+            "failed_poi_name": "五道营胡同",
+            "replacement_poi_name": "国子监",
+            "reason": "queue",
+            "evidence": [
+              "UGC[crowd]: 五道营胡同周末下午逛街人流大，咖啡店排队 30 分钟，停车困难。",
+              "UGC[transport]: 五道营胡同不建议自驾，胡同口停车位少，步行和地铁更稳。"
+            ]
+          },
+          {
+            "failed_poi_name": "雍和宫",
+            "replacement_poi_name": "北京孔庙",
+            "reason": "queue",
+            "evidence": [
+              "评价：'雍和宫假期人多、入口排队明显、需要提前规划入口和时间' (UGC conf=0.86)",
+              "评价：'西门可能不是游客入口或动线较绕，建议确认主入口' (UGC conf=0.78)"
+            ]
+          }
+        ]
+      },
+      "timing": {
+        "plan_s": 24.1,
+        "probe_s": 0.1,
+        "total_s": 24.2
+      }
+    },
+    {
+      "rank": 2,
+      "scenario": "S32",
+      "title": "陪父母吃馆·王府井",
+      "persona": "with_parents",
+      "persona_zh": "陪父母",
+      "area_anchor": "王府井-东单片区",
+      "user_input": "陪爸妈在王府井吃顿正经的，再带他们逛逛。",
+      "prefs": {
+        "persona": "with_parents",
+        "party_size": 3,
+        "walk_radius_km": 1.0,
+        "budget_per_person": 200,
+        "target_start": "11:30",
+        "duration_hours": 4.0
+      },
+      "why_selected": [
+        "端到端成功返回规划结果",
+        "步骤数 5，适合文档展示",
+        "POI 无重复，路线结构清楚",
+        "每个核心步骤都有可解释理由",
+        "包含 1 次 reroute/风险处理，可展示 agent 调整能力",
+        "陪父母画像明确，能体现慢节奏和舒适度"
+      ],
+      "metrics": {
+        "showcase_score": 25.5,
+        "ok": true,
+        "step_count": 5,
+        "real_step_count": 4,
+        "unique_poi_count": 4,
+        "duplicate_poi_count": 0,
+        "rationale_coverage": 1.0,
+        "reroute_count": 1,
+        "has_diet_or_memory_signal": false,
+        "total_seconds": 19.8
+      },
+      "observed_result": {
+        "summary": "陪爸妈在王府井吃正经涮肉，随后逛步行街、参观百年教堂、喝杯咖啡，轻松惬意的半日游。",
+        "steps": [
+          {
+            "order": 1,
+            "time": "11:30",
+            "kind": "meal",
+            "poi_name": "南门涮肉(东单店)",
+            "duration_min": 60,
+            "mode_to_here": "walking",
+            "travel_time_min": 0,
+            "rationale": "南门涮肉口味清淡不辣，人均135元在预算内，适合带父母吃一顿正经的老北京涮肉，环境雅致，老人容易接受。",
+            "is_rerouted": false
+          },
+          {
+            "order": 2,
+            "time": "12:30",
+            "kind": "citywalk",
+            "poi_name": "东单公园",
+            "duration_min": 60,
+            "mode_to_here": "walking",
+            "travel_time_min": 0,
+            "rationale": "⚠️ reroute（原 POI 排队 44min，超阈值）→ 切换到 东单公园（公园广场, rating 4.6, 免费/不详）",
+            "is_rerouted": true
+          },
+          {
+            "order": 3,
+            "time": "13:30",
+            "kind": "culture",
+            "poi_name": "天主教北京总教区王府井天主堂东堂",
+            "duration_min": 30,
+            "mode_to_here": "walking",
+            "travel_time_min": 0,
+            "rationale": "王府井天主堂是百年历史建筑，外观庄重典雅，适合带父母安静参观，拍照留念，步行可达。",
+            "is_rerouted": false
+          },
+          {
+            "order": 4,
+            "time": "14:00",
+            "kind": "snack",
+            "poi_name": "% Arabica阿拉比卡咖啡(北京APM店)",
+            "duration_min": 30,
+            "mode_to_here": "walking",
+            "travel_time_min": 0,
+            "rationale": "带父母在APM商场内享用精品咖啡，环境舒适，可小憩解乏，咖啡和轻饮选择丰富，人均适中。",
+            "is_rerouted": false
+          },
+          {
+            "order": 5,
+            "time": "14:30",
+            "kind": "depart",
+            "poi_name": "返程",
+            "duration_min": 60,
+            "mode_to_here": "walking",
+            "travel_time_min": 0,
+            "rationale": "结束全天活动，从容步行返回住处或前往地铁站，预留充足时间，避免父母赶路疲惫。",
+            "is_rerouted": false
+          }
+        ],
+        "reroute_events": [
+          {
+            "failed_poi_name": "王府井步行街",
+            "replacement_poi_name": "东单公园",
+            "reason": "queue",
+            "evidence": [
+              "UGC[transport]: 便民小吃(王府井步行街店) 停车位少，周末下午停车困难，建议地铁或步行。"
+            ]
+          }
+        ]
+      },
+      "timing": {
+        "plan_s": 19.8,
+        "probe_s": 0.0,
+        "total_s": 19.8
+      }
+    },
+    {
+      "rank": 3,
+      "scenario": "S14",
+      "title": "朋友夜生活·三里屯V3",
+      "persona": "friends",
+      "persona_zh": "朋友聚会",
+      "area_anchor": "三里屯片区V3",
+      "user_input": "周五晚上跟朋友放松一下，吃饭聊天看夜景。",
+      "prefs": {
+        "persona": "friends",
+        "party_size": 3,
+        "walk_radius_km": 1.5,
+        "budget_per_person": 300,
+        "target_start": "18:30",
+        "duration_hours": 4.0
+      },
+      "why_selected": [
+        "端到端成功返回规划结果",
+        "步骤数 5，适合文档展示",
+        "POI 无重复，路线结构清楚",
+        "每个核心步骤都有可解释理由",
+        "包含 2 次 reroute/风险处理，可展示 agent 调整能力",
+        "朋友聚会画像明确，便于展示多人协同场景"
+      ],
+      "metrics": {
+        "showcase_score": 25.2,
+        "ok": true,
+        "step_count": 5,
+        "real_step_count": 4,
+        "unique_poi_count": 4,
+        "duplicate_poi_count": 0,
+        "rationale_coverage": 1.0,
+        "reroute_count": 2,
+        "has_diet_or_memory_signal": false,
+        "total_seconds": 29.4
+      },
+      "observed_result": {
+        "summary": "周五晚与朋友在三里屯NEED创意韩国料理聚餐，漫步太古里看夜景，到OUR Bakery吃甜品，再夜游三里桥，最后返程，轻松4小时。",
+        "steps": [
+          {
+            "order": 1,
+            "time": "18:30",
+            "kind": "meal",
+            "poi_name": "NEED创意韩国料理(三里屯太古里店)",
+            "duration_min": 60,
+            "mode_to_here": "walking",
+            "travel_time_min": 0,
+            "rationale": "NEED创意韩国料理评分高、人均129元，适合朋友聚餐聊天，菜品创意有趣，符合预算且氛围轻松。",
+            "is_rerouted": false
+          },
+          {
+            "order": 2,
+            "time": "19:30",
+            "kind": "citywalk",
+            "poi_name": "大卫王智力竞技俱乐部",
+            "duration_min": 60,
+            "mode_to_here": "walking",
+            "travel_time_min": 0,
+            "rationale": "⚠️ reroute（原 POI 排队 61min，超阈值）→ 切换到 大卫王智力竞技俱乐部（风景名胜相关, rating 4.4, 免费/不详）",
+            "is_rerouted": true
+          },
+          {
+            "order": 3,
+            "time": "20:30",
+            "kind": "snack",
+            "poi_name": "蘇飯(3·3大厦店)",
+            "duration_min": 40,
+            "mode_to_here": "walking",
+            "travel_time_min": 0,
+            "rationale": "⚠️ reroute（原 POI 排队 67min，超阈值）→ 切换到 蘇飯(3·3大厦店)（快餐厅, rating 4.7, ¥104）",
+            "is_rerouted": true
+          },
+          {
+            "order": 4,
+            "time": "21:10",
+            "kind": "citywalk",
+            "poi_name": "三里桥",
+            "duration_min": 40,
+            "mode_to_here": "walking",
+            "travel_time_min": 0,
+            "rationale": "三里桥位于亮马河畔，夜景宁静优美，从三里屯步行可达，适合朋友夜游拍照，享受夜晚休闲。",
+            "is_rerouted": false
+          },
+          {
+            "order": 5,
+            "time": "21:50",
+            "kind": "depart",
+            "poi_name": "返程",
+            "duration_min": 40,
+            "mode_to_here": "transit",
+            "travel_time_min": 0,
+            "rationale": "返程结束愉快的周五夜，确保按时解散，步行或乘车回家。",
+            "is_rerouted": false
+          }
+        ],
+        "reroute_events": [
+          {
+            "failed_poi_name": "三里屯太古里",
+            "replacement_poi_name": "大卫王智力竞技俱乐部",
+            "reason": "queue",
+            "evidence": [
+              "UGC 直方图：4 条提及实际等位时长，均值 61min（p50=62 / p90=80min）",
+              "置信度 0.5（≥ 0.5 才采用此分支）"
+            ]
+          },
+          {
+            "failed_poi_name": "OUR Bakery(三里屯太古里北区店)",
+            "replacement_poi_name": "蘇飯(3·3大厦店)",
+            "reason": "queue",
+            "evidence": [
+              "UGC[queue]: OUR Bakery(三里屯太古里北区店) 周末排队 20 分钟，等位可控，适合吃饭后继续逛街。"
+            ]
+          }
+        ]
+      },
+      "timing": {
+        "plan_s": 29.3,
+        "probe_s": 0.0,
+        "total_s": 29.4
+      }
+    },
+    {
+      "rank": 4,
+      "scenario": "S23",
+      "title": "独自逛展·798",
+      "persona": "solo",
+      "persona_zh": "独自出行",
+      "area_anchor": "798-酒仙桥艺术区",
+      "user_input": "周末一个人想看展，再吃个不油腻的饭。",
+      "prefs": {
+        "persona": "solo",
+        "party_size": 1,
+        "walk_radius_km": 1.5,
+        "budget_per_person": 180,
+        "target_start": "13:00",
+        "duration_hours": 5.0
+      },
+      "why_selected": [
+        "端到端成功返回规划结果",
+        "步骤数 7，适合文档展示",
+        "POI 无重复，路线结构清楚",
+        "每个核心步骤都有可解释理由",
+        "包含 2 次 reroute/风险处理，可展示 agent 调整能力",
+        "独自出行画像明确，便于展示轻量个人规划"
+      ],
+      "metrics": {
+        "showcase_score": 25.0,
+        "ok": true,
+        "step_count": 7,
+        "real_step_count": 6,
+        "unique_poi_count": 6,
+        "duplicate_poi_count": 0,
+        "rationale_coverage": 1.0,
+        "reroute_count": 2,
+        "has_diet_or_memory_signal": false,
+        "total_seconds": 40.3
+      },
+      "observed_result": {
+        "summary": "一个人下午在798看展、喝咖啡、吃云南菜、漫步园区，轻松艺术之旅。",
+        "steps": [
+          {
+            "order": 1,
+            "time": "13:00",
+            "kind": "culture",
+            "poi_name": "遇见博物馆(北京798馆)",
+            "duration_min": 90,
+            "mode_to_here": "walking",
+            "travel_time_min": 0,
+            "rationale": "一个人静心欣赏艺术展览，遇见博物馆位于798核心区，展览丰富，适合solo看展。",
+            "is_rerouted": false
+          },
+          {
+            "order": 2,
+            "time": "14:30",
+            "kind": "citywalk",
+            "poi_name": "毛哩星动物的园",
+            "duration_min": 30,
+            "mode_to_here": "walking",
+            "travel_time_min": 0,
+            "rationale": "⚠️ reroute（原 POI 排队 58min，超阈值）→ 切换到 毛哩星动物的园（公园广场, rating 4.3, 免费/不详）",
+            "is_rerouted": true
+          },
+          {
+            "order": 3,
+            "time": "15:00",
+            "kind": "snack",
+            "poi_name": "NaNa Restaurant",
+            "duration_min": 30,
+            "mode_to_here": "walking",
+            "travel_time_min": 0,
+            "rationale": "⚠️ reroute（原 POI 排队 62min，超阈值）→ 切换到 NaNa Restaurant（餐饮相关场所, rating 4.6, ¥117）",
+            "is_rerouted": true
+          },
+          {
+            "order": 4,
+            "time": "15:30",
+            "kind": "meal",
+            "poi_name": "小印象云南菜",
+            "duration_min": 60,
+            "mode_to_here": "walking",
+            "travel_time_min": 0,
+            "rationale": "云南菜清淡不油腻，符合需求，评分高且价格适中，适合一人用餐。",
+            "is_rerouted": false
+          },
+          {
+            "order": 5,
+            "time": "16:30",
+            "kind": "citywalk",
+            "poi_name": "火车头广场",
+            "duration_min": 30,
+            "mode_to_here": "walking",
+            "travel_time_min": 0,
+            "rationale": "饭后散步至火车头广场，欣赏标志性火车头装置，适合拍照放松。",
+            "is_rerouted": false
+          },
+          {
+            "order": 6,
+            "time": "17:00",
+            "kind": "citywalk",
+            "poi_name": "751D·PARK",
+            "duration_min": 30,
+            "mode_to_here": "walking",
+            "travel_time_min": 0,
+            "rationale": "继续逛751D·PARK，感受时尚与工业结合的设计园区，为行程画上句号。",
+            "is_rerouted": false
+          },
+          {
+            "order": 7,
+            "time": "17:30",
+            "kind": "depart",
+            "poi_name": "北京798艺术区电子广场",
+            "duration_min": 30,
+            "mode_to_here": "walking",
+            "travel_time_min": 0,
+            "rationale": "从电子广场步行返程，结束愉快的798艺术之旅。",
+            "is_rerouted": false
+          }
+        ],
+        "reroute_events": [
+          {
+            "failed_poi_name": "798艺术区",
+            "replacement_poi_name": "毛哩星动物的园",
+            "reason": "queue",
+            "evidence": [
+              "UGC[queue]: 柠季·手打柠檬茶(北京798艺术区店) 周末排队 20 分钟，等位可控，适合吃饭后继续逛街。",
+              "UGC[queue]: 星巴克臻选(798艺术区店) 周末排队 60 分钟，等位可控，适合吃饭后继续逛街。"
+            ]
+          },
+          {
+            "failed_poi_name": "VOYAGE COFFEE",
+            "replacement_poi_name": "NaNa Restaurant",
+            "reason": "queue",
+            "evidence": [
+              "UGC[queue]: VOYAGE COFFEE 周末排队 60 分钟，等位可控，适合吃饭后继续逛街。"
+            ]
+          }
+        ]
+      },
+      "timing": {
+        "plan_s": 40.3,
+        "probe_s": 0.1,
+        "total_s": 40.3
+      }
+    },
+    {
+      "rank": 5,
+      "scenario": "S02",
+      "title": "亲子文化·安定门V3",
+      "persona": "family",
+      "persona_zh": "亲子/家庭",
+      "area_anchor": "安定门片区V3",
+      "user_input": "周日带爸妈和娃逛胡同看古迹，不要太晒，要有座位歇脚。",
+      "prefs": {
+        "persona": "family",
+        "party_size": 4,
+        "has_child": true,
+        "child_age": 8,
+        "walk_radius_km": 1.2,
+        "budget_per_person": 150,
+        "target_start": "14:00",
+        "duration_hours": 4.0
+      },
+      "why_selected": [
+        "端到端成功返回规划结果",
+        "步骤数 5，适合文档展示",
+        "POI 无重复，路线结构清楚",
+        "每个核心步骤都有可解释理由",
+        "包含 2 次 reroute/风险处理，可展示 agent 调整能力",
+        "亲子画像明确，能体现儿童友好约束"
+      ],
+      "metrics": {
+        "showcase_score": 26.0,
+        "ok": true,
+        "step_count": 5,
+        "real_step_count": 4,
+        "unique_poi_count": 4,
+        "duplicate_poi_count": 0,
+        "rationale_coverage": 1.0,
+        "reroute_count": 2,
+        "has_diet_or_memory_signal": false,
+        "total_seconds": 59.6
+      },
+      "observed_result": {
+        "summary": "下午2点从雍和宫开启古迹之旅，经金鼎轩茶歇和福叁咖啡休整，傍晚漫步什刹海，18时返程，全程有遮阴和座位，适合带老人孩子。",
+        "steps": [
+          {
+            "order": 1,
+            "time": "14:00",
+            "kind": "culture",
+            "poi_name": "故宫博物院-中和殿",
+            "duration_min": 50,
+            "mode_to_here": "walking",
+            "travel_time_min": 0,
+            "rationale": "⚠️ reroute（原 POI 排队 70min，超阈值）→ 切换到 故宫博物院-中和殿（风景名胜, rating 5.0, 免费/不详）",
+            "is_rerouted": true
+          },
+          {
+            "order": 2,
+            "time": "15:05",
+            "kind": "meal",
+            "poi_name": "金鼎轩(地坛店)",
+            "duration_min": 40,
+            "mode_to_here": "walking",
+            "travel_time_min": 0,
+            "rationale": "从雍和宫步行8分钟即到，老字号茶点不辣、有充足座椅，适合全家补充能量，预算人均88元，老人孩子都能吃得舒服。",
+            "is_rerouted": false
+          },
+          {
+            "order": 3,
+            "time": "16:05",
+            "kind": "rest",
+            "poi_name": "福叁咖啡(美术馆店)",
+            "duration_min": 40,
+            "mode_to_here": "driving",
+            "travel_time_min": 0,
+            "rationale": "乘车至美术馆旁的文艺咖啡店，室内有座位、空调凉爽，适合老人和孩子短暂休憩，孩子也可喝杯果汁恢复体力。",
+            "is_rerouted": false
+          },
+          {
+            "order": 4,
+            "time": "17:05",
+            "kind": "citywalk",
+            "poi_name": "什刹海",
+            "duration_min": 40,
+            "mode_to_here": "driving",
+            "travel_time_min": 0,
+            "rationale": "傍晚什刹海沿湖树荫渐多，石凳随处可坐，可带老人孩子看银锭桥、逛胡同，同时避开午后暴晒。",
+            "is_rerouted": false
+          },
+          {
+            "order": 5,
+            "time": "17:45",
+            "kind": "depart",
+            "poi_name": "返程",
+            "duration_min": 15,
+            "mode_to_here": "transit",
+            "travel_time_min": 0,
+            "rationale": "结束轻松的半日游，乘车返回住所，确保18:00前到家，老人孩子不会太累。",
+            "is_rerouted": false
+          }
+        ],
+        "reroute_events": [
+          {
+            "failed_poi_name": "雍和宫",
+            "replacement_poi_name": "鼓楼",
+            "reason": "queue",
+            "evidence": [
+              "评价：'雍和宫假期人多、入口排队明显、需要提前规划入口和时间' (UGC conf=0.86)",
+              "评价：'西门可能不是游客入口或动线较绕，建议确认主入口' (UGC conf=0.78)"
+            ]
+          },
+          {
+            "failed_poi_name": "鼓楼",
+            "replacement_poi_name": "故宫博物院-中和殿",
+            "reason": "queue",
+            "evidence": [
+              "UGC[transport]: 伊峰德顺兴(鼓楼店) 停车位少，周末下午停车困难，建议地铁或步行。",
+              "UGC[transport]: 遂隐茶苑(鼓楼四合院店) 停车位少，周末下午停车困难，建议地铁或步行。"
+            ]
+          }
+        ]
+      },
+      "timing": {
+        "plan_s": 59.5,
+        "probe_s": 0.1,
+        "total_s": 59.6
+      }
+    },
+    {
+      "rank": 6,
+      "scenario": "S04",
+      "title": "亲子赏景·什刹海",
+      "persona": "family",
+      "persona_zh": "亲子/家庭",
+      "area_anchor": "什刹海-鼓楼片区",
+      "user_input": "娃想看湖景拍照，老人腿脚不太利索，全程慢节奏。",
+      "prefs": {
+        "persona": "family",
+        "party_size": 4,
+        "has_child": true,
+        "child_age": 6,
+        "walk_radius_km": 1.0,
+        "budget_per_person": 130,
+        "target_start": "14:30",
+        "duration_hours": 3.5
+      },
+      "why_selected": [
+        "端到端成功返回规划结果",
+        "步骤数 5，适合文档展示",
+        "POI 无重复，路线结构清楚",
+        "每个核心步骤都有可解释理由",
+        "包含 2 次 reroute/风险处理，可展示 agent 调整能力",
+        "亲子画像明确，能体现儿童友好约束"
+      ],
+      "metrics": {
+        "showcase_score": 26.0,
+        "ok": true,
+        "step_count": 5,
+        "real_step_count": 4,
+        "unique_poi_count": 4,
+        "duplicate_poi_count": 0,
+        "rationale_coverage": 1.0,
+        "reroute_count": 2,
+        "has_diet_or_memory_signal": false,
+        "total_seconds": 35.3
+      },
+      "observed_result": {
+        "summary": "慢节奏家庭游：后海湖边拍照→湖景咖啡厅休息→鼓楼打卡→烟袋斜街闲逛，全程3.5小时照顾老人腿脚和孩子兴趣。",
+        "steps": [
+          {
+            "order": 1,
+            "time": "14:30",
+            "kind": "citywalk",
+            "poi_name": "什刹海-后海",
+            "duration_min": 60,
+            "mode_to_here": "walking",
+            "travel_time_min": 0,
+            "rationale": "后海湖面开阔，适合孩子看湖景拍照；岸边平坦少台阶，老人散步不费力，满足核心需求。",
+            "is_rerouted": false
+          },
+          {
+            "order": 2,
+            "time": "15:40",
+            "kind": "snack",
+            "poi_name": "View&Chill",
+            "duration_min": 60,
+            "mode_to_here": "walking",
+            "travel_time_min": 0,
+            "rationale": "沿后海步行10分钟即达，二层有湖景座位，老人可坐下休息，孩子喝饮品，慢节奏恢复体力。",
+            "is_rerouted": false
+          },
+          {
+            "order": 3,
+            "time": "16:50",
+            "kind": "culture",
+            "poi_name": "宏恩观",
+            "duration_min": 30,
+            "mode_to_here": "bicycling",
+            "travel_time_min": 0,
+            "rationale": "⚠️ reroute（原 POI 排队 45min，超阈值）→ 切换到 宏恩观（风景名胜相关, rating 4.5, 免费/不详）",
+            "is_rerouted": true
+          },
+          {
+            "order": 4,
+            "time": "17:25",
+            "kind": "shopping",
+            "poi_name": "新民菜市场",
+            "duration_min": 30,
+            "mode_to_here": "walking",
+            "travel_time_min": 0,
+            "rationale": "⚠️ reroute（原 POI 排队 42min，超阈值）→ 切换到 新民菜市场（综合市场, rating 4.6, 免费/不详）",
+            "is_rerouted": true
+          },
+          {
+            "order": 5,
+            "time": "17:55",
+            "kind": "depart",
+            "poi_name": "返程",
+            "duration_min": 5,
+            "mode_to_here": "walking",
+            "travel_time_min": 0,
+            "rationale": "活动结束，步行回住处或打车，确保全程3.5小时内完成，老人孩子不疲惫。",
+            "is_rerouted": false
+          }
+        ],
+        "reroute_events": [
+          {
+            "failed_poi_name": "鼓楼",
+            "replacement_poi_name": "宏恩观",
+            "reason": "queue",
+            "evidence": [
+              "UGC[transport]: 伊峰德顺兴(鼓楼店) 停车位少，周末下午停车困难，建议地铁或步行。",
+              "UGC[transport]: 遂隐茶苑(鼓楼四合院店) 停车位少，周末下午停车困难，建议地铁或步行。"
+            ]
+          },
+          {
+            "failed_poi_name": "烟袋斜街",
+            "replacement_poi_name": "新民菜市场",
+            "reason": "queue",
+            "evidence": [
+              "UGC[transport]: 烟袋斜街老号炸酱面(五道营店) 停车位少，周末下午停车困难，建议地铁或步行。"
+            ]
+          }
+        ]
+      },
+      "timing": {
+        "plan_s": 35.2,
+        "probe_s": 0.1,
+        "total_s": 35.3
+      }
+    },
+    {
+      "rank": 7,
+      "scenario": "S03",
+      "title": "亲子科普·奥森",
+      "persona": "family",
+      "persona_zh": "亲子/家庭",
+      "area_anchor": "奥林匹克公园片区",
+      "user_input": "周六上午带 3 岁娃去看动物科普展，孩子能跑能玩，中午吃顿好的。",
+      "prefs": {
+        "persona": "family",
+        "party_size": 3,
+        "has_child": true,
+        "child_age": 3,
+        "walk_radius_km": 2.0,
+        "budget_per_person": 200,
+        "target_start": "10:00",
+        "duration_hours": 4.0
+      },
+      "why_selected": [
+        "端到端成功返回规划结果",
+        "步骤数 5，适合文档展示",
+        "POI 无重复，路线结构清楚",
+        "每个核心步骤都有可解释理由",
+        "包含 1 次 reroute/风险处理，可展示 agent 调整能力",
+        "亲子画像明确，能体现儿童友好约束"
+      ],
+      "metrics": {
+        "showcase_score": 25.5,
+        "ok": true,
+        "step_count": 5,
+        "real_step_count": 4,
+        "unique_poi_count": 4,
+        "duplicate_poi_count": 0,
+        "rationale_coverage": 1.0,
+        "reroute_count": 1,
+        "has_diet_or_memory_signal": false,
+        "total_seconds": 35.3
+      },
+      "observed_result": {
+        "summary": "周六上午带3岁娃去中国科学技术馆看动物科普展，中午在新奥购物中心小吊梨汤吃烤鸭，午后逛逛泡泡玛特和奥林匹克公园大喷泉，轻松愉快。",
+        "steps": [
+          {
+            "order": 1,
+            "time": "10:00",
+            "kind": "culture",
+            "poi_name": "奥林匹克公园中心区",
+            "duration_min": 90,
+            "mode_to_here": "transit",
+            "travel_time_min": 0,
+            "rationale": "⚠️ reroute（原 POI 排队 60min，超阈值）→ 切换到 奥林匹克公园中心区（公园广场, rating 4.6, 免费/不详）",
+            "is_rerouted": true
+          },
+          {
+            "order": 2,
+            "time": "11:30",
+            "kind": "meal",
+            "poi_name": "小吊梨汤·北京菜·烤鸭(新奥店)",
+            "duration_min": 60,
+            "mode_to_here": "walking",
+            "travel_time_min": 0,
+            "rationale": "距科技馆步行可达，提供适合家庭的北京菜和烤鸭，孩子爱吃，人均90元在预算内，满足中午吃顿好的愿望。",
+            "is_rerouted": false
+          },
+          {
+            "order": 3,
+            "time": "12:30",
+            "kind": "shopping",
+            "poi_name": "POP MART泡泡玛特(北投新奥购物中心店)",
+            "duration_min": 15,
+            "mode_to_here": "walking",
+            "travel_time_min": 0,
+            "rationale": "同在新奥购物中心内，顺路逛逛玩具店，孩子能跑能玩，短暂休息后继续行程。",
+            "is_rerouted": false
+          },
+          {
+            "order": 4,
+            "time": "12:45",
+            "kind": "citywalk",
+            "poi_name": "北京奥林匹克公园-大喷泉",
+            "duration_min": 30,
+            "mode_to_here": "bicycling",
+            "travel_time_min": 0,
+            "rationale": "饭后带孩子到户外大喷泉散步，开阔空间让娃尽情跑动，欣赏水景，轻松愉快。",
+            "is_rerouted": false
+          },
+          {
+            "order": 5,
+            "time": "13:15",
+            "kind": "depart",
+            "poi_name": "返程",
+            "duration_min": 30,
+            "mode_to_here": "transit",
+            "travel_time_min": 0,
+            "rationale": "活动结束，预留30分钟返程，确保在14:00前到家，孩子不会太累。",
+            "is_rerouted": false
+          }
+        ],
+        "reroute_events": [
+          {
+            "failed_poi_name": "中国科学技术馆",
+            "replacement_poi_name": "奥林匹克公园中心区",
+            "reason": "queue",
+            "evidence": [
+              "评价：'热门项目需要排队、最好提前一周预约' (UGC conf=0.86)"
+            ]
+          }
+        ]
+      },
+      "timing": {
+        "plan_s": 35.2,
+        "probe_s": 0.1,
+        "total_s": 35.3
+      }
+    },
+    {
+      "rank": 8,
+      "scenario": "S40",
+      "title": "陪父母老字号·大栅栏V3",
+      "persona": "with_parents",
+      "persona_zh": "陪父母",
+      "area_anchor": "大栅栏片区V3",
+      "user_input": "带父母去大栅栏吃老字号，看看老北京。",
+      "prefs": {
+        "persona": "with_parents",
+        "party_size": 3,
+        "walk_radius_km": 1.0,
+        "budget_per_person": 160,
+        "target_start": "14:00",
+        "duration_hours": 4.0
+      },
+      "why_selected": [
+        "端到端成功返回规划结果",
+        "步骤数 6，适合文档展示",
+        "POI 无重复，路线结构清楚",
+        "每个核心步骤都有可解释理由",
+        "包含 1 次 reroute/风险处理，可展示 agent 调整能力",
+        "陪父母画像明确，能体现慢节奏和舒适度"
+      ],
+      "metrics": {
+        "showcase_score": 25.5,
+        "ok": true,
+        "step_count": 6,
+        "real_step_count": 5,
+        "unique_poi_count": 5,
+        "duplicate_poi_count": 0,
+        "rationale_coverage": 1.0,
+        "reroute_count": 1,
+        "has_diet_or_memory_signal": false,
+        "total_seconds": 28.1
+      },
+      "observed_result": {
+        "summary": "下午带父母从大栅栏逛起，品尝全聚德烤鸭，漫步前门大街，乘坐铛铛车，观赏正阳门城楼，体验老北京文化。",
+        "steps": [
+          {
+            "order": 1,
+            "time": "14:00",
+            "kind": "citywalk",
+            "poi_name": "北京大栅栏",
+            "duration_min": 30,
+            "mode_to_here": "walking",
+            "travel_time_min": 0,
+            "rationale": "大栅栏是北京最著名的老商业街，带父母漫步其中感受老北京氛围，为后续老字号餐饮做铺垫。",
+            "is_rerouted": false
+          },
+          {
+            "order": 2,
+            "time": "14:30",
+            "kind": "meal",
+            "poi_name": "全聚德(前门店)",
+            "duration_min": 60,
+            "mode_to_here": "walking",
+            "travel_time_min": 0,
+            "rationale": "全聚德是北京烤鸭老字号，前门店是起源店之一，带父母品尝正宗烤鸭，符合预算且体验老字号文化。",
+            "is_rerouted": false
+          },
+          {
+            "order": 3,
+            "time": "15:30",
+            "kind": "citywalk",
+            "poi_name": "前门之夜科技体验馆",
+            "duration_min": 30,
+            "mode_to_here": "walking",
+            "travel_time_min": 0,
+            "rationale": "⚠️ reroute（原 POI 排队 69min，超阈值）→ 切换到 前门之夜科技体验馆（风景名胜相关, rating 4.6, 免费/不详）",
+            "is_rerouted": true
+          },
+          {
+            "order": 4,
+            "time": "16:00",
+            "kind": "culture",
+            "poi_name": "前门观光铛铛车(前门-珠市口)",
+            "duration_min": 30,
+            "mode_to_here": "walking",
+            "travel_time_min": 0,
+            "rationale": "乘坐复古铛铛车游览前门大街，省力又有趣，父母可轻松欣赏街景，体验老北京交通文化。",
+            "is_rerouted": false
+          },
+          {
+            "order": 5,
+            "time": "16:30",
+            "kind": "culture",
+            "poi_name": "正阳门城楼",
+            "duration_min": 30,
+            "mode_to_here": "walking",
+            "travel_time_min": 0,
+            "rationale": "正阳门是北京中轴线重要地标，步行可达，在此拍照留念，感受古都历史韵味。",
+            "is_rerouted": false
+          },
+          {
+            "order": 6,
+            "time": "17:00",
+            "kind": "depart",
+            "poi_name": "返程",
+            "duration_min": 45,
+            "mode_to_here": "walking",
+            "travel_time_min": 0,
+            "rationale": "结束半日活动，步行返回地铁站或住所，为父母预留充足休息时间。",
+            "is_rerouted": false
+          }
+        ],
+        "reroute_events": [
+          {
+            "failed_poi_name": "前门大街",
+            "replacement_poi_name": "前门之夜科技体验馆",
+            "reason": "queue",
+            "evidence": [
+              "UGC[transport]: 方砖厂69号炸酱面( 前门大街店 ) 停车位少，周末下午停车困难，建议地铁或步行。",
+              "UGC[transport]: 胖子家常菜烤串(前门大街店) 停车位少，周末下午停车困难，建议地铁或步行。"
+            ]
+          }
+        ]
+      },
+      "timing": {
+        "plan_s": 28.0,
+        "probe_s": 0.1,
+        "total_s": 28.1
+      }
+    }
+  ],
+  "all_case_summaries": [
+    {
+      "scenario": "S01",
+      "title": "亲子周末·五道营",
+      "persona": "family",
+      "ok": true,
+      "score": 28.0,
+      "selected": true,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "步骤数 5，适合文档展示",
+        "POI 无重复，路线结构清楚"
+      ],
+      "error": null
+    },
+    {
+      "scenario": "S02",
+      "title": "亲子文化·安定门V3",
+      "persona": "family",
+      "ok": true,
+      "score": 26.0,
+      "selected": true,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "步骤数 5，适合文档展示",
+        "POI 无重复，路线结构清楚"
+      ],
+      "error": null
+    },
+    {
+      "scenario": "S04",
+      "title": "亲子赏景·什刹海",
+      "persona": "family",
+      "ok": true,
+      "score": 26.0,
+      "selected": true,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "步骤数 5，适合文档展示",
+        "POI 无重复，路线结构清楚"
+      ],
+      "error": null
+    },
+    {
+      "scenario": "S03",
+      "title": "亲子科普·奥森",
+      "persona": "family",
+      "ok": true,
+      "score": 25.5,
+      "selected": true,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "步骤数 5，适合文档展示",
+        "POI 无重复，路线结构清楚"
+      ],
+      "error": null
+    },
+    {
+      "scenario": "S05",
+      "title": "亲子城市游·三里屯V3",
+      "persona": "family",
+      "ok": true,
+      "score": 25.5,
+      "selected": false,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "步骤数 5，适合文档展示",
+        "POI 无重复，路线结构清楚"
+      ],
+      "error": null
+    },
+    {
+      "scenario": "S32",
+      "title": "陪父母吃馆·王府井",
+      "persona": "with_parents",
+      "ok": true,
+      "score": 25.5,
+      "selected": true,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "步骤数 5，适合文档展示",
+        "POI 无重复，路线结构清楚"
+      ],
+      "error": null
+    },
+    {
+      "scenario": "S40",
+      "title": "陪父母老字号·大栅栏V3",
+      "persona": "with_parents",
+      "ok": true,
+      "score": 25.5,
+      "selected": true,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "步骤数 6，适合文档展示",
+        "POI 无重复，路线结构清楚"
+      ],
+      "error": null
+    },
+    {
+      "scenario": "S14",
+      "title": "朋友夜生活·三里屯V3",
+      "persona": "friends",
+      "ok": true,
+      "score": 25.2,
+      "selected": true,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "步骤数 5，适合文档展示",
+        "POI 无重复，路线结构清楚"
+      ],
+      "error": null
+    },
+    {
+      "scenario": "S20",
+      "title": "朋友体育休闲·国贸V3",
+      "persona": "friends",
+      "ok": true,
+      "score": 25.2,
+      "selected": false,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "步骤数 5，适合文档展示",
+        "POI 无重复，路线结构清楚"
+      ],
+      "error": null
+    },
+    {
+      "scenario": "S23",
+      "title": "独自逛展·798",
+      "persona": "solo",
+      "ok": true,
+      "score": 25.0,
+      "selected": true,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "步骤数 7，适合文档展示",
+        "POI 无重复，路线结构清楚"
+      ],
+      "error": null
+    },
+    {
+      "scenario": "S24",
+      "title": "独自摄影·什刹海",
+      "persona": "solo",
+      "ok": true,
+      "score": 25.0,
+      "selected": false,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "步骤数 5，适合文档展示",
+        "POI 无重复，路线结构清楚"
+      ],
+      "error": null
+    },
+    {
+      "scenario": "S11",
+      "title": "朋友聚会·三里屯V3",
+      "persona": "friends",
+      "ok": true,
+      "score": 24.7,
+      "selected": false,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "步骤数 6，适合文档展示",
+        "POI 无重复，路线结构清楚"
+      ],
+      "error": null
+    },
+    {
+      "scenario": "S18",
+      "title": "朋友文化·什刹海",
+      "persona": "friends",
+      "ok": true,
+      "score": 24.7,
+      "selected": false,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "步骤数 6，适合文档展示",
+        "POI 无重复，路线结构清楚"
+      ],
+      "error": null
+    },
+    {
+      "scenario": "S21",
+      "title": "独自慢游·五道营",
+      "persona": "solo",
+      "ok": true,
+      "score": 24.5,
+      "selected": false,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "步骤数 5，适合文档展示",
+        "POI 无重复，路线结构清楚"
+      ],
+      "error": null
+    },
+    {
+      "scenario": "S30",
+      "title": "独自小吃·大栅栏V3",
+      "persona": "solo",
+      "ok": true,
+      "score": 24.5,
+      "selected": false,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "步骤数 5，适合文档展示",
+        "POI 无重复，路线结构清楚"
+      ],
+      "error": null
+    },
+    {
+      "scenario": "S06",
+      "title": "亲子文化·王府井",
+      "persona": "family",
+      "ok": true,
+      "score": 22.0,
+      "selected": false,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "步骤数 5，适合文档展示",
+        "POI 无重复，路线结构清楚"
+      ],
+      "error": null
+    },
+    {
+      "scenario": "S07",
+      "title": "亲子轻量·西单V3",
+      "persona": "family",
+      "ok": true,
+      "score": 22.0,
+      "selected": false,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "步骤数 6，适合文档展示",
+        "POI 无重复，路线结构清楚"
+      ],
+      "error": null
+    },
+    {
+      "scenario": "S08",
+      "title": "亲子摄影·东直门V3",
+      "persona": "family",
+      "ok": true,
+      "score": 22.0,
+      "selected": false,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "步骤数 5，适合文档展示",
+        "POI 无重复，路线结构清楚"
+      ],
+      "error": null
+    },
+    {
+      "scenario": "S09",
+      "title": "亲子博物馆·东四V3",
+      "persona": "family",
+      "ok": true,
+      "score": 22.0,
+      "selected": false,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "步骤数 6，适合文档展示",
+        "POI 无重复，路线结构清楚"
+      ],
+      "error": null
+    },
+    {
+      "scenario": "S10",
+      "title": "亲子赏花·景山",
+      "persona": "family",
+      "ok": true,
+      "score": 22.0,
+      "selected": false,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "步骤数 4，适合文档展示",
+        "POI 无重复，路线结构清楚"
+      ],
+      "error": null
+    },
+    {
+      "scenario": "S31",
+      "title": "陪父母赏景·景山",
+      "persona": "with_parents",
+      "ok": true,
+      "score": 22.0,
+      "selected": false,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "步骤数 5，适合文档展示",
+        "POI 无重复，路线结构清楚"
+      ],
+      "error": null
+    },
+    {
+      "scenario": "S33",
+      "title": "陪父母京味·珠市口V3",
+      "persona": "with_parents",
+      "ok": true,
+      "score": 22.0,
+      "selected": false,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "步骤数 5，适合文档展示",
+        "POI 无重复，路线结构清楚"
+      ],
+      "error": null
+    },
+    {
+      "scenario": "S34",
+      "title": "陪父母慢游·什刹海",
+      "persona": "with_parents",
+      "ok": true,
+      "score": 22.0,
+      "selected": false,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "步骤数 4，适合文档展示",
+        "POI 无重复，路线结构清楚"
+      ],
+      "error": null
+    },
+    {
+      "scenario": "S36",
+      "title": "陪父母博物馆·天安门",
+      "persona": "with_parents",
+      "ok": true,
+      "score": 22.0,
+      "selected": false,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "步骤数 5，适合文档展示",
+        "POI 无重复，路线结构清楚"
+      ],
+      "error": null
+    },
+    {
+      "scenario": "S39",
+      "title": "陪父母赏秋·奥森",
+      "persona": "with_parents",
+      "ok": true,
+      "score": 22.0,
+      "selected": false,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "步骤数 5，适合文档展示",
+        "POI 无重复，路线结构清楚"
+      ],
+      "error": null
+    },
+    {
+      "scenario": "S12",
+      "title": "朋友城市游·王府井",
+      "persona": "friends",
+      "ok": true,
+      "score": 21.2,
+      "selected": false,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "步骤数 6，适合文档展示",
+        "POI 无重复，路线结构清楚"
+      ],
+      "error": null
+    },
+    {
+      "scenario": "S16",
+      "title": "朋友美食·珠市口V3",
+      "persona": "friends",
+      "ok": true,
+      "score": 21.2,
+      "selected": false,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "步骤数 4，适合文档展示",
+        "POI 无重复，路线结构清楚"
+      ],
+      "error": null
+    },
+    {
+      "scenario": "S17",
+      "title": "朋友 city walk·西单V3",
+      "persona": "friends",
+      "ok": true,
+      "score": 21.2,
+      "selected": false,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "步骤数 6，适合文档展示",
+        "POI 无重复，路线结构清楚"
+      ],
+      "error": null
+    },
+    {
+      "scenario": "S19",
+      "title": "朋友 brunch·亮马桥V3",
+      "persona": "friends",
+      "ok": true,
+      "score": 21.2,
+      "selected": false,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "步骤数 4，适合文档展示",
+        "POI 无重复，路线结构清楚"
+      ],
+      "error": null
+    },
+    {
+      "scenario": "S22",
+      "title": "独自咖啡·东四V3",
+      "persona": "solo",
+      "ok": true,
+      "score": 21.0,
+      "selected": false,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "步骤数 5，适合文档展示",
+        "POI 无重复，路线结构清楚"
+      ],
+      "error": null
+    },
+    {
+      "scenario": "S25",
+      "title": "独自夜游·王府井",
+      "persona": "solo",
+      "ok": true,
+      "score": 21.0,
+      "selected": false,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "步骤数 4，适合文档展示",
+        "POI 无重复，路线结构清楚"
+      ],
+      "error": null
+    },
+    {
+      "scenario": "S26",
+      "title": "独自学习·五道口V3",
+      "persona": "solo",
+      "ok": true,
+      "score": 21.0,
+      "selected": false,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "步骤数 6，适合文档展示",
+        "POI 无重复，路线结构清楚"
+      ],
+      "error": null
+    },
+    {
+      "scenario": "S28",
+      "title": "独自慢节奏·沙滩V3",
+      "persona": "solo",
+      "ok": true,
+      "score": 21.0,
+      "selected": false,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "步骤数 5，适合文档展示",
+        "POI 无重复，路线结构清楚"
+      ],
+      "error": null
+    },
+    {
+      "scenario": "S29",
+      "title": "独自夜跑路线·奥森",
+      "persona": "solo",
+      "ok": true,
+      "score": 21.0,
+      "selected": false,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "步骤数 5，适合文档展示",
+        "POI 无重复，路线结构清楚"
+      ],
+      "error": null
+    },
+    {
+      "scenario": "S38",
+      "title": "陪父母看展·西城V3",
+      "persona": "with_parents",
+      "ok": true,
+      "score": 15.0,
+      "selected": false,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "POI 无重复，路线结构清楚",
+        "每个核心步骤都有可解释理由"
+      ],
+      "error": null
+    },
+    {
+      "scenario": "S15",
+      "title": "朋友逛展·望京V3",
+      "persona": "friends",
+      "ok": true,
+      "score": 14.2,
+      "selected": false,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "POI 无重复，路线结构清楚",
+        "每个核心步骤都有可解释理由"
+      ],
+      "error": null
+    },
+    {
+      "scenario": "S37",
+      "title": "陪父母散步·东城V3",
+      "persona": "with_parents",
+      "ok": true,
+      "score": 11.0,
+      "selected": false,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "每个核心步骤都有可解释理由",
+        "陪父母画像明确，能体现慢节奏和舒适度"
+      ],
+      "error": null
+    },
+    {
+      "scenario": "S27",
+      "title": "独自健身·朝阳V3",
+      "persona": "solo",
+      "ok": true,
+      "score": 10.0,
+      "selected": false,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "每个核心步骤都有可解释理由",
+        "独自出行画像明确，便于展示轻量个人规划"
+      ],
+      "error": null
+    },
+    {
+      "scenario": "S13",
+      "title": "朋友咖啡探店·五道口V3",
+      "persona": "friends",
+      "ok": true,
+      "score": 8.7,
+      "selected": false,
+      "excluded_from_selection": false,
+      "top_reasons": [
+        "端到端成功返回规划结果",
+        "每个核心步骤都有可解释理由",
+        "朋友聚会画像明确，便于展示多人协同场景"
+      ],
+      "error": null
+    }
+  ]
+}
