@@ -8,7 +8,7 @@
 ```mermaid
 flowchart TD
     User["👤 用户一句话<br/>+ 偏好"] --> Mirror["🪞 PreferenceMirror<br/>反问澄清"]
-    Mirror --> Planner["🧠 Planner LLM"]
+    Mirror --> Planner["🧠 Planner LLM<br/>Normal / ToT / OPTW"]
     Planner -->|候选池| Search["🔍 amap_search"]
     Planner -->|UGC| UGC["📝 ugc_signals"]
     Planner -->|融合排序| Rank["⚖️ rank_fuse<br/>L1 硬过滤 + L2 加权"]
@@ -19,7 +19,8 @@ flowchart TD
     Probe -->|无风险| Plan2
     Plan2 --> Book["💳 mock_book<br/>餐厅预订 + 蛋糕配送"]
     Book --> Message["💬 mock_message<br/>IM 话术化卡片"]
-    Message --> Send["📱 微信发送 (mock)"]
+    Message --> Vote["🗳️ Kemeny+Borda<br/>群投票共识"]
+    Vote --> Send["📱 微信发送 (mock)"]
 
     Probe -.全程留痕.-> Log[("🗄️ tool_call_log<br/>SQLite")]
     Search -.-> Log
@@ -32,7 +33,7 @@ flowchart TD
     classDef tool fill:#fbf3e2,color:#1a1611,stroke:#9c2a25
     classDef storage fill:#1a1611,color:#fbf3e2
 
-    class Planner,Replanner,Mirror agent
+    class Planner,Replanner,Mirror,Vote agent
     class Search,UGC,Rank,Probe,Book,Message tool
     class Log storage
 ```
@@ -72,16 +73,23 @@ flowchart LR
 | 资产 | 数量 | 来源 |
 |---|---|---|
 | 北京 POI | 5,656 | 高德地图 |
-| UGC 软信号 | 1,102 | 大众点评 + 小红书 |
-| 评论截图 | 89 | 大众点评 |
+| UGC aspects | 8,666 | 大众点评 + 小红书 + 公开摘要结构化 |
+| POI 信号网 | 5,198 | parking / seasonal / crowd / facility |
 | AI 用户访谈 | 100 | 自建 ai-user-research-platform |
-| 预爬 routes | 52 | 高德路径规划 |
+| 预爬 routes | 1,892 | 高德路径规划 + estimated_v2 |
 
 ## 评测金字塔
 
 ```mermaid
 flowchart BT
-    L1["L1 单元测试<br/>tests/test_*.py<br/>~200 测试用例"] --> L2["L2 系统测试<br/>40-100 题集成跑批<br/>final_pass / commonsense / hard_constraint"]
-    L2 --> L3["L3 LLM-as-judge<br/>多维评分 + ToT 选优"]
-    L3 --> Goal["真实场景泛化<br/>(待 M3-M12)"]
+    L1["L1 anchor<br/>5 case / 每 commit"] --> L2["L2 integration<br/>5 模块 × 5 case"]
+    L2 --> L3["L3 full<br/>100 case × 5 信号 = 280/280"]
+    L3 --> ECE["v3.1 calibration<br/>Global ECE 0.1089"]
+    ECE --> Goal["真实场景泛化<br/>(v4.0)"]
 ```
+
+## v3.1 黑客松展示点
+
+- **ToT / OPTW / Kemeny+Borda**：复杂约束、全局最优路线、群体共识三条算法线。
+- **plan_tracer + OTel trace**：每一步 `(decision, confidence, fallback)` 可回放。
+- **ECE 0.1089**：不是只说“可信”，而是用校准指标量化可信度。

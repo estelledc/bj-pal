@@ -4,6 +4,9 @@ __pycache__/
 *.egg-info/
 .venv/
 venv/
+.env
+.env.local
+.env.*.local
 
 # 本地数据 / 派生产物（高德 POI / UGC 86M + SQLite 索引，不入库）
 data/

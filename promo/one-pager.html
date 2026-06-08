@@ -2,43 +2,61 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>BJ-Pal · 周六下午的决策解药 — 评委简介</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BJ-Pal · 短时活动规划代理 — 技术摘要</title>
 <style>
   :root {
-    --paper: #f5efe4;
-    --paper-2: #ede4d3;
-    --ink: #1a1614;
-    --ink-2: #4a3f36;
-    --muted: #8a7a6a;
-    --rule: #d9cdb9;
-    --accent: #9c2a25;
-    --accent-2: #7a1f1b;
+    --cyber: #07111f;
+    --paper: #07111f;
+    --paper-2: #0b1728;
+    --ink: #e8f7ff;
+    --ink-2: #c7d7e8;
+    --muted: #8aa0b8;
+    --rule: rgba(35,217,255,0.24);
+    --accent: #23d9ff;
+    --accent-2: #51ffb8;
+    --neon: #23d9ff;
+    --page-scale: 1;
     --serif: "Source Han Serif SC", "Noto Serif SC", "思源宋体", "Songti SC", "STSong", serif;
     --sans:  "PingFang SC", "苹方", "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
     --mono:  "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { background: #2a2522; }
+  html, body { background: #030a14; min-height: 100%; }
   body {
     font-family: var(--sans);
     color: var(--ink);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
-    padding: 40px 0;
+    padding: 24px 16px;
     display: flex;
     justify-content: center;
+    align-items: flex-start;
+    overflow: auto;
+  }
+  .page-shell {
+    width: calc(1240px * var(--page-scale));
+    height: calc(1754px * var(--page-scale));
+    flex: 0 0 auto;
   }
   .page {
     width: 1240px;
     height: 1754px;
-    background: var(--paper);
+    background: var(--cyber);
     background-image:
-      radial-gradient(circle at 20% 10%, rgba(156,42,37,0.025), transparent 40%),
-      radial-gradient(circle at 80% 90%, rgba(0,0,0,0.018), transparent 40%);
+      linear-gradient(rgba(35,217,255,0.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(35,217,255,0.07) 1px, transparent 1px),
+      radial-gradient(circle at 20% 10%, rgba(35,217,255,0.16), transparent 36%),
+      radial-gradient(circle at 80% 90%, rgba(81,255,184,0.10), transparent 40%);
+    background-size: 48px 48px, 48px 48px, 100% 100%, 100% 100%;
     position: relative;
-    box-shadow: 0 30px 80px rgba(0,0,0,0.4);
+    box-shadow: 0 30px 90px rgba(0,0,0,0.62), 0 0 60px rgba(35,217,255,0.12);
     overflow: hidden;
+    transform: scale(var(--page-scale));
+    transform-origin: top left;
   }
+  .tech-grid { background: var(--cyber); }
+  .trace { box-shadow: 0 0 26px rgba(35,217,255,0.18); }
 
   /* ---------- HEADER (~280px) ---------- */
   .header {
@@ -120,7 +138,7 @@
     height: 200px;
     padding: 32px 64px;
     background:
-      linear-gradient(135deg, rgba(156,42,37,0.04), rgba(156,42,37,0.01));
+      linear-gradient(135deg, rgba(35,217,255,0.08), rgba(81,255,184,0.035));
     border-bottom: 1px solid var(--rule);
     position: relative;
     display: flex;
@@ -260,7 +278,7 @@
   .data-cell {
     border: 1px solid var(--rule);
     padding: 14px 12px;
-    background: rgba(255,255,255,0.4);
+    background: rgba(8,25,44,0.74);
   }
   .data-cell .num {
     font-family: var(--serif);
@@ -299,10 +317,11 @@
     border-bottom: 1px solid var(--rule);
   }
   .arch-left, .arch-right {
-    padding: 24px 28px 24px;
+    padding: 17px 28px 16px;
   }
   .arch-left { padding-left: 64px; border-right: 1px solid var(--rule); }
   .arch-right { padding-right: 64px; }
+  .arch .sec-head { margin-bottom: 10px; }
   .sec-head {
     display: flex;
     align-items: baseline;
@@ -335,22 +354,27 @@
     font-size: 11.5px;
     line-height: 1.55;
     color: var(--ink);
-    background: rgba(255,255,255,0.5);
+    background: rgba(8,25,44,0.78);
     border: 1px solid var(--rule);
     border-left: 3px solid var(--accent);
     padding: 14px 16px;
     overflow: hidden;
     white-space: pre;
   }
+  pre.ascii.architecture-flow--compact {
+    font-size: 11px;
+    line-height: 1.28;
+    padding: 10px 12px;
+  }
   pre.ascii .hi { color: var(--accent); font-weight: 700; }
   pre.ascii .dim { color: var(--muted); }
   .arch-note {
-    margin-top: 12px;
-    font-size: 12px;
+    margin-top: 8px;
+    font-size: 11px;
     color: var(--muted);
-    line-height: 1.55;
-    font-family: var(--serif);
-    font-style: italic;
+    line-height: 1.45;
+    font-family: var(--mono);
+    letter-spacing: 0.03em;
   }
   /* tool table */
   table.tools {
@@ -399,55 +423,95 @@
     border-bottom: 1px solid var(--rule);
   }
   .eval-left {
-    padding: 28px 32px 24px 64px;
+    padding: 24px 32px 20px 64px;
     border-right: 1px solid var(--rule);
     display: flex;
     flex-direction: column;
   }
   .eval-right {
-    padding: 28px 64px 24px 32px;
+    padding: 24px 64px 20px 32px;
     display: flex;
     flex-direction: column;
   }
-  .eval-row {
-    display: flex;
-    align-items: flex-end;
-    gap: 18px;
+  .eval-report-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
     margin-top: 12px;
   }
-  .eval-num {
-    font-family: var(--serif);
-    font-size: 96px;
-    font-weight: 700;
-    line-height: 0.9;
-    color: var(--ink);
-    letter-spacing: -0.03em;
+  .metric-card {
+    border: 1px solid var(--rule);
+    background: rgba(8,25,44,0.72);
+    min-height: 58px;
+    padding: 8px 9px 7px;
   }
-  .eval-num.start { color: var(--muted); }
-  .eval-num.end { color: var(--accent); }
-  .eval-arrow {
+  .metric-card .label {
     font-family: var(--mono);
-    font-size: 36px;
-    color: var(--accent);
-    margin-bottom: 14px;
+    font-size: 9.5px;
+    color: var(--muted);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    white-space: nowrap;
   }
-  .eval-meta {
-    margin-top: 14px;
-    display: flex;
-    gap: 24px;
-    font-size: 12px;
-    color: var(--ink-2);
-  }
-  .eval-meta b {
+  .metric-card .value {
     font-family: var(--serif);
-    font-size: 18px;
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1.05;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+    margin-top: 5px;
+    white-space: nowrap;
+  }
+  .metric-card .value.muted { color: var(--muted); }
+  .metric-card .value.accent { color: var(--accent); }
+  .metric-card .note {
+    margin-top: 3px;
+    font-family: var(--mono);
+    font-size: 8.8px;
+    color: var(--ink-2);
+    letter-spacing: 0.03em;
+    line-height: 1.25;
+  }
+  .eval-rubric-grid {
+    margin-top: 8px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .eval-rubric-item {
+    border: 1px solid var(--rule);
+    background: rgba(7,17,31,0.82);
+    padding: 6px 8px;
+    min-height: 43px;
+  }
+  .eval-rubric-item .metric {
+    font-family: var(--mono);
+    font-size: 8.8px;
     color: var(--accent);
     font-weight: 700;
-    margin-right: 4px;
+    letter-spacing: 0.02em;
+  }
+  .eval-rubric-item .meaning {
+    margin-top: 3px;
+    font-size: 9.4px;
+    color: var(--ink-2);
+    line-height: 1.25;
+  }
+  .eval-checkline {
+    margin-top: 7px;
+    border: 1px solid var(--rule);
+    background: rgba(8,25,44,0.72);
+    padding: 6px 8px;
+    font-size: 9.4px;
+    color: var(--muted);
+    font-family: var(--mono);
+    letter-spacing: 0.03em;
+    line-height: 1.35;
   }
   .eval-foot {
-    margin-top: auto;
-    font-size: 11.5px;
+    margin-top: 7px;
+    font-size: 10.3px;
     color: var(--muted);
     font-family: var(--mono);
     letter-spacing: 0.04em;
@@ -461,7 +525,7 @@
   .stack-cell {
     border: 1px solid var(--rule);
     padding: 10px 10px 9px;
-    background: rgba(255,255,255,0.4);
+    background: rgba(8,25,44,0.74);
   }
   .stack-cell .role {
     font-family: var(--mono);
@@ -493,8 +557,8 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: var(--ink);
-    color: var(--paper);
+    background: linear-gradient(90deg, rgba(7,17,31,0.98), rgba(11,23,40,0.98));
+    color: var(--ink);
     position: relative;
   }
   .footer::before {
@@ -511,7 +575,7 @@
   }
   .footer .author b {
     font-weight: 700;
-    color: #fff;
+    color: var(--ink);
   }
   .footer .author .sep {
     color: var(--accent);
@@ -521,7 +585,7 @@
     display: block;
     font-family: var(--mono);
     font-size: 11px;
-    color: var(--rule);
+    color: var(--muted);
     letter-spacing: 0.08em;
     margin-top: 4px;
   }
@@ -532,14 +596,14 @@
     font-family: var(--serif);
     font-size: 28px;
     font-weight: 700;
-    color: #fff;
+    color: var(--ink);
     letter-spacing: 0.04em;
   }
   .footer .mark .big .dash { color: var(--accent); }
   .footer .mark .small {
     font-family: var(--mono);
     font-size: 10.5px;
-    color: var(--rule);
+    color: var(--muted);
     letter-spacing: 0.1em;
     margin-top: 2px;
   }
@@ -552,30 +616,36 @@
   @media print {
     html, body { background: #fff; padding: 0; margin: 0; }
     body { padding: 0; }
+    .page-shell {
+      width: 210mm;
+      height: 297mm;
+    }
     .page {
       box-shadow: none;
       width: 210mm;
       height: 297mm;
+      transform: none;
       transform-origin: top left;
     }
   }
 </style>
 </head>
 <body>
+  <main class="page-shell">
   <article class="page">
 
     <!-- HEADER -->
     <header class="header">
       <div class="top-row">
         <div class="badge">● 美团黑客松 2026 · 决赛入围</div>
-        <div>github.com/estelledc/bj-pal &nbsp;·&nbsp; 一份给评委的 60 秒简介</div>
+        <div>github.com/estelledc/bj-pal &nbsp;·&nbsp; 技术摘要</div>
       </div>
       <div class="title-block">
         <h1>BJ<span class="dash">-</span>Pal</h1>
         <div class="title-meta">
-          <div class="sub">周六下午的决策解药</div>
-          <div class="tag">SHORT-TERM ACTIVITY PLANNING AGENT &nbsp;·&nbsp; 情绪基础设施 / EMOTIONAL INFRASTRUCTURE</div>
-          <div class="lede">一句话替你扛下选错的责任 — <span class="accent">不是工具产品，是替你做决策的那个人</span>。</div>
+          <div class="sub">短时活动规划代理</div>
+          <div class="tag">SHORT-TERM ACTIVITY PLANNING AGENT &nbsp;·&nbsp; REAL-WORLD GROUNDING</div>
+          <div class="lede">用户输入约束，系统拉取真实 POI / UGC / 可用性证据，输出可回放的 plan + reasons[]。</div>
         </div>
       </div>
     </header>
@@ -584,8 +654,8 @@
     <section class="callout">
       <div class="quote-mark">"</div>
       <div class="callout-body">
-        <div class="pullquote">用户付钱不是为「规划方案」，是为<em>「AI 替我扛了选错的责任」</em>。</div>
-        <div class="source">— 来自 100 条 AI 用户访谈洞察 &nbsp;·&nbsp; 2026.04 — 2026.05</div>
+        <div class="pullquote">用户访谈显示：短时活动决策的关键约束不是信息不足，而是<em>时间窗口、试错成本和责任归因</em>。</div>
+        <div class="source">100 条 AI 用户访谈洞察 &nbsp;·&nbsp; 2026.04 — 2026.05</div>
       </div>
     </section>
 
@@ -631,34 +701,34 @@
       <div class="col">
         <div class="col-head">
           <span class="num">03 / ASSETS</span>
-          <h3>数据资产</h3>
+          <h3>真实场景</h3>
         </div>
         <div class="data-grid">
           <div class="data-cell">
             <div><span class="num">5,656</span><span class="unit">POI</span></div>
-            <div class="name">北京 POI 全量</div>
-            <div class="desc">高德 API · 含坐标 / 评分 / 营业时段</div>
+            <div class="name">POI facts</div>
+            <div class="desc">坐标 / 评分 / 营业时段</div>
           </div>
           <div class="data-cell">
-            <div><span class="num">1,102</span><span class="unit">UGC</span></div>
-            <div class="name">软信号样本</div>
-            <div class="desc">小红书 / 大众点评 文本结构化</div>
+            <div><span class="num">8,666</span><span class="unit">UGC</span></div>
+            <div class="name">UGC soft signals</div>
+            <div class="desc">排队 / 停车 / red flags</div>
           </div>
           <div class="data-cell">
-            <div><span class="num">89</span><span class="unit">SHOTS</span></div>
-            <div class="name">大众点评截图</div>
-            <div class="desc">VLM 抽取「拍照点 / 排队感」</div>
+            <div><span class="num">5,198</span><span class="unit">SIGNAL</span></div>
+            <div class="name">POI 信号网</div>
+            <div class="desc">停车 / 季节 / 亲子 / 拥挤</div>
           </div>
           <div class="data-cell">
             <div><span class="num">100</span><span class="unit">USERS</span></div>
             <div class="name">用户访谈</div>
-            <div class="desc">5 强信号 5/5 命中的来源</div>
+            <div class="desc">需求先验 · 5/5 命中</div>
           </div>
         </div>
         <p style="margin-top:14px;font-size:12px;color:var(--muted);font-family:var(--mono);letter-spacing:0.04em;line-height:1.5;">
-          L2 排序公式：<br>
-          <span style="color:var(--ink);">0.35·rating + 0.30·ugc⁺ + 0.15·budget</span><br>
-          <span style="color:var(--ink);">+ 0.10·dist + 0.10·crowd_penalty</span>
+          真实北京，不是 mock itinerary：<br>
+          <span style="color:var(--ink);">POI facts + UGC soft signals + 需求先验</span><br>
+          <span style="color:var(--ink);">输出 reasons[] / evidence[] 可回放</span>
         </p>
       </div>
     </section>
@@ -671,28 +741,20 @@
           <h3>系统架构</h3>
           <span class="ja">Plan-and-Execute · LangGraph</span>
         </div>
-<pre class="ascii">  <span class="dim">用户一句话</span>
+<pre class="ascii architecture-flow--compact">  <span class="dim">USER INPUT</span>      "下午想和对象附近转转，预算 300"
        │
        ▼
-  ┌─────────────┐
-  │  <span class="hi">Planner</span>     │   ToT 多分支思考 + 偏好镜像
-  └─────┬───────┘
-        │  Plan v1
-        ▼
-  ┌─────────────┐
-  │  <span class="hi">Probe</span>       │   amap 实时 / 营业 / 距离 / 容量
-  └─────┬───────┘
-        │  可用性证据
-        ▼
-  ┌─────────────┐
-  │  <span class="hi">Replanner</span>   │   失败兜底 · 替我扛责任
-  └─────┬───────┘
-        │  Plan v2
-        ▼
-  ┌─────────────┐
-  │  <span class="hi">Mock 下单</span>    │  +  <span class="hi">IM 话术化卡片</span>
-  └─────────────┘</pre>
-        <div class="arch-note">三阶段防火墙：感知（Probe）/ 判断（Replanner）/ 执行（Mock）相互隔离，OTel 全链路 trace 落盘。</div>
+  <span class="hi">Planner</span>     ── ToT / OPTW 三分支 + 偏好镜像
+       │ Plan v1
+       ▼
+  <span class="hi">Probe</span>       ── amap 实时 / 营业 / 距离 / 容量
+       │ evidence[]
+       ▼
+  <span class="hi">Replanner</span>   ── 风险替换 / 失败兜底
+       │ Plan v2
+       ▼
+  <span class="hi">Kemeny+Borda</span> ── 候选共识排序 → IM 卡片 / Mock 执行</pre>
+        <div class="arch-note">感知 / 判断 / 执行分层隔离；OTel trace 与 tool_call_log 保留完整回放路径。</div>
       </div>
       <div class="arch-right">
         <div class="sec-head">
@@ -723,19 +785,46 @@
       <div class="eval-left">
         <div class="sec-head">
           <span class="kicker">06 / EVAL</span>
-          <h3>评测结果</h3>
-          <span class="ja">100 LongCat questions</span>
+          <h3>评测 Rubric</h3>
+          <span class="ja">TravelPlanner 四指标</span>
         </div>
-        <div class="eval-row">
-          <div class="eval-num start">27.5%</div>
-          <div class="eval-arrow">▶▶</div>
-          <div class="eval-num end">47.0%</div>
+        <div class="eval-report-grid">
+          <div class="metric-card">
+            <div class="label">v1 baseline</div>
+            <div class="value muted">27.5%</div>
+            <div class="note">v1 = 裸 Planner 基线</div>
+          </div>
+          <div class="metric-card">
+            <div class="label">v3 replan</div>
+            <div class="value accent">47.0%</div>
+            <div class="note">v3 = Planner + AvailabilityProbe + Replanner + IM</div>
+          </div>
+          <div class="metric-card">
+            <div class="label">final_pass</div>
+            <div class="value">+71%</div>
+            <div class="note">四项同时通过</div>
+          </div>
         </div>
-        <div class="eval-meta">
-          <div><b>+71%</b> final_pass 提升</div>
-          <div><b>v1 → v3</b> 三轮迭代</div>
+        <div class="eval-rubric-grid">
+          <div class="eval-rubric-item">
+            <div class="metric">delivery_rate</div>
+            <div class="meaning">计划非空 + JSON 合法</div>
+          </div>
+          <div class="eval-rubric-item">
+            <div class="metric">commonsense_pass</div>
+            <div class="meaning">时间顺序 / 餐时 / 地理常识</div>
+          </div>
+          <div class="eval-rubric-item">
+            <div class="metric">hard_constraint_pass</div>
+            <div class="meaning">预算 / 时段 / 人数 / 忌口</div>
+          </div>
+          <div class="eval-rubric-item">
+            <div class="metric">final_pass</div>
+            <div class="meaning">四项同时通过，才算用户级通过</div>
+          </div>
         </div>
-        <div class="eval-foot">BASELINE → DIAGNOSE → REPLAN-FALLBACK · 三轮收敛过程全可追溯</div>
+        <div class="eval-checkline">S1-S5 deterministic checks · trace / red flags / apology / weekday / screening · L3 280/280 · ECE 0.1089</div>
+        <div class="eval-foot">BASELINE → DIAGNOSE → REPLAN-FALLBACK · 三阶段评测路径全可追溯</div>
       </div>
       <div class="eval-right">
         <div class="sec-head">
@@ -781,8 +870,8 @@
     <!-- FOOTER -->
     <footer class="footer">
       <div class="author">
-        <b>作者: Jason</b>
-        <span class="sep">·</span> 编程零基础学习者
+        <b>作者: Jason · KeepL</b>
+        <span class="sep">·</span> 黑客松作者
         <span class="sep">·</span> Claude Code 全程协作
         <span class="small">LICENSE: APACHE 2.0 &nbsp;·&nbsp; 学一个记一个，下次能直接用</span>
       </div>
@@ -793,5 +882,19 @@
     </footer>
 
   </article>
+  </main>
+  <script>
+    function fitOnePager() {
+      const framePadding = 32;
+      const availableWidth = Math.max(window.innerWidth - framePadding, 320);
+      const availableHeight = Math.max(window.innerHeight - framePadding, 360);
+      const scale = Math.min(availableWidth / 1240, availableHeight / 1754, 1);
+      document.documentElement.style.setProperty("--page-scale", scale.toFixed(5));
+    }
+
+    fitOnePager();
+    window.addEventListener("resize", fitOnePager);
+    window.addEventListener("orientationchange", fitOnePager);
+  </script>
 </body>
 </html>

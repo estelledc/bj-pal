@@ -25,10 +25,16 @@ REROUTE_REASON_LABELS = {
     "none": ("ℹ️", "其它"),
 }
 
+DISSENT_BUTTON_LABEL = "换一个"
+DISSENT_BUTTON_USE_CONTAINER_WIDTH = True
+TIMELINE_COLUMN_WEIGHTS = [1, 5, 1.7]
+
 
 def render_timeline(
     plan: Plan,
     on_dissent: Optional[Callable[[int], None]] = None,
+    *,
+    show_red_flags: bool = False,
 ):
     """v2 升级版时间轴。
 
@@ -44,7 +50,7 @@ def render_timeline(
         # 2) Step 主卡片
         with st.container(border=True):
             icon = KIND_ICON.get(s.kind, "📍")
-            cols = st.columns([1, 5, 1])
+            cols = st.columns(TIMELINE_COLUMN_WEIGHTS)
             with cols[0]:
                 st.markdown(f"### {icon}")
                 st.caption(s.start_time)
@@ -65,13 +71,17 @@ def render_timeline(
                 if s.risk_tags:
                     st.caption(f"⚠️ risk: {', '.join(s.risk_tags)}")
                 # P0.1 red flags：吐槽面板（信号 2，5/5 一致：必须把吐槽点出来）
-                if s.poi_name and s.kind != "depart":
+                if show_red_flags and s.poi_name and s.kind != "depart":
                     _render_red_flags(s.poi_name)
             with cols[2]:
                 if on_dissent and s.poi_id and s.kind != "depart":
                     st.markdown("&nbsp;", unsafe_allow_html=True)
-                    if st.button("换一个", key=f"dissent_{s.step_index}",
-                                 help="主动 reroute 这一步", use_container_width=True):
+                    if st.button(
+                        DISSENT_BUTTON_LABEL,
+                        key=f"dissent_{s.step_index}",
+                        help="主动 reroute 这一步",
+                        use_container_width=DISSENT_BUTTON_USE_CONTAINER_WIDTH,
+                    ):
                         on_dissent(i)
 
 

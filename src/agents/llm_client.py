@@ -3,6 +3,7 @@
 环境变量 BJ_PAL_LLM 控制后端：
     mock     — 默认；规则 + 模板生成结构化输出，不联网，离线可跑
     longcat  — 美团自研（占位，TODO 接入）
+    dpsk     — DeepSeek API（Anthropic 兼容协议，独立 DPSK_* 配置）
     anthropic — Claude API（你 .env 里有 ANTHROPIC_API_KEY 就能用）
 
 接口：
@@ -17,7 +18,7 @@ import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 
 # ============================================================
@@ -65,6 +66,18 @@ class LLMResponse:
     raw: Optional[Any] = None      # 原 response 对象，调试用
 
 
+TokenCallback = Optional[Callable[[str], None]]
+StreamEventCallback = Optional[Callable[[str], None]]
+
+
+@dataclass(frozen=True)
+class ProviderConfig:
+    api_key: str
+    base_url: str
+    model: str
+    max_tokens: int
+
+
 class LLMClient(ABC):
     @abstractmethod
     def complete(
@@ -73,6 +86,8 @@ class LLMClient(ABC):
         user: str,
         json_schema: Optional[dict] = None,
         temperature: float = 0.3,
+        on_token: TokenCallback = None,
+        on_stream_event: StreamEventCallback = None,
     ) -> LLMResponse: ...
 
     @property
@@ -92,6 +107,37 @@ class LLMClient(ABC):
         raise NotImplementedError(f"{self.name} 后端未实现 vision_complete")
 
 
+def _emit_response_tokens(response: LLMResponse, on_token: TokenCallback) -> LLMResponse:
+    """Emit a completed response as small chunks for offline/mock streaming tests."""
+    if on_token is None:
+        return response
+    text = response.text or ""
+    chunk_size = 24
+    for i in range(0, len(text), chunk_size):
+        chunk = text[i:i + chunk_size]
+        if chunk:
+            on_token(chunk)
+    return response
+
+
+def _wrap_plan_as_event_stream(response: LLMResponse) -> LLMResponse:
+    """Wrap a plain mock Plan response as JSONL status/final_plan events."""
+    plan_dict = response.parsed
+    if plan_dict is None:
+        try:
+            plan_dict = json.loads(response.text)
+        except json.JSONDecodeError:
+            return response
+    events = [
+        {"event": "status", "text": "正在筛选适合孩子和同行人的地点"},
+        {"event": "status", "text": "正在排除排队、预算和步行距离风险"},
+        {"event": "status", "text": "正在组合时间轴和返程安排"},
+        {"event": "final_plan", "data": plan_dict},
+    ]
+    text = "\n".join(json.dumps(event, ensure_ascii=False, separators=(",", ":")) for event in events)
+    return LLMResponse(text=text, parsed=plan_dict, raw=response.raw)
+
+
 # ============================================================
 # Mock：规则 + 模板，离线可跑
 # ============================================================
@@ -107,21 +153,37 @@ class MockLLMClient(LLMClient):
     def name(self) -> str:
         return "mock"
 
-    def complete(self, system, user, json_schema=None, temperature=0.3):
+    def complete(self, system, user, json_schema=None, temperature=0.3, on_token=None, on_stream_event=None):
         from .tracing import trace_span
         with trace_span("llm.mock.complete", attrs={"temperature": temperature}):
+            if on_stream_event is not None:
+                on_stream_event("模型连接成功：mock")
             # 路由：根据 system prompt 关键词判断在哪个 agent 上下文
+            if "Planner Preflight" in system:
+                events = [
+                    {"event": "status", "text": "正在读取用户约束和候选地点"},
+                    {"event": "status", "text": "正在筛选亲子友好、低步行压力的地点"},
+                    {"event": "status", "text": "正在避开高排队风险和不合适餐食"},
+                ]
+                text = "\n".join(
+                    json.dumps(event, ensure_ascii=False, separators=(",", ":"))
+                    for event in events
+                )
+                return _emit_response_tokens(LLMResponse(text=text, parsed=None), on_token)
             if "Plan-and-Execute Planner" in system:
-                return self._mock_plan(user)
+                response = self._mock_plan(user)
+                if "JSONL 事件流协议" in system:
+                    response = _wrap_plan_as_event_stream(response)
+                return _emit_response_tokens(response, on_token)
             if "Replanner" in system:
-                return self._mock_replan(user)
+                return _emit_response_tokens(self._mock_replan(user), on_token)
             if "Preference Mirror" in system:
-                return self._mock_preference_clarify(user)
+                return _emit_response_tokens(self._mock_preference_clarify(user), on_token)
             if "Text Intake" in system:
-                return self._mock_text_intake(user)
+                return _emit_response_tokens(self._mock_text_intake(user), on_token)
             # fallback
             text = '{"answer": "mock-fallback"}'
-            return LLMResponse(text=text, parsed=json.loads(text))
+            return _emit_response_tokens(LLMResponse(text=text, parsed=json.loads(text)), on_token)
 
     def _mock_text_intake(self, user_text: str) -> "LLMResponse":
         """v2.5 D2：mock 文本抽取——委托给规则 fallback。"""
@@ -139,6 +201,9 @@ class MockLLMClient(LLMClient):
             "taste_tags": r.taste_tags,
             "scene_tags": r.scene_tags,
             "risk_tags": r.risk_tags,
+            "diet_flags": r.diet_flags,
+            "preference_tags": r.preference_tags,
+            "avoid_tags": r.avoid_tags,
             "aspects": r.aspects or [
                 {"aspect_type": "scenario_fit", "sentiment": "positive",
                  "confidence": 0.6, "evidence_summary": "规则版 mock 抽取"},
@@ -378,14 +443,14 @@ class LongCatClient(LLMClient):
     def name(self) -> str:
         return "longcat"
 
-    def complete(self, system, user, json_schema=None, temperature=0.3):
+    def complete(self, system, user, json_schema=None, temperature=0.3, on_token=None, on_stream_event=None):
         from .tracing import trace_span
         with trace_span("llm.longcat.complete", attrs={
             "temperature": temperature, "user_chars": len(user),
         }) as _sp:
-            return self._complete_inner(system, user, json_schema, temperature, _sp)
+            return self._complete_inner(system, user, json_schema, temperature, _sp, on_token, on_stream_event)
 
-    def _complete_inner(self, system, user, json_schema, temperature, _sp):
+    def _complete_inner(self, system, user, json_schema, temperature, _sp, on_token=None, on_stream_event=None):
         try:
             import anthropic  # type: ignore
         except ImportError:
@@ -422,16 +487,49 @@ class LongCatClient(LLMClient):
 
         def _call():
             with get_global_limiter():
-                return client.messages.create(
+                if on_token is None:
+                    msg = client.messages.create(
+                        model=model,
+                        max_tokens=max_tokens,
+                        temperature=temperature,
+                        system=system,
+                        messages=[{"role": "user", "content": user}],
+                    )
+                    text = "".join(getattr(b, "text", "") for b in msg.content)
+                    return msg, text
+
+                parts: list[str] = []
+                first_text = True
+                with client.messages.stream(
                     model=model,
                     max_tokens=max_tokens,
                     temperature=temperature,
                     system=system,
                     messages=[{"role": "user", "content": user}],
-                )
+                ) as stream:
+                    if on_stream_event is not None:
+                        on_stream_event("模型连接成功：LongCat stream 已建立")
+                    for event in stream:
+                        event_type = getattr(event, "type", "")
+                        if event_type == "content_block_start" and on_stream_event is not None:
+                            on_stream_event("模型开始输出内容块")
+                        if event_type != "content_block_delta":
+                            continue
+                        delta = getattr(event, "delta", None)
+                        if getattr(delta, "type", "") != "text_delta":
+                            continue
+                        text_delta = getattr(delta, "text", "")
+                        if not text_delta:
+                            continue
+                        if first_text and on_stream_event is not None:
+                            on_stream_event("收到首段模型输出")
+                            first_text = False
+                        parts.append(text_delta)
+                        on_token(text_delta)
+                    msg = stream.get_final_message()
+                return msg, "".join(parts)
 
-        msg = retry_with_backoff(_call, max_attempts=4, base_delay=2.0, max_delay=60.0)
-        text = "".join(getattr(b, "text", "") for b in msg.content)
+        msg, text = retry_with_backoff(_call, max_attempts=4, base_delay=2.0, max_delay=60.0)
         # repair_json 比 _extract_first_json 强：能恢复截断 / 抠 steps
         parsed = repair_json(text) if json_schema is not None else None
         if _sp is not None:
@@ -498,6 +596,135 @@ class LongCatClient(LLMClient):
 
 
 # ============================================================
+# DPSK / DeepSeek：Anthropic 兼容协议（独立配置，不复用 LongCat 变量）
+# ============================================================
+
+class DpskClient(LLMClient):
+    """DeepSeek API client.
+
+    使用独立 DPSK_* 环境变量，避免和 LONGCAT_* 混用：
+        - DPSK_API_KEY
+        - DPSK_BASE_URL（默认 https://api.deepseek.com/anthropic）
+        - DPSK_MODEL（默认 deepseek-v4-flash）
+        - DPSK_MAX_TOKENS（默认 8192）
+
+    同时兼容 DEEPSEEK_* 变量名，但不会读取 LONGCAT_*。
+    """
+
+    @property
+    def name(self) -> str:
+        return "dpsk"
+
+    def config(self) -> ProviderConfig:
+        api_key = os.environ.get("DPSK_API_KEY") or os.environ.get("DEEPSEEK_API_KEY")
+        if not api_key:
+            raise RuntimeError(
+                "DPSK_API_KEY 未设置。可在 .env 中配置 DPSK_API_KEY=...，"
+                "或使用 DEEPSEEK_API_KEY=..."
+            )
+        max_tokens_raw = (
+            os.environ.get("DPSK_MAX_TOKENS")
+            or os.environ.get("DEEPSEEK_MAX_TOKENS")
+            or "8192"
+        )
+        return ProviderConfig(
+            api_key=api_key,
+            base_url=(
+                os.environ.get("DPSK_BASE_URL")
+                or os.environ.get("DEEPSEEK_BASE_URL")
+                or "https://api.deepseek.com/anthropic"
+            ),
+            model=(
+                os.environ.get("DPSK_MODEL")
+                or os.environ.get("DEEPSEEK_MODEL")
+                or "deepseek-v4-flash"
+            ),
+            max_tokens=int(max_tokens_raw),
+        )
+
+    def complete(self, system, user, json_schema=None, temperature=0.3, on_token=None, on_stream_event=None):
+        from .tracing import trace_span
+        with trace_span("llm.dpsk.complete", attrs={
+            "temperature": temperature, "user_chars": len(user),
+        }) as _sp:
+            return self._complete_inner(system, user, json_schema, temperature, _sp, on_token, on_stream_event)
+
+    def _complete_inner(self, system, user, json_schema, temperature, _sp, on_token=None, on_stream_event=None):
+        try:
+            import anthropic  # type: ignore
+            import httpx  # type: ignore
+        except ImportError:
+            raise RuntimeError("pip install anthropic httpx（已在 requirements 里）")
+
+        config = self.config()
+        client = anthropic.Anthropic(
+            api_key=config.api_key,
+            base_url=config.base_url,
+            http_client=httpx.Client(trust_env=True, timeout=60.0),
+        )
+
+        from .llm_robust import get_global_limiter, repair_json, retry_with_backoff
+
+        def _call():
+            with get_global_limiter():
+                if on_token is None:
+                    msg = client.messages.create(
+                        model=config.model,
+                        max_tokens=config.max_tokens,
+                        temperature=temperature,
+                        system=system,
+                        messages=[{"role": "user", "content": user}],
+                    )
+                    text = "".join(getattr(b, "text", "") for b in msg.content)
+                    return msg, text
+
+                parts: list[str] = []
+                first_text = True
+                with client.messages.stream(
+                    model=config.model,
+                    max_tokens=config.max_tokens,
+                    temperature=temperature,
+                    system=system,
+                    messages=[{"role": "user", "content": user}],
+                ) as stream:
+                    if on_stream_event is not None:
+                        on_stream_event("模型连接成功：DPSK stream 已建立")
+                    for event in stream:
+                        event_type = getattr(event, "type", "")
+                        if event_type == "content_block_start" and on_stream_event is not None:
+                            on_stream_event("模型开始输出内容块")
+                        if event_type != "content_block_delta":
+                            continue
+                        delta = getattr(event, "delta", None)
+                        if getattr(delta, "type", "") != "text_delta":
+                            continue
+                        text_delta = getattr(delta, "text", "")
+                        if not text_delta:
+                            continue
+                        if first_text and on_stream_event is not None:
+                            on_stream_event("收到首段模型输出")
+                            first_text = False
+                        parts.append(text_delta)
+                        on_token(text_delta)
+                    msg = stream.get_final_message()
+                return msg, "".join(parts)
+
+        msg, text = retry_with_backoff(_call, max_attempts=4, base_delay=2.0, max_delay=60.0)
+        parsed = repair_json(text) if json_schema is not None else None
+        if _sp is not None:
+            _sp.set_attribute("response_chars", len(text))
+            usage = getattr(msg, "usage", None)
+            if usage is not None:
+                in_tok = getattr(usage, "input_tokens", None)
+                out_tok = getattr(usage, "output_tokens", None)
+                if in_tok is not None:
+                    _sp.set_attribute("input_tokens", in_tok)
+                if out_tok is not None:
+                    _sp.set_attribute("output_tokens", out_tok)
+        return LLMResponse(text=text, parsed=parsed, raw=msg)
+
+
+# ============================================================
 # Anthropic：可选 fallback（开发期实测用）
 # ============================================================
 
@@ -508,7 +735,7 @@ class AnthropicClient(LLMClient):
     def name(self) -> str:
         return "anthropic"
 
-    def complete(self, system, user, json_schema=None, temperature=0.3):
+    def complete(self, system, user, json_schema=None, temperature=0.3, on_token=None, on_stream_event=None):
         try:
             import anthropic  # type: ignore
         except ImportError:
@@ -516,14 +743,47 @@ class AnthropicClient(LLMClient):
                 "anthropic 未安装。pip install anthropic，或用 BJ_PAL_LLM=mock"
             )
         client = anthropic.Anthropic()
-        msg = client.messages.create(
-            model=os.environ.get("ANTHROPIC_MODEL", "claude-opus-4-7"),
-            max_tokens=4096,
-            temperature=temperature,
-            system=system,
-            messages=[{"role": "user", "content": user}],
-        )
-        text = "".join(b.text for b in msg.content if hasattr(b, "text"))
+        model = os.environ.get("ANTHROPIC_MODEL", "claude-opus-4-7")
+        if on_token is None:
+            msg = client.messages.create(
+                model=model,
+                max_tokens=4096,
+                temperature=temperature,
+                system=system,
+                messages=[{"role": "user", "content": user}],
+            )
+            text = "".join(b.text for b in msg.content if hasattr(b, "text"))
+        else:
+            parts: list[str] = []
+            first_text = True
+            with client.messages.stream(
+                model=model,
+                max_tokens=4096,
+                temperature=temperature,
+                system=system,
+                messages=[{"role": "user", "content": user}],
+            ) as stream:
+                if on_stream_event is not None:
+                    on_stream_event("模型连接成功：Anthropic stream 已建立")
+                for event in stream:
+                    event_type = getattr(event, "type", "")
+                    if event_type == "content_block_start" and on_stream_event is not None:
+                        on_stream_event("模型开始输出内容块")
+                    if event_type != "content_block_delta":
+                        continue
+                    delta = getattr(event, "delta", None)
+                    if getattr(delta, "type", "") != "text_delta":
+                        continue
+                    text_delta = getattr(delta, "text", "")
+                    if not text_delta:
+                        continue
+                    if first_text and on_stream_event is not None:
+                        on_stream_event("收到首段模型输出")
+                        first_text = False
+                    parts.append(text_delta)
+                    on_token(text_delta)
+                msg = stream.get_final_message()
+            text = "".join(parts)
         parsed = None
         if json_schema is not None:
             try:
@@ -544,9 +804,11 @@ def get_llm_client(override: Optional[str] = None) -> LLMClient:
         return MockLLMClient()
     if backend == "longcat":
         return LongCatClient()
+    if backend in {"dpsk", "deepseek"}:
+        return DpskClient()
     if backend == "anthropic":
         return AnthropicClient()
-    raise ValueError(f"未知 LLM 后端：{backend}（支持：mock / longcat / anthropic）")
+    raise ValueError(f"未知 LLM 后端：{backend}（支持：mock / longcat / dpsk / deepseek / anthropic）")
 
 
 # ============================================================
