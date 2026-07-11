@@ -1,0 +1,41 @@
+.github/workflows/pages.yml
+  s_701c68e4374d0d::t_311a4fc9349fa7 1-45
+.gitignore
+  s_701c68e4374d0d::t_70c80a06d1a767 23
+README.md
+  s_701c68e4374d0d::t_904cafd6832e1e 1-16
+promo/README.md
+  s_701c68e4374d0d::t_a5323d9ed6cdfd 13,58,61-65,68-71
+promo/assets/jx/VERSION
+  s_701c68e4374d0d::t_56abf47fa37c0b 1
+promo/assets/jx/base.css
+  s_701c68e4374d0d::t_907f9fb93e757b 1-165
+promo/assets/jx/components.css
+  s_701c68e4374d0d::t_372b381943b512 1-590
+promo/assets/jx/tokens.css
+  s_701c68e4374d0d::t_955f908ac7d6fe 1-184
+promo/landing-page.html
+  s_701c68e4374d0d::t_cb5278fd7a4638 4-83,85-98,100-128,130-414,416-431,433-460,462-465,467-472,475-505,507-515,518-521,523-525,528-540,543-546,548-586,589-621,624-668,671-704,706-722,724-751,753-769,771-773,775-777,779-781,783-789,792-794,797
+scripts/build_showcase.sh
+  s_701c68e4374d0d::t_7d8b028bf4de30 1-20
+tests/test_showcase_site.py
+  s_701c68e4374d0d::t_a511e91fe66763 1-107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "d5a24e37e3b1b3e6449a405a8f178f4bf46dd057",
+  "prompts": {},
+  "sessions": {
+    "s_701c68e4374d0d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_701c68e4374d0d",
+        "model": "unknown"
+      },
+      "human_author": "Jason <150260202+estelledc@users.noreply.github.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
