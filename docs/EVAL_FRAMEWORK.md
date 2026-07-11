@@ -1,7 +1,7 @@
 # BJ-Pal 评测体系 · L1/L2/L3 三层防火墙
 
 > 设计目标：**评测频率 × 信号强度** 解耦 — 每 commit 跑核心信号、每周扫行为基线、每 release 全量打分。
-> 灵感来源：video-eval-agent gstack 三阶段防火墙（intern-journal memory `project_video_eval_agent_constraints.md`）+ TravelPlanner（NeurIPS 2024, arxiv:2402.01622）4 指标。
+> 灵感来源：视频评测实践中的三阶段防火墙 + TravelPlanner（NeurIPS 2024, arxiv:2402.01622）4 指标。
 
 ## 1. 为什么要分三层
 

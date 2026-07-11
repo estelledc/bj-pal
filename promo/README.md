@@ -2,15 +2,15 @@
 
 > 美团黑客松 2026 / deadline 6/06
 > 用 Open Design 本机 Claude Code 自动生成；2026-05-30 更新为黑客松科技风
-> 当前作者栏：Jason · KeepL
+> 当前作者栏：Jason Xun · KeepL
 
 ## 物料清单
 
 | 文件 | 用途 | 尺寸 | 大小 |
 |---|---|---|---|
 | `pitch-deck.html` | 决赛路演幻灯片（10 张横屏 / 科技风） | 1920×1080 ×10 | 32KB+ |
-| `pitch-deck.pdf` | PDF 备份 / U 盘 | A4 横向 | — |
-| `landing-page.html` | 项目主页（GitHub Pages 部署用 / 深色科技风） | 1920× 长滚动 | 33KB+ |
+| `pitch-deck.pdf` | PDF 备份 / U 盘 | 16:9 横向 | — |
+| `landing-page.html` | 项目案例主页（GitHub Pages / 响应式编辑风） | 响应式长页 | — |
 | `xhs-carousel.html` | 小红书图文（9 张 / 深色卡片） | 1080×1440 ×9 | 24KB+ |
 | `one-pager.html` | A4 单页技术摘要（科技风） | 1240×1754 | 23KB+ |
 | `one-pager.pdf` | A4 PDF（打印 / 邮件附件） | A4 纵向 | — |
@@ -33,7 +33,7 @@ PNG 截图目录：
 - 算法：`ToT` / `OPTW` / `Kemeny+Borda`
 - 评测：L3 `100 case × 5 信号 = 280/280`
 - 校准：Global ECE `0.1089`
-- 作者：`Jason · KeepL`
+- 作者：`Jason Xun · KeepL`
 
 ### 决赛路演当天
 
@@ -45,7 +45,7 @@ PNG 截图目录：
 
 ### 引流期（决赛前 1-2 周）
 
-- **小红书图文笔记**：用 `xhs-png/` 9 张 PNG，文案见 `intern-journal/explorations/content/xiaohongshu/2026-05-26-bjpal-hackathon.md`
+- **小红书图文笔记**：用 `xhs-png/` 9 张 PNG；发布文案在公开内容计划中单独维护
 - **GitHub README**：把 `hero-png/01.png` commit 到 bj-pal 仓库 `assets/hero.png`，README 顶部 `![](assets/hero.png)`
 - **Landing Page 部署**：`landing-page.html` deploy 到 GitHub Pages（见下文）
 - **朋友圈**：landing page 截图 + 链接 + 一句话钩子
@@ -55,34 +55,29 @@ PNG 截图目录：
 - **回顾文章**：`one-pager.pdf` 作为附件
 - **简历**：`pitch-deck.pdf` + landing page 链接
 
-## 部署 Landing Page 到 GitHub Pages
+## 构建与部署 Landing Page
 
 ```bash
-# 在 bj-pal 仓库根目录
-mkdir -p docs
-cp promo/landing-page.html docs/index.html
-git add docs/index.html
-git commit -m "添加 landing page"
-git push
-# Settings → Pages → Source: docs/ → Save
-# 访问: https://estelledc.github.io/bj-pal/
+# 在 bj-pal 仓库根目录构建本地发布目录
+bash scripts/build_showcase.sh
+
+# 本地预览
+python3 -m http.server 8000 --directory _site
 ```
+
+合并到 `main` 后，`.github/workflows/pages.yml` 会构建 `_site/` 并部署到
+`https://estelledc.github.io/bj-pal/`。首次使用时需在仓库 Settings → Pages
+中将 Source 设为 **GitHub Actions**。
 
 ## 重新生成 / 修改
 
-每个 HTML 都是单文件可直接编辑。如果需要批量更新数据：
+每个 HTML 都是单文件可直接编辑。截图生成器不随本仓库发布；无论使用哪种工具，输入和输出都应保持为仓库相对路径：
 
 ```bash
-cd ~/intern-journal/explorations/open-design
-# 编辑 prompts/bj-pal/<slug>.txt
-# 串行重跑（避免并发失败）
-bash run-bjpal.sh
-# 重新截图（HTML 改版后，PNG/PDF 需要重导出才会同步）
-node screenshot-cards.mjs ./.od/projects/bjpal-03-xhs-carousel/index.html \
-  ~/intern-journal/explorations/mini-apps/bj-pal/promo/xhs-png/
-node screenshot-flex.mjs ./.od/projects/bjpal-01-pitch-deck/index.html \
-  ~/intern-journal/explorations/mini-apps/bj-pal/promo/pitch-png 1920 1080 ".card, .slide, section"
-node pdf-export.mjs promo/pitch-deck.html promo/pitch-deck.pdf A4 landscape
+# HTML 改版后重新导出对应 PNG/PDF，避免衍生物过期
+<screenshot-command> promo/xhs-carousel.html promo/xhs-png/
+<screenshot-command> promo/pitch-deck.html promo/pitch-png/
+<pdf-export-command> promo/pitch-deck.html promo/pitch-deck.pdf 16:9
 node pdf-export.mjs promo/one-pager.html promo/one-pager.pdf A4
 ```
 

@@ -20,9 +20,11 @@ def _read(path: Path) -> str:
 
 class PromoRefreshTest(unittest.TestCase):
     def test_primary_promo_assets_credit_jason_and_keepl(self) -> None:
-        missing = [path.name for path in PRIMARY_HTML if "Jason · KeepL" not in _read(path)]
+        missing = [path.name for path in PRIMARY_HTML if "Jason Xun · KeepL" not in _read(path)]
+        stale = [path.name for path in PRIMARY_HTML if "Jason · KeepL" in _read(path)]
 
         self.assertEqual(missing, [])
+        self.assertEqual(stale, [])
 
     def test_primary_promo_copy_uses_neutral_partner_language(self) -> None:
         checked = PRIMARY_HTML + [PROMO / "architecture.md"]
@@ -92,6 +94,14 @@ class PromoRefreshTest(unittest.TestCase):
         self.assertIn("--page-scale", html)
         self.assertIn("fitOnePager", html)
         self.assertIn("transform: scale(var(--page-scale))", html)
+        self.assertIn("zoom: 0.64008", html)
+
+    def test_pitch_deck_pdf_uses_native_sixteen_by_nine_pages(self) -> None:
+        html = _read(PROMO / "pitch-deck.html")
+
+        self.assertIn("@page { size: 1920px 1080px; margin: 0; }", html)
+        self.assertIn("width: 1920px", html)
+        self.assertIn("height: 1080px", html)
 
     def test_one_pager_color_system_stays_dark_and_cyber(self) -> None:
         html = _read(PROMO / "one-pager.html")
