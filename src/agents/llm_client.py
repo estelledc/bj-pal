@@ -22,16 +22,15 @@ from typing import Any, Callable, Optional
 
 
 # ============================================================
-# .env 自动加载（复用 activity-planner 配的 LONGCAT_*）
+# .env 自动加载
 # ============================================================
 
 def _autoload_env():
-    """优先级：进程已设置 > BJ-Pal 本地 .env > activity-planner/.env"""
-    candidates = [
-        Path(__file__).resolve().parent.parent.parent / ".env",  # bj-pal/.env
-        Path(__file__).resolve().parents[5] / "activity-planner" / ".env",
-        Path.home() / "intern-journal" / "activity-planner" / ".env",
-    ]
+    """优先级：进程已设置 > BJ-Pal 本地 .env > 显式 BJ_PAL_ENV_FILE。"""
+    candidates = [Path(__file__).resolve().parent.parent.parent / ".env"]
+    configured_env = os.getenv("BJ_PAL_ENV_FILE")
+    if configured_env:
+        candidates.append(Path(configured_env).expanduser())
     try:
         from dotenv import load_dotenv  # type: ignore
     except ImportError:
