@@ -10,7 +10,7 @@
 |---|---|---|---|
 | `pitch-deck.html` | 决赛路演幻灯片（10 张横屏 / 科技风） | 1920×1080 ×10 | 32KB+ |
 | `pitch-deck.pdf` | PDF 备份 / U 盘 | A4 横向 | — |
-| `landing-page.html` | 项目主页（GitHub Pages 部署用 / 深色科技风） | 1920× 长滚动 | 33KB+ |
+| `landing-page.html` | 项目案例主页（GitHub Pages / 响应式编辑风） | 响应式长页 | — |
 | `xhs-carousel.html` | 小红书图文（9 张 / 深色卡片） | 1080×1440 ×9 | 24KB+ |
 | `one-pager.html` | A4 单页技术摘要（科技风） | 1240×1754 | 23KB+ |
 | `one-pager.pdf` | A4 PDF（打印 / 邮件附件） | A4 纵向 | — |
@@ -55,18 +55,19 @@ PNG 截图目录：
 - **回顾文章**：`one-pager.pdf` 作为附件
 - **简历**：`pitch-deck.pdf` + landing page 链接
 
-## 部署 Landing Page 到 GitHub Pages
+## 构建与部署 Landing Page
 
 ```bash
-# 在 bj-pal 仓库根目录
-mkdir -p docs
-cp promo/landing-page.html docs/index.html
-git add docs/index.html
-git commit -m "添加 landing page"
-git push
-# Settings → Pages → Source: docs/ → Save
-# 访问: https://estelledc.github.io/bj-pal/
+# 在 bj-pal 仓库根目录构建本地发布目录
+bash scripts/build_showcase.sh
+
+# 本地预览
+python3 -m http.server 8000 --directory _site
 ```
+
+合并到 `main` 后，`.github/workflows/pages.yml` 会构建 `_site/` 并部署到
+`https://estelledc.github.io/bj-pal/`。首次使用时需在仓库 Settings → Pages
+中将 Source 设为 **GitHub Actions**。
 
 ## 重新生成 / 修改
 

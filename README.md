@@ -1,3 +1,19 @@
+<p align="center">
+  <a href="https://estelledc.github.io/bj-pal/">
+    <img src="promo/pitch-png/01.png" alt="BJ-Pal：周六下午的决策解药" width="100%" />
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://estelledc.github.io/bj-pal/"><strong>在线案例</strong></a>
+  ·
+  <a href="docs/DESIGN.md">系统设计</a>
+  ·
+  <a href="docs/eval-100-results.md">评测证据</a>
+  ·
+  <a href="promo/one-pager.pdf">技术摘要</a>
+</p>
+
 # BJ-Pal · 周六下午的决策解药——一句话替你扛下选错的责任
 
 > 美团黑客松 2026 短时活动规划 Agent 实现

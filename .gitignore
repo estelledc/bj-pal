@@ -20,6 +20,7 @@ data/
 
 # Screenshots / 临时
 .screenshots/
+_site/
 *.local.png
 .DS_Store
 
