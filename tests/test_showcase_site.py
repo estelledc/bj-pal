@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PROMO = ROOT / "promo"
 PAGE = PROMO / "landing-page.html"
 WORKFLOW = ROOT / ".github" / "workflows" / "pages.yml"
+HERO = ROOT / "src" / "ui" / "hero.py"
 
 
 class _ShowcaseParser(HTMLParser):
@@ -154,6 +155,37 @@ class ShowcaseSiteTest(unittest.TestCase):
         self.assertIn("@media (max-width: 360px)", self.html)
         self.assertIn("@media (prefers-reduced-motion: reduce)", self.html)
         self.assertIn("overflow-wrap: anywhere", self.html)
+
+    def test_interaction_motion_is_input_appropriate_and_repeat_safe(self) -> None:
+        hover_start = self.html.index("@media (hover: hover) and (pointer: fine)")
+        hover_end = self.html.index("@media (max-width: 980px)", hover_start)
+        hover_rules = self.html[hover_start:hover_end]
+        before_hover_rules = self.html[:hover_start]
+
+        self.assertIn(".button:hover:not(:active)", hover_rules)
+        self.assertIn(".evidence-card:hover:not(:active)", hover_rules)
+        self.assertNotIn(".button:hover", before_hover_rules)
+        self.assertNotIn(".evidence-card:hover", before_hover_rules)
+        self.assertIn(".button:active", self.html)
+        self.assertIn(".evidence-card:active", self.html)
+
+        reduced_start = self.html.index("@media (prefers-reduced-motion: reduce)")
+        reduced_end = self.html.index("@media print", reduced_start)
+        reduced_rules = self.html[reduced_start:reduced_end]
+        self.assertIn("opacity 120ms ease-out", reduced_rules)
+        self.assertIn("transform: none", reduced_rules)
+        self.assertNotIn("transition-duration: 0.01ms", reduced_rules)
+
+        replay_start = self.html.index(".trace-panel")
+        replay_end = self.html.index(".trace-observation", replay_start)
+        replay_rules = self.html[replay_start:replay_end]
+        self.assertNotIn("animation:", replay_rules)
+        self.assertNotIn("transition:", replay_rules)
+
+        hero_source = HERO.read_text(encoding="utf-8")
+        self.assertNotIn("animation:", hero_source)
+        self.assertNotIn("@keyframes", hero_source)
+        self.assertNotIn("ease-in", hero_source)
 
     def test_navigation_includes_stable_about_and_resume_routes(self) -> None:
         for route in [

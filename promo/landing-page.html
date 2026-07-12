@@ -276,12 +276,15 @@
       border: 1px solid var(--ink);
       font-weight: 600;
       text-decoration: none;
-      transition: color 160ms ease, background 160ms ease, border-color 160ms ease, transform 160ms ease;
+      transition:
+        color 160ms ease,
+        background-color 160ms ease,
+        border-color 160ms ease,
+        opacity 120ms ease-out,
+        transform 120ms cubic-bezier(0.23, 1, 0.32, 1);
     }
-    .button:hover { transform: translateY(-2px); }
-    .button--primary { color: var(--paper-3); background: var(--ink); }
-    .button--primary:hover { background: var(--red); border-color: var(--red); }
-    .button--ghost:hover { color: var(--red); border-color: var(--red); }
+    .button--primary { color: var(--paper-3); background-color: var(--ink); }
+    .button:active { opacity: 0.88; transform: scale(0.98); }
     .button span { margin-left: 14px; font-family: var(--mono); }
 
     .role-strip {
@@ -429,6 +432,7 @@
     #trace-plan:focus-visible ~ .trace-tabs [for="trace-plan"],
     #trace-probe:focus-visible ~ .trace-tabs [for="trace-probe"],
     #trace-replan:focus-visible ~ .trace-tabs [for="trace-replan"] { outline: 3px solid #dc6f65; outline-offset: 3px; }
+    /* Keep the radio-only replay instant so direction-key changes never wait on motion. */
     .trace-panel { display: none; grid-template-columns: 0.72fr 1.28fr; gap: 36px; min-height: 290px; padding: 34px 22px 20px; }
     #trace-intent:checked ~ .trace-panels [data-panel="intent"],
     #trace-plan:checked ~ .trace-panels [data-panel="plan"],
@@ -468,12 +472,16 @@
       min-height: 250px;
       padding: 28px;
       color: inherit;
-      background: rgba(255, 250, 241, 0.055);
+      background-color: rgba(255, 250, 241, 0.055);
       border: 1px solid rgba(255, 250, 241, 0.2);
       text-decoration: none;
-      transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+      transition:
+        background-color 160ms ease,
+        border-color 160ms ease,
+        opacity 120ms ease-out,
+        transform 120ms cubic-bezier(0.23, 1, 0.32, 1);
     }
-    .evidence-card:hover { background: rgba(255, 250, 241, 0.09); border-color: #dc6f65; transform: translateY(-3px); }
+    .evidence-card:active { opacity: 0.9; }
     .evidence-type { color: #dc6f65; font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; }
     .evidence-card h3 { margin: 38px 0 12px; font-family: var(--serif); font-size: 24px; }
     .evidence-card p { margin: 0; color: rgba(255, 250, 241, 0.62); font-size: 13px; }
@@ -515,6 +523,17 @@
     .next-work h2 { max-width: 760px; margin: 0; font-family: var(--serif); font-size: clamp(34px, 5vw, 62px); line-height: 1.18; }
     .next-work p { max-width: 650px; margin: 18px 0 0; color: var(--ink-soft); }
     .next-work a { display: inline-flex; margin-top: 24px; font-family: var(--mono); font-size: 11px; font-weight: 500; }
+
+    @media (hover: hover) and (pointer: fine) {
+      .button:hover:not(:active) { transform: translateY(-1px); }
+      .button--primary:hover { background-color: var(--red); border-color: var(--red); }
+      .button--ghost:hover { color: var(--red); border-color: var(--red); }
+      .evidence-card:hover:not(:active) {
+        background-color: rgba(255, 250, 241, 0.09);
+        border-color: #dc6f65;
+        transform: translateY(-1px);
+      }
+    }
 
     @media (max-width: 980px) {
       .desktop-nav { display: none; }
@@ -582,7 +601,24 @@
 
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
-      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+      .skip-link { transition: none; }
+      .button {
+        transition:
+          color 160ms ease,
+          background-color 160ms ease,
+          border-color 160ms ease,
+          opacity 120ms ease-out;
+      }
+      .evidence-card {
+        transition:
+          background-color 160ms ease,
+          border-color 160ms ease,
+          opacity 120ms ease-out;
+      }
+      .button:hover:not(:active),
+      .button:active,
+      .evidence-card:hover:not(:active),
+      .evidence-card:active { transform: none; }
     }
 
     @media print {
