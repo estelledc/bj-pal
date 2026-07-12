@@ -1,7 +1,7 @@
-"""剧场化开场（v2 改 10）。
+"""对话式开场（v2 改 10）。
 
-UI 顶部一段微信对话动画 + 标语转场。
-不依赖 JS 框架，用 CSS animation。
+UI 顶部保留一段微信对话和标语，不依赖 JS 框架。
+保持静态，避免 Streamlit 重渲染时重复播放入场动效。
 """
 
 from __future__ import annotations
@@ -34,20 +34,14 @@ def render_hero(show: bool = True):
       .bjpal-chat {
         background: #fff; border-radius: 8px; padding: 10px 14px;
         font-size: 13px; max-width: 380px;
-        animation: bjpal-fadein 0.6s ease-in;
         margin: 6px 0;
       }
       .bjpal-chat-from-me {
         background: #C8302D; color: #fff; border-radius: 8px;
         padding: 10px 14px; font-size: 13px;
         max-width: 380px; margin-left: auto;
-        animation: bjpal-fadein 0.6s ease-in;
       }
       .bjpal-chat .who { font-size: 11px; color: #999; margin-bottom: 3px; }
-      @keyframes bjpal-fadein {
-        from { opacity: 0; transform: translateY(8px); }
-        to   { opacity: 1; transform: translateY(0); }
-      }
     </style>
     """
     html = """
