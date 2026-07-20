@@ -1,5 +1,12 @@
 """Durable planning job entry points."""
 
+from .diagnostics import (
+    JOB_DIAGNOSIS_VERSION,
+    MAX_DIAGNOSTIC_EVENTS,
+    DiagnosticEvent,
+    JobDiagnosticEventLimitExceeded,
+    JobIncidentDiagnosis,
+)
 from .models import PlanningAdmissionEvent, PlanningJob, PlanningJobEvent, PlanningJobSummary
 from .repository import (
     ADMISSION_POLICY_VERSION,
@@ -20,7 +27,12 @@ from .repository import (
 from .service import PlanningJobService
 
 __all__ = [
+    "DiagnosticEvent",
     "IdempotencyConflict",
+    "JOB_DIAGNOSIS_VERSION",
+    "JobDiagnosticEventLimitExceeded",
+    "JobIncidentDiagnosis",
+    "MAX_DIAGNOSTIC_EVENTS",
     "ADMISSION_POLICY_VERSION",
     "MAX_PRIORITY",
     "MIN_PRIORITY",

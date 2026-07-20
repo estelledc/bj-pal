@@ -20,6 +20,11 @@ from application import (
     RequirementNormalizer,
 )
 
+from .diagnostics import (
+    MAX_DIAGNOSTIC_EVENTS,
+    JobDiagnosticEventLimitExceeded,
+    JobIncidentDiagnosis,
+)
 from .models import PlanningAdmissionEvent, PlanningJob, PlanningJobEvent, PlanningJobSummary
 from .repository import PlanningJobRepository
 
@@ -188,6 +193,33 @@ class PlanningJobService:
             after_event_id=after_event_id,
             limit=limit,
         )
+
+    def diagnose(
+        self,
+        job_id: str,
+        *,
+        tenant_id: str | None = None,
+    ) -> JobIncidentDiagnosis | None:
+        job = self.repository.get(job_id, tenant_id=tenant_id)
+        if job is None:
+            return None
+        events = self.repository.list_events(
+            job_id,
+            tenant_id=tenant_id,
+            limit=MAX_DIAGNOSTIC_EVENTS,
+        )
+        if len(events) == MAX_DIAGNOSTIC_EVENTS:
+            overflow = self.repository.list_events(
+                job_id,
+                tenant_id=tenant_id,
+                after_event_id=events[-1].event_id,
+                limit=1,
+            )
+            if overflow:
+                raise JobDiagnosticEventLimitExceeded(
+                    "job diagnosis event limit exceeded; durable event chain was not truncated"
+                )
+        return JobIncidentDiagnosis.create(job=job, events=events)
 
     def admission_events(
         self,

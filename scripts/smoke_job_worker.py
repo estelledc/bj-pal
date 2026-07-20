@@ -77,6 +77,10 @@ def main() -> int:
         assert events[1].payload["tenant_id"] == "default"
         assert events[1].payload["base_priority"] == 7
         assert events[1].payload["queue_wait_ms"] >= 0
+        completed_diagnosis = service.diagnose(persisted.job_id)
+        assert completed_diagnosis is not None
+        assert completed_diagnosis.classification == "completed"
+        assert completed_diagnosis.verify_integrity()
 
         recovery_service = PlanningJobService(
             repository=PlanningJobRepository(Path(directory) / "recovery.db"),
@@ -127,6 +131,13 @@ def main() -> int:
         )
         dead_lettered = control_service.run_once(worker_id="smoke-dead-letter-worker")
         assert dead_lettered is not None and dead_lettered.status == "dead_lettered"
+        failed_diagnosis = control_service.diagnose(failed_source.job_id)
+        assert failed_diagnosis is not None
+        assert failed_diagnosis.classification == "runtime_or_dependency_unknown"
+        assert (
+            failed_diagnosis.recommended_action
+            == "inspect_dependency_health_before_replay"
+        )
         assert [job.job_id for job in control_service.list_jobs(status="dead_lettered")] == [
             failed_source.job_id
         ]
@@ -164,6 +175,9 @@ def main() -> int:
         assert deadline_service.run_once(worker_id="smoke-timeout-worker") is None
         timed_out = deadline_service.get(expiring.job_id)
         assert timed_out is not None and timed_out.status == "timed_out"
+        timeout_diagnosis = deadline_service.diagnose(timed_out.job_id)
+        assert timeout_diagnosis is not None
+        assert timeout_diagnosis.classification == "queue_deadline_exceeded"
         timeout_replay = deadline_service.replay(
             job_id=timed_out.job_id,
             request_id="smoke-timeout-replay-request",
@@ -182,7 +196,10 @@ def main() -> int:
             f"heartbeats={recovery_types.count('heartbeat')} "
             f"dead_letter={dead_lettered.status} replay={replayed.status} "
             f"cancel={cancelled.status} timeout={timed_out.status} "
-            f"timeout_replay={timeout_replay.status}"
+            f"timeout_replay={timeout_replay.status} "
+            f"diagnoses={completed_diagnosis.classification},"
+            f"{failed_diagnosis.classification},"
+            f"{timeout_diagnosis.classification}"
         )
     return 0
 

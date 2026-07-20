@@ -80,6 +80,9 @@ jobs:
       - name: Build and verify execution-observation artifact
         run: make eval-observability PYTHON=python
 
+      - name: Build and verify durable-job diagnostic artifact
+        run: make eval-job-diagnostics PYTHON=python
+
       - name: Build and verify execution-budget artifact
         run: make eval-execution-budget PYTHON=python
 
@@ -122,6 +125,7 @@ jobs:
             evals/results/constraints-core.json
             evals/results/clarifications-core.json
             evals/results/observability-core.json
+            evals/results/job-diagnostics-contract.json
             evals/results/execution-budget-core.json
             evals/results/model-output-contract.json
             evals/results/orchestration-comparison.json

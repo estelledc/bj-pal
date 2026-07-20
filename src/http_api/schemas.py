@@ -810,6 +810,65 @@ class PlanningJobEventsResponse(StrictModel):
     links: dict[str, str]
 
 
+class JobDiagnosticEventResponse(StrictModel):
+    event_id: int
+    event_type: str
+    attempt: int
+    offset_ms: float = Field(ge=0)
+    error_code: Optional[str]
+
+
+class JobIncidentDiagnosisResponse(StrictModel):
+    version: Literal["job_incident_diagnosis_v1"]
+    job_id: str
+    status: PlanningJobStatus
+    classification: Literal[
+        "in_progress",
+        "retry_pending",
+        "lease_recovery_in_progress",
+        "completed",
+        "cancelled",
+        "queue_deadline_exceeded",
+        "execution_deadline_exceeded",
+        "persisted_request_invalid",
+        "clarification_required",
+        "execution_budget_exceeded",
+        "model_output_rejected",
+        "worker_lease_exhausted",
+        "runtime_or_dependency_unknown",
+        "unclassified_failure",
+    ]
+    classification_basis: list[str]
+    observed_error_code: Optional[str]
+    recommended_action: Literal[
+        "wait_for_worker",
+        "wait_for_scheduled_retry",
+        "monitor_reclaimed_worker",
+        "none",
+        "resubmit_with_clarification",
+        "inspect_persisted_request_migration",
+        "reduce_work_or_adjust_server_budget",
+        "inspect_model_output_contract_cases",
+        "inspect_worker_health_before_replay",
+        "inspect_dependency_health_before_replay",
+        "review_deadline_and_queue_capacity_before_replay",
+        "manual_review",
+    ]
+    replay_allowed: bool
+    event_count: int = Field(ge=1)
+    significant_events: list[JobDiagnosticEventResponse]
+    first_failure_event_id: Optional[int]
+    terminal_event_id: Optional[int]
+    retry_count: int = Field(ge=0)
+    lease_reclaim_count: int = Field(ge=0)
+    heartbeat_count: int = Field(ge=0)
+    queue_wait_ms: Optional[float] = Field(default=None, ge=0)
+    time_to_terminal_ms: Optional[float] = Field(default=None, ge=0)
+    event_sequence_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    artifact_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    links: dict[str, str]
+
+
 class PlanningAdmissionEventResponse(StrictModel):
     event_id: int
     policy_version: Literal["tenant_admission_v1"]

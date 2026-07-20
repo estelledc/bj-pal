@@ -657,6 +657,14 @@ def test_tenant_isolation_covers_idempotency_jobs_events_controls_and_continuati
             f"/v1/planning-jobs/{alpha.json()['job_id']}/events",
             headers={"Authorization": f"Bearer {beta_token}"},
         )
+        owner_diagnosis = client.get(
+            f"/v1/planning-jobs/{alpha.json()['job_id']}/diagnosis",
+            headers={"Authorization": f"Bearer {alpha_token}"},
+        )
+        foreign_diagnosis = client.get(
+            f"/v1/planning-jobs/{alpha.json()['job_id']}/diagnosis",
+            headers={"Authorization": f"Bearer {beta_token}"},
+        )
         foreign_cancel = client.post(
             f"/v1/planning-jobs/{alpha.json()['job_id']}/cancel",
             headers={"Authorization": f"Bearer {beta_token}"},
@@ -705,9 +713,12 @@ def test_tenant_isolation_covers_idempotency_jobs_events_controls_and_continuati
     assert [item["job_id"] for item in beta_list.json()["jobs"]] == [
         beta.json()["job_id"]
     ]
+    assert owner_diagnosis.status_code == 200
+    assert owner_diagnosis.json()["classification"] == "in_progress"
     assert {
         foreign_get.status_code,
         foreign_events.status_code,
+        foreign_diagnosis.status_code,
         foreign_cancel.status_code,
         foreign_replay.status_code,
         foreign_continue.status_code,
@@ -2090,6 +2101,7 @@ def test_dead_letter_state_and_event_are_exposed_without_internal_error_text(tmp
         job_id = submitted.json()["job_id"]
         completed = jobs.run_once(worker_id="worker-dead-letter")
         state = client.get(f"/v1/planning-jobs/{job_id}")
+        diagnosis = client.get(f"/v1/planning-jobs/{job_id}/diagnosis")
         events = client.get(f"/v1/planning-jobs/{job_id}/events")
         stream = client.get(f"/v1/planning-jobs/{job_id}/events/stream")
 
@@ -2098,10 +2110,24 @@ def test_dead_letter_state_and_event_are_exposed_without_internal_error_text(tmp
     assert state.json()["status"] == "dead_lettered"
     assert state.json()["attempt"] == state.json()["max_attempts"] == 1
     assert state.json()["error_code"] == "planning_execution_failed"
+    assert state.json()["links"]["diagnosis"].endswith(f"/{job_id}/diagnosis")
+    assert diagnosis.status_code == 200
+    assert diagnosis.json()["classification"] == "runtime_or_dependency_unknown"
+    assert diagnosis.json()["recommended_action"] == (
+        "inspect_dependency_health_before_replay"
+    )
+    assert diagnosis.json()["observed_error_code"] == "planning_execution_failed"
+    assert diagnosis.json()["replay_allowed"] is True
+    assert diagnosis.json()["event_count"] == 3
+    assert [item["event_type"] for item in diagnosis.json()["significant_events"]] == [
+        "submitted",
+        "claimed",
+        "dead_lettered",
+    ]
     assert "secret-provider-token" not in state.text
     assert events.json()["events"][-1]["event_type"] == "dead_lettered"
     assert "event: dead_lettered" in stream.text
-    assert "secret-provider-token" not in events.text + stream.text
+    assert "secret-provider-token" not in diagnosis.text + events.text + stream.text
 
 
 def test_sse_open_job_returns_bounded_transport_timeout_not_fake_domain_event(tmp_path) -> None:
