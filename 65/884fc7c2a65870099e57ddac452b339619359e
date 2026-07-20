@@ -1,0 +1,33 @@
+README.md
+  s_cb2480534a666e::t_0404074538960c 20,22,26,47,92-93,198,200,562
+docs/ARCHITECTURE_EVIDENCE.md
+  s_cb2480534a666e::t_d1f5c038f728b2 90,175
+docs/DESIGN.md
+  s_cb2480534a666e::t_d291186bd377f1 436-439
+docs/EVAL_FRAMEWORK.md
+  s_cb2480534a666e::t_676560d5aebf54 207-208
+docs/INTERVIEW_GUIDE.md
+  s_cb2480534a666e::t_268a9959967ca8 193-195,199,403
+docs/ROADMAP.md
+  s_cb2480534a666e::t_6b6e17eacaba5a 50,81-94
+docs/TECHNICAL_REPORT.md
+  s_cb2480534a666e::t_ee298a463ecac7 3,5,362-369
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "65884fc7c2a65870099e57ddac452b339619359e",
+  "prompts": {},
+  "sessions": {
+    "s_cb2480534a666e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_cb2480534a666e",
+        "model": "unknown"
+      },
+      "human_author": "zhouxun <zhouxun.13@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
