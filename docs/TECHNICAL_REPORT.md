@@ -2,7 +2,7 @@
 
 > 本文面向代码评审者，解释项目从黑客松 Demo 到 v6.19 offline-first、需求门控、自然语言约束账本、可续跑澄清、可验证执行观测与请求级执行预算、模型输出失败关闭、编排选型对照、tenant-aware durable 调度、持久证据驱动的故障诊断、原子准入、身份感知控制面、审批式沙箱副作用状态机、用户结果证据链、知情试用分母、安全 operator 工作流、证据型计划质量代理、localhost socket acceptance、隐私最小化工具调用账本、诊断隔离、非破坏业务状态迁移与可复核发布边界的演进。系统细节见 [DESIGN.md](DESIGN.md)，逐项证据见 [ARCHITECTURE_EVIDENCE.md](ARCHITECTURE_EVIDENCE.md)。
 
-> 发布状态（2026-07-20）：v6.18 位于尚未合并的 Draft PR #5，远端 offline-core 已通过；v6.19 位于其上的 follow-up 分支，本地完整门禁已通过，仍待 stacked Draft PR 与远端 workflow。本文的“已实现”按本机/远端证据分别标注，不能外推为 `main` 已发布能力。
+> 发布状态（2026-07-20）：v6.18 位于尚未合并的 Draft PR #5；v6.19 位于 stacked Draft PR #6，本地完整门禁与分支 workflow 已通过。本文的“已实现”按本机/远端分支证据分别标注，不能外推为 `main` 已发布能力。
 
 ## 1. 问题定义
 
