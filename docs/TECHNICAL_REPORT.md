@@ -1,8 +1,8 @@
 # BJ-Pal 技术报告
 
-> 本文面向代码评审者，解释项目从黑客松 Demo 到 v6.19 offline-first、需求门控、自然语言约束账本、可续跑澄清、可验证执行观测与请求级执行预算、模型输出失败关闭、编排选型对照、tenant-aware durable 调度、持久证据驱动的故障诊断、原子准入、身份感知控制面、审批式沙箱副作用状态机、用户结果证据链、知情试用分母、安全 operator 工作流、证据型计划质量代理、localhost socket acceptance、隐私最小化工具调用账本、诊断隔离、非破坏业务状态迁移与可复核发布边界的演进。系统细节见 [DESIGN.md](DESIGN.md)，逐项证据见 [ARCHITECTURE_EVIDENCE.md](ARCHITECTURE_EVIDENCE.md)。
+> 本文面向代码评审者，解释项目从黑客松 Demo 到 v6.20 offline-first、需求门控、自然语言约束账本、可续跑澄清、可验证执行观测与请求级执行预算、模型输出失败关闭、编排选型对照、tenant-aware durable 调度、持久证据驱动的故障诊断与 workload health、原子准入、身份感知控制面、审批式沙箱副作用状态机、用户结果证据链、知情试用分母、安全 operator 工作流、证据型计划质量代理、localhost socket acceptance、隐私最小化工具调用账本、诊断隔离、非破坏业务状态迁移与可复核发布边界的演进。系统细节见 [DESIGN.md](DESIGN.md)，逐项证据见 [ARCHITECTURE_EVIDENCE.md](ARCHITECTURE_EVIDENCE.md)。
 
-> 发布状态（2026-07-20）：v6.18 位于尚未合并的 Draft PR #5；v6.19 位于 stacked Draft PR #6，本地完整门禁与分支 workflow 已通过。本文的“已实现”按本机/远端分支证据分别标注，不能外推为 `main` 已发布能力。
+> 发布状态（2026-07-20）：v6.18 位于 Draft PR #5，v6.19 位于 stacked Draft PR #6；v6.20 位于其上的 follow-up 分支，本地完整门禁已通过，尚未创建 stacked PR。本文的“已实现”按本机/远端分支证据分别标注，不能外推为 `main` 已发布能力。
 
 ## 1. 问题定义
 
@@ -358,6 +358,14 @@ Delivery adapter 不再拥有 Planner/Probe 顺序。Planner、Prober、ProfileL
 - 事件链要求 submitted 起点、单调 ID/时间、attempt 边界和 terminal matching；服务达到 1,000 项时探测 overflow 并失败关闭，不在截断证据上分类；
 - tenant-scoped HTTP 复用 `jobs:read`，本地 CLI 只创建 0600 新文件；job smoke 实际走 SQLite submit/claim/success、dead-letter 和 queue timeout 三条路径；
 - 14-case hand-authored synthetic artifact 覆盖全部分类，独立 verifier 从 raw case 重算 classification/action、phase、sanitized event SHA、inner/outer SHA 和隐私约束。它是 deterministic triage contract，不是生产 root-cause accuracy、事故频率或建议修复率。
+
+### v6.20：Durable Workload Health
+
+- 新增 `durable_workload_health_v1`：只接受单 tenant、timezone-aware、最长 31 天且已经闭合的 `[start,end)`，未来 end 失败关闭；repository 以同一 read snapshot 读取窗口内创建的 job 和 `created_at < end` 的 event prefix，再从 prefix 重建 as-of status，晚到 lifecycle event 不改写历史快照；
+- 固定 1,000 job/10,000 event 上限，overflow 不发布；七类 status、terminal/active/job/event、各 rate 的分母显式返回，空窗口 rate 为 `null`；
+- queue/run/time-to-terminal 使用固定事件边界和 nearest-rank p50/p95/p99，同时返回 sample count/min/max，避免把无 claim 的 queue timeout 塞进 run latency；
+- evidence/artifact 双 SHA 不公开实体 ID；HTTP 复用 `jobs:read`，CLI 只创建 0600 新文件，不输出 tenant/principal/request/job/worker/payload/error；
+- 2-case mixed/empty synthetic artifact 和独立 verifier 重算窗口、聚合、quantile、哈希与隐私，并拒绝重签后的 rate、p95 和 job ID 注入。它不连接 OTLP，也不证明生产 SLO、容量、事故频率或告警质量。
 
 ## 3. 当前执行链
 

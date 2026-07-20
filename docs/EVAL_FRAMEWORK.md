@@ -204,6 +204,8 @@ python3 scripts/eval_compare.py   # 自动生成对比表
 
 `evals/run_observability.py` 生成 3 条 synthetic contract case，覆盖 provider-reported token、mock usage 缺失和无 LLM 路径；raw observation 保存父子 span、相对耗时、操作/业务计数、token completeness 和内层 SHA。`verify_observability.py` 不调用 `ExecutionObservation.verify_integrity()` 或重跑产品，而是独立重算 observation/artifact 两层 SHA、根与 parent 引用、阶段覆盖、LLM/data/tool 调用数、token 汇总和敏感标记排除。它只验证本地契约，不代表 OTLP collector、真实成本或生产 telemetry。
 
+`evals/run_workload_health.py` 生成 mixed terminal/active 与 empty 两个 fixed synthetic window；raw records 只含 synthetic job ID、as-of status、created time 和窗口截止前的 event type/attempt/time。产品输出固定分母、rate、nearest-rank queue/run/terminal p50/p95/p99 和双 SHA；独立 `verify_workload_health.py` 不调用产品聚合器，重算窗口边界、event prefix、as-of status、顺序、终态、分母、分位数、evidence/artifact SHA 与递归隐私约束，并拒绝重新签名后的 rate、p95 或嵌套 ID 注入。2/2 只证明 contract，不是生产 SLO、容量、事故率、告警或真实用户证据。
+
 `evals/run_tool_audit.py` 在临时 SQLite 中生成 5 条 synthetic contract case：敏感 key/credential/email/未知文本投影与稳定错误码、v2 行 UPDATE/DELETE 拒绝、session reset 前后链连续且只显示新 segment、legacy payload 默认读取隐藏，以及新审计库只含诊断表且旧共享库写前/写后 SHA 不变。artifact 保存 projected events、mutation outcome、chain snapshot 和去路径化的表/SHA 证据；`verify_tool_audit.py` 不调用产品 hash helper，而是复算 sequence/previous SHA/event SHA 和 6 项指标，并拒绝重签后的私密 marker、伪造 mutation 成功、截断链与伪造存储隔离。它不证明完整 PII 检测、历史擦除、数据库加密、远端不可变或 retention 合规。
 
 `evals/run_state_layout.py` 在临时 SQLite 中生成 3 条 synthetic contract case：dry-run 不创建目标且源文件 SHA 不变；apply 只复制 plan trace/outcome、源/目标 count 与 logical digest 相同、`quick_check` 和 migration receipt 有效、memory/tool 私密 marker 不进入目标；旧 outcome 缺 classification 时明确迁为 `legacy_unclassified`。独立 verifier 重算 artifact/preview/migration/receipt SHA 和六项 rate，并拒绝重新签名后的源修改或 receipt 篡改。它不证明某台机器的真实迁移已执行，也不证明未来行不可变、数据库加密或 tenant isolation。
