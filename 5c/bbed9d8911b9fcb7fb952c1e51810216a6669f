@@ -1,0 +1,61 @@
+.github/workflows/core.yml
+  s_d53731e919739f::t_6fd4955c7b6cc3 86-88,132
+Makefile
+  s_d53731e919739f::t_bdcd6b989d041a 14,53,142-145,244
+evals/run_workload_health.py
+  s_d53731e919739f::t_70b75269c63900 1-76
+evals/verify_workload_health.py
+  s_d53731e919739f::t_3cf561614dae27 1-38
+evals/workload_health/__init__.py
+  s_d53731e919739f::t_1cf28ce4f97fad 1-11
+evals/workload_health/evaluate.py
+  s_d53731e919739f::t_0d8544ed6a591b 1-225
+evals/workload_health/verify.py
+  s_d53731e919739f::t_bd725e9ad65f0c 1-348
+pyproject.toml
+  s_d53731e919739f::t_51e24f9047d227 3
+scripts/smoke_job_worker.py
+  s_d53731e919739f::t_e7085a4b9141ab 8,85-93,212-213
+scripts/snapshot_job_health.py
+  s_d53731e919739f::t_e05a296f553b0f 1-96
+src/http_api/app.py
+  s_d53731e919739f::t_f8d61b2b379221 39,44,54,96,160,231-238,2423-2494
+src/http_api/schemas.py
+  s_d53731e919739f::t_93b510727ee6dd 870-916
+src/jobs/__init__.py
+  s_d53731e919739f::t_be0da7f3900097 10-16,34-41,49-50,52-53,68,71,73
+src/jobs/models.py
+  s_d53731e919739f::t_f12582eb9efaf0 122-131
+src/jobs/repository.py
+  s_d53731e919739f::t_65a21b0a53c39e 15-29,1769-1847
+src/jobs/service.py
+  s_d53731e919739f::t_75ac93d1d78e86 30,225-243
+src/jobs/workload_health.py
+  s_d53731e919739f::t_654c4b95e983ca 1-437
+tests/test_http_api.py
+  s_d53731e919739f::t_699e258c44cf8c 644-666,733-741
+tests/test_workload_health.py
+  s_d53731e919739f::t_5a86ab8cf48068 1-367
+tests/test_workload_health_cli.py
+  s_d53731e919739f::t_d09a1fef972566 1-103
+tests/test_workload_health_eval.py
+  s_d53731e919739f::t_0aa98a75614a4b 1-117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "5cbbed9d8911b9fcb7fb952c1e51810216a6669f",
+  "prompts": {},
+  "sessions": {
+    "s_d53731e919739f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_d53731e919739f",
+        "model": "unknown"
+      },
+      "human_author": "zhouxun <zhouxun.13@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
