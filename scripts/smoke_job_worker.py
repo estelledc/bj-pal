@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import sys
 import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -81,6 +82,15 @@ def main() -> int:
         assert completed_diagnosis is not None
         assert completed_diagnosis.classification == "completed"
         assert completed_diagnosis.verify_integrity()
+        workload_health = service.workload_health(
+            tenant_id="default",
+            window_start=persisted.created_at,
+            window_end=datetime.now(timezone.utc).isoformat(),
+        )
+        assert workload_health.job_count == 1
+        assert workload_health.terminal_success_rate == 1.0
+        assert workload_health.queue_wait_ms.sample_count == 1
+        assert workload_health.verify_integrity()
 
         recovery_service = PlanningJobService(
             repository=PlanningJobRepository(Path(directory) / "recovery.db"),
@@ -199,7 +209,8 @@ def main() -> int:
             f"timeout_replay={timeout_replay.status} "
             f"diagnoses={completed_diagnosis.classification},"
             f"{failed_diagnosis.classification},"
-            f"{timeout_diagnosis.classification}"
+            f"{timeout_diagnosis.classification} "
+            f"workload_jobs={workload_health.job_count}"
         )
     return 0
 

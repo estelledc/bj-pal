@@ -27,6 +27,7 @@ from .diagnostics import (
 )
 from .models import PlanningAdmissionEvent, PlanningJob, PlanningJobEvent, PlanningJobSummary
 from .repository import PlanningJobRepository
+from .workload_health import DurableWorkloadHealth, validate_closed_window
 
 
 LOGGER = logging.getLogger(__name__)
@@ -220,6 +221,25 @@ class PlanningJobService:
                     "job diagnosis event limit exceeded; durable event chain was not truncated"
                 )
         return JobIncidentDiagnosis.create(job=job, events=events)
+
+    def workload_health(
+        self,
+        *,
+        tenant_id: str,
+        window_start: str,
+        window_end: str,
+    ) -> DurableWorkloadHealth:
+        validate_closed_window(window_start, window_end)
+        evidence = self.repository.workload_evidence(
+            tenant_id=tenant_id,
+            window_start=window_start,
+            window_end=window_end,
+        )
+        return DurableWorkloadHealth.create(
+            window_start=window_start,
+            window_end=window_end,
+            records=evidence,
+        )
 
     def admission_events(
         self,

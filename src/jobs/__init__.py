@@ -7,7 +7,13 @@ from .diagnostics import (
     JobDiagnosticEventLimitExceeded,
     JobIncidentDiagnosis,
 )
-from .models import PlanningAdmissionEvent, PlanningJob, PlanningJobEvent, PlanningJobSummary
+from .models import (
+    PlanningAdmissionEvent,
+    PlanningJob,
+    PlanningJobEvent,
+    PlanningJobSummary,
+    PlanningJobWindowEvidence,
+)
 from .repository import (
     ADMISSION_POLICY_VERSION,
     MAX_PRIORITY,
@@ -25,6 +31,14 @@ from .repository import (
     compute_effective_priority,
 )
 from .service import PlanningJobService
+from .workload_health import (
+    MAX_WORKLOAD_EVENTS,
+    MAX_WORKLOAD_JOBS,
+    WORKLOAD_HEALTH_VERSION,
+    DurableWorkloadHealth,
+    JobWorkloadEvidenceLimitExceeded,
+    LatencyDistribution,
+)
 
 __all__ = [
     "DiagnosticEvent",
@@ -32,7 +46,11 @@ __all__ = [
     "JOB_DIAGNOSIS_VERSION",
     "JobDiagnosticEventLimitExceeded",
     "JobIncidentDiagnosis",
+    "JobWorkloadEvidenceLimitExceeded",
+    "LatencyDistribution",
     "MAX_DIAGNOSTIC_EVENTS",
+    "MAX_WORKLOAD_EVENTS",
+    "MAX_WORKLOAD_JOBS",
     "ADMISSION_POLICY_VERSION",
     "MAX_PRIORITY",
     "MIN_PRIORITY",
@@ -47,8 +65,11 @@ __all__ = [
     "PlanningJob",
     "PlanningJobEvent",
     "PlanningJobSummary",
+    "PlanningJobWindowEvidence",
     "PlanningJobRepository",
     "PlanningJobService",
+    "DurableWorkloadHealth",
     "TenantAdmissionRejected",
+    "WORKLOAD_HEALTH_VERSION",
     "compute_effective_priority",
 ]

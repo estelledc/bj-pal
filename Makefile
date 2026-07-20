@@ -11,6 +11,7 @@ CONSTRAINTS_ARTIFACT ?= evals/results/constraints-core.json
 CLARIFICATIONS_ARTIFACT ?= evals/results/clarifications-core.json
 OBSERVABILITY_ARTIFACT ?= evals/results/observability-core.json
 JOB_DIAGNOSTICS_ARTIFACT ?= evals/results/job-diagnostics-contract.json
+WORKLOAD_HEALTH_ARTIFACT ?= evals/results/workload-health-contract.json
 TOOL_AUDIT_ARTIFACT ?= evals/results/tool-audit-contract.json
 STATE_LAYOUT_ARTIFACT ?= evals/results/state-layout-contract.json
 PREDICTION_STATE_ARTIFACT ?= evals/results/prediction-state-contract.json
@@ -49,7 +50,7 @@ CHECK_CLARIFICATION_DB ?= $(CURDIR)/runtime/check/clarifications.db
 CHECK_JOB_DB ?= $(CURDIR)/runtime/check/planning-jobs.db
 CHECK_FEEDBACK_DB ?= $(CURDIR)/runtime/check/plan-feedback.db
 
-.PHONY: python-check secret-scan setup bootstrap-demo test api api-smoke job-worker job-smoke operation-worker docker-build demo demo-clarification demo-trial trial-operator-help showcase audit-legacy-retirement audit-release-candidate eval-public eval-retrieval eval-requirements eval-constraints eval-clarifications eval-observability eval-job-diagnostics eval-tool-audit eval-state-layout eval-prediction-state eval-user-memory-state eval-legacy-retirement eval-execution-budget eval-model-output eval-orchestration eval-scheduling eval-access-control eval-side-effects eval-outcomes eval-trials eval-weather verify-live-model-observation verify-live-plan-quality live-model-smoke weather-live-smoke benchmark-http benchmark-socket-http check-runtime-reset check
+.PHONY: python-check secret-scan setup bootstrap-demo test api api-smoke job-worker job-smoke operation-worker docker-build demo demo-clarification demo-trial trial-operator-help showcase audit-legacy-retirement audit-release-candidate eval-public eval-retrieval eval-requirements eval-constraints eval-clarifications eval-observability eval-job-diagnostics eval-workload-health eval-tool-audit eval-state-layout eval-prediction-state eval-user-memory-state eval-legacy-retirement eval-execution-budget eval-model-output eval-orchestration eval-scheduling eval-access-control eval-side-effects eval-outcomes eval-trials eval-weather verify-live-model-observation verify-live-plan-quality live-model-smoke weather-live-smoke benchmark-http benchmark-socket-http check-runtime-reset check
 
 python-check:
 	$(PYTHON) -c 'import sys; assert sys.version_info >= (3, 11), "BJ-Pal requires Python 3.11+"'
@@ -137,6 +138,10 @@ eval-observability: python-check
 eval-job-diagnostics: python-check
 	$(PYTHON) evals/run_job_diagnostics.py --output $(JOB_DIAGNOSTICS_ARTIFACT)
 	$(PYTHON) evals/verify_job_diagnostics.py $(JOB_DIAGNOSTICS_ARTIFACT)
+
+eval-workload-health: python-check
+	$(PYTHON) evals/run_workload_health.py --output $(WORKLOAD_HEALTH_ARTIFACT)
+	$(PYTHON) evals/verify_workload_health.py $(WORKLOAD_HEALTH_ARTIFACT)
 
 eval-tool-audit: python-check
 	$(PYTHON) evals/run_tool_audit.py --output $(TOOL_AUDIT_ARTIFACT)
@@ -236,5 +241,5 @@ check: export BJ_PAL_TOOL_AUDIT_DB := $(CHECK_TOOL_AUDIT_DB)
 check: export BJ_PAL_CLARIFICATION_DB := $(CHECK_CLARIFICATION_DB)
 check: export BJ_PAL_JOB_DB := $(CHECK_JOB_DB)
 check: export BJ_PAL_FEEDBACK_DB := $(CHECK_FEEDBACK_DB)
-check: check-runtime-reset secret-scan bootstrap-demo test api-smoke job-smoke demo demo-clarification demo-trial trial-operator-help showcase eval-public eval-retrieval eval-requirements eval-constraints eval-clarifications eval-observability eval-job-diagnostics eval-tool-audit eval-state-layout eval-prediction-state eval-user-memory-state eval-legacy-retirement eval-execution-budget eval-model-output verify-live-model-observation verify-live-plan-quality eval-orchestration eval-scheduling eval-access-control eval-side-effects eval-outcomes eval-trials eval-weather benchmark-http benchmark-socket-http
+check: check-runtime-reset secret-scan bootstrap-demo test api-smoke job-smoke demo demo-clarification demo-trial trial-operator-help showcase eval-public eval-retrieval eval-requirements eval-constraints eval-clarifications eval-observability eval-job-diagnostics eval-workload-health eval-tool-audit eval-state-layout eval-prediction-state eval-user-memory-state eval-legacy-retirement eval-execution-budget eval-model-output verify-live-model-observation verify-live-plan-quality eval-orchestration eval-scheduling eval-access-control eval-side-effects eval-outcomes eval-trials eval-weather benchmark-http benchmark-socket-http
 	$(MAKE) check-runtime-reset PYTHON=$(PYTHON)
