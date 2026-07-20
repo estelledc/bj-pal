@@ -1,0 +1,53 @@
+.github/workflows/core.yml
+  s_903e95fdbd8d08::t_9b6930379dc3d7 89-91,136
+Makefile
+  s_903e95fdbd8d08::t_525dc15a87dc0e 15,54,147-150,249
+evals/otlp_export/__init__.py
+  s_903e95fdbd8d08::t_a85063854bb4da 1-10
+evals/otlp_export/evaluate.py
+  s_903e95fdbd8d08::t_b13077c890558c 1-194
+evals/otlp_export/verify.py
+  s_903e95fdbd8d08::t_ab93b1f8bcc9b8 1-197
+evals/run_otlp_export.py
+  s_903e95fdbd8d08::t_d3225852aaaac3 1-50
+evals/verify_otlp_export.py
+  s_903e95fdbd8d08::t_7a7cf8a0e05ffd 1-34
+pyproject.toml
+  s_903e95fdbd8d08::t_507d59face7a86 3
+requirements.txt
+  s_903e95fdbd8d08::t_e96d69c08bf6c0 14-17
+src/agents/trace_export.py
+  s_903e95fdbd8d08::t_0439578ce5567c 1-332
+src/agents/tracing.py
+  s_903e95fdbd8d08::t_407d9c3fcbadb7 1,8-10,21,24,38-48,92-97,105,109-110,113-130,133-134,136,138-140,143-150,153-156,158-164,171,181-182,184,189-202,206,219-224,226-245,247-253,255-261,351-355,357-371,454,475
+src/http_api/app.py
+  s_903e95fdbd8d08::t_771669408dab44 19-20,135,163,934-947
+src/http_api/schemas.py
+  s_903e95fdbd8d08::t_17bc9637ce49ed 1136-1154
+tests/test_http_api.py
+  s_903e95fdbd8d08::t_55bfa98b447665 214-246,1780,1819-1821
+tests/test_otlp_export_eval.py
+  s_903e95fdbd8d08::t_47cdc8912d8172 1-99
+tests/test_trace_export.py
+  s_903e95fdbd8d08::t_5beada58ff9a1d 1-193
+tests/test_tracing.py
+  s_903e95fdbd8d08::t_a0ad90833a7b2d 1,5-7,13,38-41,66,78-84,103,123,127-128,153,159,161,191,199,203-280,288-292
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "8e53421c0825c0184ea6f4c79add085a292095f9",
+  "prompts": {},
+  "sessions": {
+    "s_903e95fdbd8d08": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_903e95fdbd8d08",
+        "model": "unknown"
+      },
+      "human_author": "zhouxun <zhouxun.13@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
