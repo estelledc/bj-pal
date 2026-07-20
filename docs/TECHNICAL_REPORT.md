@@ -2,7 +2,7 @@
 
 > 本文面向代码评审者，解释项目从黑客松 Demo 到 v6.22 offline-first、需求门控、自然语言约束账本、可续跑澄清、可验证执行观测、隐私最小化 OTLP 导出与可复算运行告警、请求级执行预算、模型输出失败关闭、编排选型对照、tenant-aware durable 调度、持久证据驱动的故障诊断与 workload health、原子准入、身份感知控制面、审批式沙箱副作用状态机、用户结果证据链、知情试用分母、安全 operator 工作流、证据型计划质量代理、localhost socket acceptance、隐私最小化工具调用账本、诊断隔离、非破坏业务状态迁移与可复核发布边界的演进。系统细节见 [DESIGN.md](DESIGN.md)，逐项证据见 [ARCHITECTURE_EVIDENCE.md](ARCHITECTURE_EVIDENCE.md)。
 
-> 发布状态（2026-07-20）：v6.18 / v6.19 / v6.20 / v6.21 分别位于 Draft PR #5 / #6 / #7 / #8；v6.22 的本地完整门禁已通过，Draft PR 与远端 workflow 尚未创建。本文的“已实现”按本机/远端分支证据分别标注，不能外推为 `main` 已发布能力。
+> 发布状态（2026-07-20）：v6.18 / v6.19 / v6.20 / v6.21 / v6.22 分别位于 Draft PR #5 / #6 / #7 / #8 / [#9](https://github.com/estelledc/bj-pal/pull/9)；v6.22 的本地完整门禁与 [Ubuntu branch workflow](https://github.com/estelledc/bj-pal/actions/runs/29734771068)（含 Docker build）均已通过。本文的“已实现”按本机/远端分支证据分别标注，不能外推为 `main` 已发布能力。
 
 ## 1. 问题定义
 
