@@ -1,8 +1,8 @@
 # BJ-Pal 技术报告
 
-> 本文面向代码评审者，解释项目从黑客松 Demo 到 v6.20 offline-first、需求门控、自然语言约束账本、可续跑澄清、可验证执行观测与请求级执行预算、模型输出失败关闭、编排选型对照、tenant-aware durable 调度、持久证据驱动的故障诊断与 workload health、原子准入、身份感知控制面、审批式沙箱副作用状态机、用户结果证据链、知情试用分母、安全 operator 工作流、证据型计划质量代理、localhost socket acceptance、隐私最小化工具调用账本、诊断隔离、非破坏业务状态迁移与可复核发布边界的演进。系统细节见 [DESIGN.md](DESIGN.md)，逐项证据见 [ARCHITECTURE_EVIDENCE.md](ARCHITECTURE_EVIDENCE.md)。
+> 本文面向代码评审者，解释项目从黑客松 Demo 到 v6.21 offline-first、需求门控、自然语言约束账本、可续跑澄清、可验证执行观测与隐私最小化 OTLP 导出、请求级执行预算、模型输出失败关闭、编排选型对照、tenant-aware durable 调度、持久证据驱动的故障诊断与 workload health、原子准入、身份感知控制面、审批式沙箱副作用状态机、用户结果证据链、知情试用分母、安全 operator 工作流、证据型计划质量代理、localhost socket acceptance、隐私最小化工具调用账本、诊断隔离、非破坏业务状态迁移与可复核发布边界的演进。系统细节见 [DESIGN.md](DESIGN.md)，逐项证据见 [ARCHITECTURE_EVIDENCE.md](ARCHITECTURE_EVIDENCE.md)。
 
-> 发布状态（2026-07-20）：v6.18 位于 Draft PR #5，v6.19 位于 stacked Draft PR #6；v6.20 位于其上的 stacked Draft PR #7，本地完整门禁与分支 workflow 已通过。本文的“已实现”按本机/远端分支证据分别标注，不能外推为 `main` 已发布能力。
+> 发布状态（2026-07-20）：v6.18 / v6.19 / v6.20 分别位于 Draft PR #5 / #6 / #7；v6.21 在其上的 stacked 分支已通过本地完整门禁，远端待发布。本文的“已实现”按本机/远端分支证据分别标注，不能外推为 `main` 已发布能力。
 
 ## 1. 问题定义
 
@@ -367,6 +367,13 @@ Delivery adapter 不再拥有 Planner/Probe 顺序。Planner、Prober、ProfileL
 - evidence/artifact 双 SHA 不公开实体 ID；HTTP 复用 `jobs:read`，CLI 只创建 0600 新文件，不输出 tenant/principal/request/job/worker/payload/error；
 - 2-case mixed/empty synthetic artifact 和独立 verifier 重算窗口、聚合、quantile、哈希与隐私，并拒绝重签后的 rate、p95 和 job ID 注入。它不连接 OTLP，也不证明生产 SLO、容量、事故频率或告警质量。
 
+### v6.21：Privacy-minimized OTLP Export
+
+- 将旧 `otel` console adapter 改为声明依赖的 OTLP/HTTP protobuf batch exporter；只在显式 endpoint 与 `http/protobuf` 配置有效时启用，不再静默 fallback JSONL；
+- JSONL/OTLP 共用 allowlist 投影：运行 ID、低基数数值、GenAI operation/provider/provider-reported usage 和稳定 error type；session/user/location/plan/POI/decision/prompt/tool args/model output/error message 不导出；
+- exporter exception/failure 只更新有界计数和 error code，不将 trace I/O 异常抛回业务；受 `jobs:read` 保护的健康端点不返回 collector URL/header，只返回 origin SHA、policy、processor、state 和计数；
+- 2-case artifact 实际走 loopback HTTP + protobuf，独立 decoder 复核 resource/span tree/GenAI attributes/privacy，再用注入失败证明 business isolation。这不是远程 vendor receipt、生产投递、告警/SLO、retention、多实例或真实用户证据。
+
 ## 3. 当前执行链
 
 ```text
@@ -517,6 +524,6 @@ job store 保存规范化 request JSON、SHA-256 和服务端认证上下文：
 
 ## 9. 主要限制与下一步
 
-最重要的证据缺口是：v6.10 已修复 live proxy 暴露的候选/忌口问题，v6.11 补 localhost socket acceptance，v6.12-v6.17 逐步收紧日志、拆分 owner 并增加禁止 legacy 回退的 readiness；但真实 participant/report 仍为 0。32/32 个 fixed synthetic 必需检查、一次本机 socket 运行、日志与迁移契约样本都不能替代真人采纳、完成、满意或生产容量。技术缺口包括 legacy rows 受控清理、托管 purge scheduler、外部备份删除证明，天气 live 模式尚无适用于作品集/宣传部署的商业授权或自托管 acceptance，POI/路线仍无合法 live provider；外部 IdP/动态 RBAC、credential 生命周期、数据库 RLS、入口 abuse protection、跨实例全局准入/调度、全局/tenant 金额预算、audit retention、在线 reprioritize 与多实例 job store。booking 只完成 sandbox approval/receipt/read-only reconciliation，还缺真实供应商授权与查询 acceptance、补偿 operation、客服 handoff 和签名回执；另外仍缺 OTLP collector/metrics backend、TLS/反向代理与多实例负载测试。
+最重要的证据缺口是：v6.10 已修复 live proxy 暴露的候选/忌口问题，v6.11 补 localhost socket acceptance，v6.12-v6.17 逐步收紧日志、拆分 owner 并增加禁止 legacy 回退的 readiness，v6.21 补了隐私最小化 OTLP 的本机协议验收；但真实 participant/report 仍为 0。32/32 个 fixed synthetic 必需检查、一次本机 socket 运行、日志与迁移契约样本都不能替代真人采纳、完成、满意或生产容量。技术缺口包括 legacy rows 受控清理、托管 purge scheduler、外部备份删除证明，天气 live 模式尚无适用于作品集/宣传部署的商业授权或自托管 acceptance，POI/路线仍无合法 live provider；外部 IdP/动态 RBAC、credential 生命周期、数据库 RLS、入口 abuse protection、跨实例全局准入/调度、全局/tenant 金额预算、audit retention、在线 reprioritize 与多实例 job store。booking 只完成 sandbox approval/receipt/read-only reconciliation，还缺真实供应商授权与查询 acceptance、补偿 operation、客服 handoff 和签名回执；另外仍缺经授权的远程 collector/metrics backend、TLS/反向代理与多实例负载测试。
 
 正确顺序是：执行一个有界知情 cohort 并获得真实 badcase → 授权天气环境与 live acceptance → 真实 failure/freshness 样本 → 下一类 provider → 合法 booking 测试环境 + 真实状态查询/签名回执 acceptance → 独立重新审批的补偿 operation/客服 handoff → 外部 IdP/动态授权/存储层隔离/入口与跨实例 quota → OTLP/metrics + TLS/reverse-proxy + multi-instance store/load test。见 [ROADMAP.md](ROADMAP.md)。

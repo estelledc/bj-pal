@@ -8,12 +8,13 @@
 make demo PYTHON=.venv/bin/python
 make demo-clarification PYTHON=.venv/bin/python
 make eval-observability PYTHON=.venv/bin/python
+make eval-otlp-export PYTHON=.venv/bin/python
 make eval-side-effects PYTHON=.venv/bin/python
 ```
 
 先用 `make demo` 展示 Stage 3：CLI 创建 quote-bound 沙箱请求，打印精确金额、有效期和 approval SHA；不同演示 principal 批准后，worker 才生成 receipt SHA。Stage 4 只渲染消息预览，不执行发送。然后用澄清演示说明：文本说 2 人、结构化字段写 4 人时，Planner 尚未执行；系统返回并持久化 typed options、request/decision SHA 和 TTL。选择文本值后，同一原请求继续生成，Constraint Ledger 显示 `source=user_clarification`；重复同一答案返回缓存结果，改用另一答案则冲突。这些演示证明状态机与审计契约，不代表真实多轮满意度、真实预订或 exactly-once 外部写入。
 
-随后用 15 秒展示 CLI 的 `[execution]` 行和 observability artifact：同步/worker 分别关联 request/job ID，span tree 与调用/token 汇总可由独立 verifier 复算；mock token 显示 `unavailable`。不要把这说成已部署 OTel 或真实成本监控。
+随后用 15 秒展示 CLI 的 `[execution]` 行和 observability artifact：同步/worker 分别关联 request/job ID，span tree 与调用/token 汇总可由独立 verifier 复算；mock token 显示 `unavailable`。OTLP artifact 可额外展示 loopback protobuf 验收与 failure isolation，但不要说成已连接远程 collector、已部署生产告警或真实成本监控。
 
 ## 90 秒 Pitch（评委初筛 / 海选阶段）
 
