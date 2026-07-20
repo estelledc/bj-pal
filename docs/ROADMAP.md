@@ -49,6 +49,7 @@
 | v6.19 Durable-job incident diagnosis | Stacked Draft PR #6；本地完整门禁与分支 workflow 已通过 | 从 tenant-scoped job + 完整 append-only event chain 生成 `job_incident_diagnosis_v1`；14 类 signature/action、阶段耗时、重试/lease/heartbeat 计数、事件链与 artifact 双 SHA；HTTP/CLI、0600 新建输出、1,000-event fail-closed；14-case 独立 verifier 全通过；516-file secret gate、856 collected / 853 passed / 3 skipped、ASGI/TCP 均 20/20 | hand-authored synthetic contract，不是生产根因分析或 incident 分布；未知错误只报告 `runtime_or_dependency_unknown`/`unclassified_failure`；不保存 request、tenant/principal、worker、原始 payload/message；stacked 分支尚未公开合并 |
 | v6.20 Durable workload health | Stacked Draft PR #7；本地完整门禁与分支 workflow 已通过 | tenant-scoped closed `[start,end)`；截止 end 的 event prefix + as-of status 重建；固定 status/terminal 分母；nearest-rank queue/run/terminal p50/p95/p99；retry/lease/timeout/dead-letter/cancel rates；1,000 job/10,000 event fail-closed；HTTP/0600 CLI 与双 SHA；2-case 独立 verifier 全通过；526-file secret gate、868 collected / 865 passed / 3 skipped、ASGI/TCP 均 20/20 | fixed synthetic windows，不是生产 SLO、事故率、容量或 OTLP；当前 SQLite 单实例；不输出实体 ID 也不等于完成 retention/access audit；stacked 分支尚未公开合并 |
 | v6.21 Privacy-minimized OTLP export | Stacked Draft PR #8；本地完整门禁与分支 workflow 已通过 | 声明 OTel SDK + OTLP/HTTP protobuf exporter；显式 endpoint/protocol validation；batch export + non-fatal failure monitor；GenAI 语义 allowlist；JSONL/OTLP 共用 privacy projection；`jobs:read` 受控健康快照；2-case loopback/failure artifact 与独立 protobuf verifier；534-file secret gate、877 collected / 874 passed / 3 skipped、ASGI/TCP 均 20/20，8 份保留 DB SHA 不变；Ubuntu workflow 含 Docker build 全通过 | fixed synthetic span + 本机 receiver，不是远程 vendor、生产投递、告警/SLO、retention、多实例或真实用户证据；prompt/tool args/content 刻意不采集；stacked 分支尚未公开合并 |
+| v6.22 Operational alert contract | 本地完整门禁已通过；Draft PR/远端 workflow 待创建 | `operational_alert_snapshot_v1` 复用闭合 workload 与 payload-free trace status；固定 4 条低基数规则、20 样本门、`firing/healthy/insufficient_data/disabled` 四态、source/policy/artifact SHA；受控 HTTP、0600 离线 CLI、4-case 独立 verifier；546-file secret gate、893 collected / 890 passed / 3 skipped、ASGI/TCP 均 20/20 | fixed portfolio threshold 不是生产 SLO；无连续窗口、迟滞、Alertmanager/远程投递、事故响应 outcome、多实例或真实流量证据；stacked 分支尚未公开合并 |
 | GitHub 发布 | Release candidate | public `main` 仍是 `86af63f`；v6.18 在 `codex/reproducible-core-v4` 按两个原子提交发布并以 Draft PR/CI 复核 | 合并前不能称公开发布；description/homepage/license 仍为空，历史清理、Pages/API 部署与真实试用分别治理 |
 
 ## 1.1 v6.18 GitHub 发布门
@@ -92,7 +93,20 @@
 
 退出条件：定向测试、job smoke、独立 artifact、完整 `make check`、secret gate、stacked Draft PR 与 branch workflow 已完成；仍需前置 PR #5/#6 合并后 retarget 并完成最终 review/merge。对外只称“可复算 workload snapshot”，不称生产 SLO、容量、事故率或告警效果。
 
-## 1.4 v6.12-v6.13 Tool-call Audit 验收
+## 1.4 v6.22 Operational Alert Contract
+
+目标：把 v6.20 的闭合窗口指标和 v6.21 的 OTLP sink 健康从“可查看的两个 JSON”推进为可复算的运行决策，同时显式阻止小样本被写成健康、固定阈值被写成生产 SLO。
+
+- `portfolio_operational_alert_policy_v1` 固定 terminal failure rate、queue wait p95、retry job rate 与 OTLP export health 四条规则；前三条分别要求至少 20 个 terminal、20 个 queue sample、20 个 job，达不到门槛一律是 `insufficient_data`；
+- 数值规则以 `>=` 触发，trace 规则区分 OTLP healthy/degraded、configured-but-unproven 与未配置；未选择 OTLP 只禁用 trace 规则，不伪造 exporter 健康；
+- 总状态优先级固定为 `firing > insufficient_data > healthy > disabled`，因此任意 firing 不被小样本掩盖，任意未满足样本门也不允许整体声称 healthy；
+- `GET /v1/operational-alerts` 复用 `jobs:read` 和 tenant-scoped workload reader；离线 CLI 只接受已有 workload snapshot 与 trace-status JSON，并以 O_EXCL 创建 mode-0600 工件，避免另起进程伪称读取了服务端 exporter counter；
+- 输出不含 tenant/principal/request/job/worker、collector URL/header、prompt/content/tool args/error message，只绑定 workload artifact SHA、trace-status SHA、policy SHA 与自身 SHA；
+- 4-case authored synthetic artifact 覆盖健康、四规则触发、小样本和 OTLP 未配置；独立 verifier 不调用产品 evaluator，重算 workload rate、规则、四态、总状态、source binding 与多层 SHA，并拒绝自重签名后的阈值/规则/source/ID 注入。
+
+边界：当前阈值是作品集中的固定演示策略，不是来自流量基线或错误预算；单个 snapshot 没有连续窗口、迟滞、抑制、路由和处置闭环，也没有 Prometheus/Alertmanager 或远程 collector acceptance。对外只能称 deterministic alert decision contract，不能称“生产告警系统”或“SLO 达成”。
+
+## 1.5 v6.12-v6.13 Tool-call Audit 验收
 
 目标：把“为了排障把整个工具输入/输出写进 SQLite”收紧成隐私最小化、可发现篡改的本地诊断账本，避免可观测性成为用户文本、联系方式、provider credential 或异常原文的第二泄漏面。
 

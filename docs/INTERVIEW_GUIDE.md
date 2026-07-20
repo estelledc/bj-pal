@@ -194,11 +194,13 @@ v6.20 再回答“如何从一堆 job 形成可核账指标”。不是直接 `C
 
 v6.21 把这个回答向前推了一步：不再把 console exporter 叫 OTel，而是真实使用 OTLP/HTTP protobuf batch exporter。面试时要能说清三个决策：第一，endpoint/protocol 缺失时失败关闭为 degraded no-op，不悄悄改写文件；第二，用 allowlist 只导出 operation/provider/usage 与稳定 error type，不导出 prompt/tool args/session/user/decision/error message；第三，telemetry sink 失败不让业务失败，但受权状态端点必须暴露 healthy/degraded 和计数。loopback artifact 的独立 protobuf 解码能证明协议与隐私投影，不能证明远程投递、告警或 SLO。
 
-这仍不是完整生产可观测性或成本治理：wall-clock checkpoint 不能强杀已经阻塞的网络调用，token gate 在 provider 不回报 usage 时无法生效，也没有模型价格表、tenant 金额账户、跨实例全局预算或 billing reconciliation。v6.21 只在本机 loopback receiver 完成一次 synthetic OTLP 协议验收；它仍没有远程 collector 回执、多实例汇聚、持续 scrape/告警、provider freshness、audit retention 或成本看板，fixed synthetic span 也不能证明生产分布。正确下一步是接入经授权的远程 collector/metrics backend，配置持续健康探测和告警，再用可比较的运行窗口验收。
+v6.22 再把“operator 可单独告警”落实成确定性规则，而不是用一句话带过：terminal failure、queue wait p95、retry rate 各有 20 个样本门，OTLP 状态单独处理；任何样本不足都是 `insufficient_data`，不能因 1 个成功任务显示绿色。整体优先级是 firing 高于 insufficient，再高于 healthy；规则、policy 和两个 source 都有 SHA，4-case verifier 独立重算。面试必须主动说明这些阈值只是作品集固定策略，没有生产 baseline、连续窗口、迟滞、Alertmanager delivery 或 incident outcome，所以不能写“搭建生产 SLO 告警平台”。
+
+这仍不是完整生产可观测性或成本治理：wall-clock checkpoint 不能强杀已经阻塞的网络调用，token gate 在 provider 不回报 usage 时无法生效，也没有模型价格表、tenant 金额账户、跨实例全局预算或 billing reconciliation。v6.21 只在本机 loopback receiver 完成一次 synthetic OTLP 协议验收；v6.22 也只是把单个 closed window 和当前 sink 状态转成 deterministic decision，没有远程 collector 回执、多实例汇聚、持续 scrape、迟滞/抑制、告警 delivery、provider freshness、audit retention 或成本看板。正确下一步是接入经授权的远程 collector/metrics backend，再用连续可比较窗口和实际处置 outcome 校准阈值。
 
 ### Q25. 最大技术债是什么？
 
-不是 UI。v6.21 已能从 durable evidence 生成 failure signature 和 closed-window workload snapshot，并完成隐私最小化 OTLP/HTTP 的本机协议验收；但当前最大的证据债仍是真实 participant/report 为 0。用户无法提供真实试用者时，只能继续标为 synthetic，不能用多个模拟账号冒充真人分母。技术上还缺合法 live POI/路线与天气部署验收、远程 collector/metrics backend、多实例 event store、真实告警和处置 outcome。其次是托管 purge/备份删除证明、外部 IdP/动态 RBAC、credential 生命周期、数据库 RLS、入口 abuse protection、跨实例全局准入/调度、tenant 金额预算和 audit retention。副作用仍缺真实 provider 查询 acceptance、补偿 operation、客服 handoff 和签名回执。
+不是 UI。v6.22 已能从 durable evidence 生成 failure signature、closed-window workload snapshot、隐私最小化 OTLP/HTTP 本机协议证据和带最小样本门的运行告警快照；但当前最大的证据债仍是真实 participant/report 为 0。用户无法提供真实试用者时，只能继续标为 synthetic，不能用多个模拟账号冒充真人分母。技术上还缺合法 live POI/路线与天气部署验收、远程 collector/metrics backend、多实例 event store、真实告警投递和处置 outcome。其次是托管 purge/备份删除证明、外部 IdP/动态 RBAC、credential 生命周期、数据库 RLS、入口 abuse protection、跨实例全局准入/调度、tenant 金额预算和 audit retention。副作用仍缺真实 provider 查询 acceptance、补偿 operation、客服 handoff 和签名回执。
 
 ### Q26. 你怎么评估 BM25 改动？
 
@@ -403,6 +405,7 @@ git diff --check
 - 设计 append-only job event log，将 heartbeat、retry、cancel、replay、lease 回收、成功和失败与状态变更同事务落库；JSON cursor 与 bounded SSE 共用 durable event，支持 `Last-Event-ID` 断线续读。
 - 从 tenant-scoped durable job 与完整事件链构建 `job_incident_diagnosis_v1`：以 14 类稳定 failure signature 区分 queue/execution deadline、retry/lease/model-output/budget 等边界，未知 provider/runtime 错误不提升为根因；用双 SHA、1,000-event fail-closed、跨租户 HTTP 测试和独立 synthetic verifier 约束可复算性与隐私最小化。
 - 设计 closed-window `durable_workload_health_v1`：从 `created_at < end` 的 event prefix 重建 as-of status，显式固定 status/terminal/job 分母，复算 queue/run/terminal nearest-rank p50/p95/p99 及 retry/timeout/dead-letter rates；1,000 job/10,000 event 超限拒绝截断，以双 SHA、tenant-scoped HTTP、0600 CLI 和 mixed/empty independent verifier 约束可审计性，并明确不称生产 SLO。
+- 将 workload snapshot 与 payload-free OTLP sink health 组合为 `operational_alert_snapshot_v1`：为 failure/queue/retry 固定 20 样本门，输出 firing/healthy/insufficient/disabled 四态并绑定 source/policy/artifact SHA；用 4-case independent verifier 重算规则和总状态，主动说明它没有生产 baseline、连续窗口或告警 delivery。
 - 设计 `priority_aging_v1`，从 eligible time 每 60 秒提升有效优先级并以 FIFO 解同分，retry backoff 不累计等待；claim event 固化 queue-wait 证据，3-case 独立 verifier 重算抢占、抗饥饿与 backoff 排除。
 - 抽象类型化 data provider，将多类 POI/UGC 查询改为独立并行结果 + 单点 merge，显式返回 freshness、bookable、provider reference 和 partial failure。
 - 实现 offline-first Open-Meteo adapter：三种 usage mode fail closed，覆盖 timeout/429/schema、共享 TTL/stale cache、attribution 和 Planner/Probe 同快照；用独立 verifier 证明离线契约，同时不把 synthetic fixture 冒充 live acceptance。

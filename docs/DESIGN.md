@@ -445,6 +445,14 @@ v6.21 将原先名为 `otel` 但实际只写 console 的 adapter 改为显式 OT
 
 2-case synthetic artifact 中，loopback receiver 真实接收 OTLP POST，独立 verifier 从 base64 raw bytes 解码 protobuf，重算 service resource、父子树、GenAI 属性 allowlist 和隐私标记排除；另一例注入 exporter failure，验证业务仍成功且 monitor 变为 `degraded`。这是本机协议验收，不是远程 vendor 回执、生产投递、持续 scrape/告警、SLO、retention 或多实例证据。
 
+### 8.9 可复算运行告警快照
+
+v6.22 不把 v6.20 的一次 synthetic rate 直接命名为 SLO，而是在其上增加固定版本的 `portfolio_operational_alert_policy_v1`。terminal failure、queue wait p95、retry rate 分别要求至少 20 个 terminal、20 个 queue sample、20 个 job；样本不足返回 `insufficient_data`，不把空分母或一个成功任务写成 healthy。比较运算固定为 `>=`，阈值、样本门、观察值、reason code 与规则顺序全部进入 snapshot。
+
+第四条规则消费 v6.21 的 payload-free trace status：OTLP 有成功尝试时可判 healthy，degraded 时 firing，仅配置但尚无 attempt 时 insufficient；off/JSONL 不冒充 OTLP，只将该规则标为 disabled。整体优先级固定 `firing > insufficient_data > healthy > disabled`，避免某条健康信号覆盖故障或证据不足。HTTP 复用 `jobs:read` 和调用者 tenant，离线 CLI 则要求显式输入已有 workload/trace JSON，避免独立进程把自己的空 monitor 误报成服务状态。
+
+公开结果只绑定 workload artifact SHA、trace-status SHA、policy SHA 和自身 SHA，不回显 tenant/job/request/worker、collector URL/header 或任何 prompt/content/tool args/error message。4-case synthetic verifier 不调用产品 evaluator，自己复算来源 rate、阈值、四态、总状态和哈希。这仍是单 snapshot 的 deterministic decision contract：没有连续窗口、迟滞/抑制、Alertmanager 路由、远程 delivery receipt、事故处置 outcome 或生产流量基线。
+
 `Step.confidence` 为兼容历史保留字段名，当前语义是 `evidence_support_v1`：
 
 - 因子包括 POI grounding、rating、UGC 深度、路线、rationale、profile、booking、风险和 reroute；
