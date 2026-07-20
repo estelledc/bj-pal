@@ -46,6 +46,7 @@
 | v6.16 User-memory 成对分库 | 已实现并通过本地完整门禁 | `DomainSpec` 支持每表稳定排序键；`user_memory + user_memory_events` 同快照复制，resolver 仅在有效 receipt 后切换；本机 2,783 state + 5,572 event copy 完成，保留稀疏 `id/event_id`；迁移后 replace/event append/soft forget/hard delete 只写新库；4-case/9-rate artifact 全 1.000；491-file secret gate、816 collected / 813 passed / 3 skipped、ASGI 与 TCP 均 20/20、四份真实状态库 SHA 不变、反馈库 164→164 | 旧 memory/event 行未删；988 个 namespace 不等于真人；当前 state 全 forgotten；hard delete 不是备份/取证擦除，单机 snapshot 不是在线双写、RLS/加密/跨设备同步 |
 | v6.17 Legacy retirement 与 strict readiness | 已实现并通过本地完整门禁 | payload-free audit 核对六张已知 legacy 表、三类 receipt/source snapshot/resolver、专用库完整性和 tool-audit owner；`dedicated_required` 把 fallback/drift/unknown/receipt failure 接入 `/readyz`；真实本机 18 项 audit + strict readiness 全 ok；4-case/5-rate artifact 全 1.000；500-file secret gate、826 collected / 823 passed / 3 skipped、ASGI 与 TCP 均 20/20、四份真实状态库 SHA 不变、反馈库 164→164 | 显式 domain registry 不是静态形式化 owner 证明；旧行未删；不证明在线 cutover、备份擦除、加密/RLS 或跨实例一致性 |
 | v6.18 Release candidate manifest | 已实现并通过本地完整门禁 | NUL-safe 读取 Git porcelain；逐文件绑定相对路径、状态、实现/文档分组、大小、Git mode 与 SHA；拒绝 env/runtime/DB/result/binary/symlink/大文件/本机绝对路径；独立 verifier 复核 Git HEAD/branch/divergence 与全部字节；当前 333 项 = 315 implementation + 18 documentation，60 modified + 273 untracked，0 违规；506-file secret gate、834 collected / 831 passed / 3 skipped、ASGI 与 TCP 均 20/20 | 只覆盖当前未提交工作树；credential literal 由独立 secret gate 负责；不读取 Git 历史，不证明旧 Key 已失效、远端 CI 通过或代码质量正确 |
+| v6.19 Durable-job incident diagnosis | Follow-up 分支已实现并通过本地完整门禁，待 stacked Draft PR | 从 tenant-scoped job + 完整 append-only event chain 生成 `job_incident_diagnosis_v1`；14 类 signature/action、阶段耗时、重试/lease/heartbeat 计数、事件链与 artifact 双 SHA；HTTP/CLI、0600 新建输出、1,000-event fail-closed；14-case 独立 verifier 全通过；516-file secret gate、856 collected / 853 passed / 3 skipped、ASGI/TCP 均 20/20 | hand-authored synthetic contract，不是生产根因分析或 incident 分布；未知错误只报告 `runtime_or_dependency_unknown`/`unclassified_failure`；不保存 request、tenant/principal、worker、原始 payload/message；stacked 分支尚未公开合并 |
 | GitHub 发布 | Release candidate | public `main` 仍是 `86af63f`；v6.18 在 `codex/reproducible-core-v4` 按两个原子提交发布并以 Draft PR/CI 复核 | 合并前不能称公开发布；description/homepage/license 仍为空，历史清理、Pages/API 部署与真实试用分别治理 |
 
 ## 1.1 v6.18 GitHub 发布门
@@ -63,6 +64,18 @@
 7. 发布后门：只有 PR CI 通过并合并后，才能把 README 的发布状态、GitHub description/homepage/topics 和简历链接改成“公开可复现”。许可证选择、Pages/API 部署和真实试用仍分别授权。
 
 退出条件：旧 LongCat 凭证失效已有 owner attestation；仍需两个提交边界可复核、Draft PR CI 通过、公开 README 与实际远端版本一致。合并前只能称 release candidate；历史重写、许可证、部署和真人试用均不由本 PR 自动授权或证明。
+
+## 1.2 v6.19 Durable-job Incident Diagnosis
+
+目标：把“任务失败后人工翻完整事件与原始异常”收紧成可版本化、可复算且默认不泄漏请求内容的诊断边界。分类器只消费持久 job status、稳定 error code 与 append-only event type/timestamp/attempt；不把未知 runtime/provider 失败猜成数据库、网络或模型根因。
+
+- `PlanningJobService.diagnose` 先按 tenant 取 job，再读取完整事件链；超过 1,000 项时检查下一项并拒绝截断，避免在不完整证据上给出结论；
+- `job_incident_diagnosis_v1` 覆盖 active/retry/lease recovery、completed/cancelled、queue/execution deadline、persisted request、clarification、budget、model output、worker lease、runtime unknown 和 unclassified 共 14 类；
+- 输出只含 job ID、状态、稳定分类依据、有界事件投影、阶段耗时/计数及双 SHA，不含 request ID/payload、tenant/principal、worker、异常 message 或未知 error 原值；
+- `GET /v1/planning-jobs/{job_id}/diagnosis` 复用 `jobs:read` 和 tenant namespace；本地 CLI 只创建 mode-0600 新文件且不覆盖；
+- 14-case synthetic artifact 保存原始固定证据与产品观察值，独立 verifier 重算分类、action、阶段、event SHA、inner/outer artifact SHA 和隐私边界，并拒绝重签后的事件/分类/私密 payload 篡改。
+
+退出条件：目标测试、job smoke、独立 artifact、完整 `make check` 与 secret gate 已通过；仍需 stacked Draft PR 和该 branch 的远端 workflow 全通过。文档始终称 failure signature/triage，不称 root-cause engine、生产事故准确率或真实用户证据。
 
 ## 1.2 v6.12-v6.13 Tool-call Audit 验收
 
