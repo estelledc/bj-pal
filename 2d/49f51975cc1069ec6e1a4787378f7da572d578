@@ -1,0 +1,39 @@
+README.md
+  s_a02ea98a1b2cd8::t_9cead46cc9bace 20,22,26,60-61,197,199,201,262,265-273,572
+docs/100-improvements.md
+  s_a02ea98a1b2cd8::t_b1f4707c49034e 15
+docs/ARCHITECTURE_EVIDENCE.md
+  s_a02ea98a1b2cd8::t_6d5626df93b162 91-92,176
+docs/DEMO_SCRIPT.md
+  s_a02ea98a1b2cd8::t_3eedf87cce9786 11,17
+docs/DESIGN.md
+  s_a02ea98a1b2cd8::t_ec694cb91dd6a6 414,440-447,500
+docs/EVAL_FRAMEWORK.md
+  s_a02ea98a1b2cd8::t_f17513a526149d 209-210
+docs/INTERVIEW_GUIDE.md
+  s_a02ea98a1b2cd8::t_6bcfdefb73262d 195-197,201
+docs/INTERVIEW_MARKET_EVIDENCE.md
+  s_a02ea98a1b2cd8::t_625685d8e120e8 64,116
+docs/ROADMAP.md
+  s_a02ea98a1b2cd8::t_df94158efba86d 51,450
+docs/TECHNICAL_REPORT.md
+  s_a02ea98a1b2cd8::t_6af8828de65e0c 3,5,370-376,527
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "2d49f51975cc1069ec6e1a4787378f7da572d578",
+  "prompts": {},
+  "sessions": {
+    "s_a02ea98a1b2cd8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_a02ea98a1b2cd8",
+        "model": "unknown"
+      },
+      "human_author": "zhouxun <zhouxun.13@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
