@@ -1,0 +1,25 @@
+README.md
+  s_6fc3a429b77e00::t_3daefeccfe6cb9 20,204,208
+docs/ROADMAP.md
+  s_6fc3a429b77e00::t_99f47ce78e49bc 52
+docs/TECHNICAL_REPORT.md
+  s_6fc3a429b77e00::t_fb1203ff2846a4 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "5aef96eeb470478541d048b375702e230feaecbb",
+  "prompts": {},
+  "sessions": {
+    "s_6fc3a429b77e00": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_6fc3a429b77e00",
+        "model": "unknown"
+      },
+      "human_author": "zhouxun <zhouxun.13@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
