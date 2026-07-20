@@ -89,6 +89,9 @@ jobs:
       - name: Build and verify privacy-minimized OTLP export artifact
         run: make eval-otlp-export PYTHON=python
 
+      - name: Build and verify operational alert contract artifact
+        run: make eval-operational-alerts PYTHON=python
+
       - name: Build and verify execution-budget artifact
         run: make eval-execution-budget PYTHON=python
 
@@ -134,6 +137,7 @@ jobs:
             evals/results/job-diagnostics-contract.json
             evals/results/workload-health-contract.json
             evals/results/otlp-export-contract.json
+            evals/results/operational-alert-contract.json
             evals/results/execution-budget-core.json
             evals/results/model-output-contract.json
             evals/results/orchestration-comparison.json

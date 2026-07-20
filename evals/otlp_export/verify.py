@@ -124,7 +124,7 @@ def _verify_accepted(case: dict[str, Any]) -> None:
         raise ValueError("forbidden private marker in OTLP payload")
     if not resources or any(
         item.get("service.name") != "bj-pal"
-        or item.get("service.version") != "6.21.0"
+        or item.get("service.version") != "6.22.0"
         for item in resources
     ):
         raise ValueError("OTLP resource identity mismatch")
