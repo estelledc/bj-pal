@@ -1,0 +1,57 @@
+.github/workflows/core.yml
+  s_82eb6c6fe21f8e::t_e5e1a1b89403fe 83-85,128
+Makefile
+  s_82eb6c6fe21f8e::t_0aa71ea38c9c32 13,52,137-140,239
+evals/job_diagnostics/__init__.py
+  s_82eb6c6fe21f8e::t_54c7c04b329cca 1-11
+evals/job_diagnostics/evaluate.py
+  s_82eb6c6fe21f8e::t_39de5db79308c9 1-267
+evals/job_diagnostics/verify.py
+  s_82eb6c6fe21f8e::t_3f3104a4f52a53 1-360
+evals/run_job_diagnostics.py
+  s_82eb6c6fe21f8e::t_a284478346238c 1-76
+evals/verify_job_diagnostics.py
+  s_82eb6c6fe21f8e::t_44772ff9d91a71 1-43
+pyproject.toml
+  s_82eb6c6fe21f8e::t_43f4416cce4aca 3
+scripts/diagnose_job.py
+  s_82eb6c6fe21f8e::t_2a80b37a8fa314 1-93
+scripts/smoke_job_worker.py
+  s_82eb6c6fe21f8e::t_66774faeece43f 80-83,134-140,178-180,199-202
+src/http_api/app.py
+  s_82eb6c6fe21f8e::t_893cfc2a421259 41-42,105,156,220-226,609,2633-2699
+src/http_api/schemas.py
+  s_82eb6c6fe21f8e::t_7b9d2a701ded5a 811-869
+src/jobs/__init__.py
+  s_82eb6c6fe21f8e::t_6a574c339ecd09 3-9,30,32-35
+src/jobs/diagnostics.py
+  s_82eb6c6fe21f8e::t_cea2505cfc076c 1-450
+src/jobs/service.py
+  s_82eb6c6fe21f8e::t_004060604a79cb 23-27,197-223
+tests/test_http_api.py
+  s_82eb6c6fe21f8e::t_163688c5306ab9 660-667,716-717,721,2104,2113-2126,2130
+tests/test_job_diagnostic_cli.py
+  s_82eb6c6fe21f8e::t_13c63d464e221c 1-100
+tests/test_job_diagnostic_eval.py
+  s_82eb6c6fe21f8e::t_a16baa7973632d 1-107
+tests/test_job_diagnostics.py
+  s_82eb6c6fe21f8e::t_3a24e30f0a611c 1-340
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "d945504b14207ff2a76382fdea5187d8736d1c58",
+  "prompts": {},
+  "sessions": {
+    "s_82eb6c6fe21f8e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_82eb6c6fe21f8e",
+        "model": "unknown"
+      },
+      "human_author": "zhouxun <zhouxun.13@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
