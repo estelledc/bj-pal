@@ -17,7 +17,7 @@
 
 BJ-Pal 把一句“周末下午带孩子在北京玩四小时”的自然语言需求，转换成带时间、路线、风险、替补方案和证据来源的结构化计划。项目源自黑客松原型，当前重构目标不是继续堆 Agent 数量，而是补齐一个简历项目应该具备的工程闭环：稳定契约、数据边界、持久任务、失败语义、公开评测和可部署入口。
 
-> 发布状态（2026-07-20）：v6.18 位于 Draft PR #5，v6.19 位于 stacked Draft PR #6；本文新增的 v6.20 位于其上的 `codex/workload-health-evidence-v6-20` follow-up 分支，本地完整门禁已通过，尚未进入公开 `main`。本地、远端分支与公开发布证据分开陈述。
+> 发布状态（2026-07-20）：v6.18 位于 Draft PR #5，v6.19 位于 stacked Draft PR #6；本文新增的 v6.20 位于其上的 stacked Draft PR #7，本地完整门禁与分支 workflow 已通过，尚未进入公开 `main`。本地、远端分支与公开发布证据分开陈述。
 
 本地 v6.20 follow-up 可以离线复现完整控制流、durable-job 诊断与 closed-window workload health，但默认使用明确标注的 deterministic synthetic 数据。它不能证明实时热度、商家余位、真实预订成功、生产 SLO 或用户满意度。
 

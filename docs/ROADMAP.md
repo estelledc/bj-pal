@@ -47,7 +47,7 @@
 | v6.17 Legacy retirement 与 strict readiness | 已实现并通过本地完整门禁 | payload-free audit 核对六张已知 legacy 表、三类 receipt/source snapshot/resolver、专用库完整性和 tool-audit owner；`dedicated_required` 把 fallback/drift/unknown/receipt failure 接入 `/readyz`；真实本机 18 项 audit + strict readiness 全 ok；4-case/5-rate artifact 全 1.000；500-file secret gate、826 collected / 823 passed / 3 skipped、ASGI 与 TCP 均 20/20、四份真实状态库 SHA 不变、反馈库 164→164 | 显式 domain registry 不是静态形式化 owner 证明；旧行未删；不证明在线 cutover、备份擦除、加密/RLS 或跨实例一致性 |
 | v6.18 Release candidate manifest | 已实现并通过本地完整门禁 | NUL-safe 读取 Git porcelain；逐文件绑定相对路径、状态、实现/文档分组、大小、Git mode 与 SHA；拒绝 env/runtime/DB/result/binary/symlink/大文件/本机绝对路径；独立 verifier 复核 Git HEAD/branch/divergence 与全部字节；当前 333 项 = 315 implementation + 18 documentation，60 modified + 273 untracked，0 违规；506-file secret gate、834 collected / 831 passed / 3 skipped、ASGI 与 TCP 均 20/20 | 只覆盖当前未提交工作树；credential literal 由独立 secret gate 负责；不读取 Git 历史，不证明旧 Key 已失效、远端 CI 通过或代码质量正确 |
 | v6.19 Durable-job incident diagnosis | Stacked Draft PR #6；本地完整门禁与分支 workflow 已通过 | 从 tenant-scoped job + 完整 append-only event chain 生成 `job_incident_diagnosis_v1`；14 类 signature/action、阶段耗时、重试/lease/heartbeat 计数、事件链与 artifact 双 SHA；HTTP/CLI、0600 新建输出、1,000-event fail-closed；14-case 独立 verifier 全通过；516-file secret gate、856 collected / 853 passed / 3 skipped、ASGI/TCP 均 20/20 | hand-authored synthetic contract，不是生产根因分析或 incident 分布；未知错误只报告 `runtime_or_dependency_unknown`/`unclassified_failure`；不保存 request、tenant/principal、worker、原始 payload/message；stacked 分支尚未公开合并 |
-| v6.20 Durable workload health | Follow-up 分支本地完整门禁已通过，待 stacked Draft PR | tenant-scoped closed `[start,end)`；截止 end 的 event prefix + as-of status 重建；固定 status/terminal 分母；nearest-rank queue/run/terminal p50/p95/p99；retry/lease/timeout/dead-letter/cancel rates；1,000 job/10,000 event fail-closed；HTTP/0600 CLI 与双 SHA；2-case 独立 verifier 全通过；526-file secret gate、868 collected / 865 passed / 3 skipped、ASGI/TCP 均 20/20 | fixed synthetic windows，不是生产 SLO、事故率、容量或 OTLP；当前 SQLite 单实例；不输出实体 ID 也不等于完成 retention/access audit；尚未公开合并 |
+| v6.20 Durable workload health | Stacked Draft PR #7；本地完整门禁与分支 workflow 已通过 | tenant-scoped closed `[start,end)`；截止 end 的 event prefix + as-of status 重建；固定 status/terminal 分母；nearest-rank queue/run/terminal p50/p95/p99；retry/lease/timeout/dead-letter/cancel rates；1,000 job/10,000 event fail-closed；HTTP/0600 CLI 与双 SHA；2-case 独立 verifier 全通过；526-file secret gate、868 collected / 865 passed / 3 skipped、ASGI/TCP 均 20/20 | fixed synthetic windows，不是生产 SLO、事故率、容量或 OTLP；当前 SQLite 单实例；不输出实体 ID 也不等于完成 retention/access audit；stacked 分支尚未公开合并 |
 | GitHub 发布 | Release candidate | public `main` 仍是 `86af63f`；v6.18 在 `codex/reproducible-core-v4` 按两个原子提交发布并以 Draft PR/CI 复核 | 合并前不能称公开发布；description/homepage/license 仍为空，历史清理、Pages/API 部署与真实试用分别治理 |
 
 ## 1.1 v6.18 GitHub 发布门
@@ -89,7 +89,7 @@
 - evidence 只使用 job ID 的 SHA 与 event type/attempt/time 投影；HTTP 复用 `jobs:read`，CLI 只创建 0600 文件，公开输出不含 tenant/principal/request/job/worker/payload/error；
 - 2-case mixed/empty synthetic artifact 由独立 verifier 重算窗口、顺序、分母、rate、quantile、inner/outer SHA 和隐私边界，并拒绝重新签名后的聚合/分位数/ID 注入。
 
-退出条件：定向测试、job smoke、独立 artifact、完整 `make check` 与 secret gate 已通过；仍需 stacked Draft PR 和最终 head workflow。对外只称“可复算 workload snapshot”，不称生产 SLO、容量、事故率或告警效果。
+退出条件：定向测试、job smoke、独立 artifact、完整 `make check`、secret gate、stacked Draft PR 与 branch workflow 已完成；仍需前置 PR #5/#6 合并后 retarget 并完成最终 review/merge。对外只称“可复算 workload snapshot”，不称生产 SLO、容量、事故率或告警效果。
 
 ## 1.4 v6.12-v6.13 Tool-call Audit 验收
 
