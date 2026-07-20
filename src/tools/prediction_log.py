@@ -9,7 +9,7 @@
   顶部带"上次预测偏差 X 分钟"，confidence 自动降档
 - mock_message.apology_card 也用这份数据生成认错卡片
 
-存储：单独一张 SQLite 表，和 tool_calls 同库。
+存储：prediction_feedback 独立领域。既有安装在有效迁移凭据出现前继续读旧库。
 """
 
 from __future__ import annotations
@@ -20,30 +20,35 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
-ROOT = Path(__file__).resolve().parent.parent.parent
-LOG_DB = ROOT / "tool_calls.db"
+from storage.prediction_feedback import (
+    PREDICTION_FEEDBACK_DB_ENV,
+    PREDICTION_FEEDBACK_SCHEMA,
+    ensure_prediction_feedback_metadata,
+    resolve_prediction_feedback_path,
+)
 
-_SCHEMA = """
-CREATE TABLE IF NOT EXISTS prediction_log (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    poi_name TEXT NOT NULL,
-    target_time TEXT,
-    predicted_wait_min INTEGER,
-    predicted_at TEXT,
-    actual_wait_min INTEGER DEFAULT NULL,
-    actual_at TEXT DEFAULT NULL,
-    confidence REAL DEFAULT 0.8
-);
-CREATE INDEX IF NOT EXISTS idx_pred_poi ON prediction_log(poi_name);
-"""
+
+PREDICTION_DB_ENV = PREDICTION_FEEDBACK_DB_ENV
+LOG_DB: Path | None = None
+_SCHEMA = PREDICTION_FEEDBACK_SCHEMA
 
 # 偏差阈值：实际 vs 预测差 > 15 分钟视为"上次错了"
 ERROR_THRESHOLD_MIN = 15
 
 
+def database_path() -> Path:
+    """Resolve explicit override, verified dedicated store, or legacy compatibility."""
+    if LOG_DB is not None:
+        return resolve_prediction_feedback_path(LOG_DB)
+    return resolve_prediction_feedback_path()
+
+
 def _conn() -> sqlite3.Connection:
-    conn = sqlite3.connect(LOG_DB)
+    path = database_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(path)
     conn.executescript(_SCHEMA)
+    ensure_prediction_feedback_metadata(path)
     return conn
 
 

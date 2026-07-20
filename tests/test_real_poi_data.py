@@ -8,8 +8,13 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from scripts.build_mock_data import _build_pois  # noqa: E402
+from scripts.build_mock_data import REAL_POI_FILE  # noqa: E402
 
 
+@unittest.skipUnless(
+    REAL_POI_FILE.exists(),
+    "requires the local real AMap POI cache; public demo profile is synthetic",
+)
 class RealPOIDataTest(unittest.TestCase):
     def test_generated_poi_dataset_has_expanded_real_candidate_volume(self) -> None:
         pois = _build_pois()

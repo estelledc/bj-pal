@@ -41,7 +41,7 @@ class UIRefactorTest(unittest.TestCase):
         from src.ui import timeline
 
         self.assertEqual(app.PRIMARY_WORKSPACE_COLUMNS, ("plan", "map"))
-        self.assertEqual(app.SECONDARY_RESULT_TABS, ("发送", "诊断"))
+        self.assertEqual(app.SECONDARY_RESULT_TABS, ("发送", "结果反馈", "诊断"))
         self.assertEqual(app.DIAGNOSTIC_LABEL, "诊断")
         self.assertEqual(app.AGENT_SKILL_PANEL_LABEL, "Agent 能力目录")
         self.assertEqual(map_view.MAP_VISUALIZATION_CAPTION, "规划结果可视化图")
@@ -66,6 +66,9 @@ class UIRefactorTest(unittest.TestCase):
         self.assertEqual(memory_panel.display_memory_key("preference:pet_friendly"), "偏好：其他偏好")
         self.assertNotIn("未命名", memory_panel.display_memory_key("risk:custom_llm_tag"))
         self.assertNotIn("mention_count", inspect.getsource(memory_panel.render_memory_panel))
+        entry = SimpleNamespace(mem_key="area:current_city", mem_value="北京")
+        self.assertIn("北京", memory_panel.display_memory_entry(entry))
+        self.assertEqual(memory_panel.MEMORY_CONFIRM_BUTTON_LABEL, "确认")
 
     def test_action_buttons_keep_single_line_at_narrow_widths(self) -> None:
         from src.ui import app
@@ -108,6 +111,66 @@ class UIRefactorTest(unittest.TestCase):
         self.assertIn("正在理解你的偏好", app.PLAN_STREAM_STEPS[0])
         self.assertIn("_run_with_progress_trace", main_source)
         self.assertIn("_run_with_progress_trace", dissent_source)
+
+    def test_clarification_is_persisted_and_can_continue_in_place(self) -> None:
+        from src.ui import app
+
+        main_source = inspect.getsource(app.main)
+        continuation_source = inspect.getsource(app._render_clarification_continuation)
+
+        self.assertEqual(app.PENDING_CLARIFICATION_KEY, "pending_clarification")
+        self.assertIn("_clarification_service().issue", main_source)
+        self.assertIn("_render_clarification_continuation()", main_source)
+        self.assertIn("resolve_request", continuation_source)
+        self.assertIn("claim_execution", continuation_source)
+        self.assertIn("_store_planning_result", continuation_source)
+
+    def test_booking_ui_uses_visible_approval_worker_and_reconciliation_stages(self) -> None:
+        from src.operations import DEMO_APPROVER_ID, DEMO_REQUESTER_ID
+        from src.ui import app
+
+        request_source = inspect.getsource(app._request_sandbox_operation)
+        panel_source = inspect.getsource(app._render_sandbox_operation_panel)
+        module_source = inspect.getsource(app)
+
+        self.assertEqual(app.SIDE_EFFECT_OPERATION_KEY, "side_effect_operation_id")
+        self.assertNotEqual(DEMO_REQUESTER_ID, DEMO_APPROVER_ID)
+        self.assertIn("build_sandbox_booking_draft", request_source)
+        self.assertIn("request_sandbox_booking", request_source)
+        self.assertIn("approve_sandbox_booking", panel_source)
+        self.assertIn("execute_next_sandbox_booking", panel_source)
+        self.assertIn("reconcile_uncertain", panel_source)
+        self.assertIn("不会自动重试写操作", panel_source)
+        self.assertNotIn("book_restaurant", module_source)
+        self.assertNotIn("_confirm_book", module_source)
+
+    def test_feedback_ui_separates_decision_outcome_and_hides_small_sample_rates(self) -> None:
+        from src.ui import app
+
+        store_source = inspect.getsource(app._store_planning_result)
+        panel_source = inspect.getsource(app._render_feedback_panel)
+
+        self.assertEqual(app.PLAN_FEEDBACK_KEY, "plan_feedback_invitation")
+        self.assertIn("_issue_ui_feedback_invitation", store_source)
+        self.assertIn('phase="decision"', panel_source)
+        self.assertIn('phase="outcome"', panel_source)
+        self.assertIn("用户自报、未经核验", panel_source)
+        self.assertIn("样本不足，暂不展示", panel_source)
+        self.assertNotIn("text_area", panel_source)
+
+    def test_trial_ui_requires_exact_notice_and_session_only_participant_capability(self) -> None:
+        from src.ui import app
+
+        enrollment_source = inspect.getsource(app._render_trial_enrollment_panel)
+        issue_source = inspect.getsource(app._issue_ui_feedback_invitation)
+
+        self.assertEqual(app.ACTIVE_TRIAL_ENV, "BJ_PAL_ACTIVE_TRIAL_ID")
+        self.assertEqual(app.TRIAL_PARTICIPANT_KEY, "trial_participant")
+        self.assertIn("consent_notice_sha256", enrollment_source)
+        self.assertIn("consent_attested", enrollment_source)
+        self.assertIn('type="password"', enrollment_source)
+        self.assertIn("withdraw_trial", enrollment_source)
+        self.assertIn("trial_participant_capability", issue_source)
 
     def test_planning_status_uses_one_expanded_then_collapsed_block(self) -> None:
         from src.ui import app
@@ -171,7 +234,7 @@ class UIRefactorTest(unittest.TestCase):
             app.TASK_BAR_FIELDS,
             ("persona", "area", "budget", "start_time", "duration", "mode", "generate"),
         )
-        self.assertEqual(app.SIDEBAR_SECTIONS, ("记忆",))
+        self.assertEqual(app.SIDEBAR_SECTIONS, ("试用", "记忆"))
 
     def test_runtime_backend_label_supports_dpsk(self) -> None:
         from src.ui import app

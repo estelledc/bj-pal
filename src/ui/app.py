@@ -5,7 +5,7 @@
 
 v2 新增：
 - Hero 区微信对话开场（改 10）
-- 真实路由时间 + 4 模式对比（改 1 + 改 6B）
+- 缓存/估算路由时间 + 4 模式对比（改 1 + 改 6B）
 - 真实 mock：菜单 / 座位 / 照片 / 延迟（改 3）
 - 多种 reroute：queue / weather / closed / user_dissent（改 4）
 - 群发投票：4 头像状态（改 2）
@@ -36,19 +36,57 @@ sys.path.insert(0, str(SRC_ROOT))
 
 from agents.addon_agent import suggest_addons  # noqa: E402
 from agents.group_harmony import group_rank  # noqa: E402
-from agents.planner import plan as make_plan, screen_candidates  # noqa: E402
+from agents.planner import screen_candidates  # noqa: E402
 from agents.preference_mirror import (  # noqa: E402
     detect_has_elderly,
     detect_screening_mode,
 )
-from agents.replanner import probe_plan, replan_step  # noqa: E402
+from agents.replanner import replan_step  # noqa: E402
 from agents.skills import describe_skills  # noqa: E402
 from agents.types import UserPreferences  # noqa: E402
 from agents.user_memory import infer_from_user_input  # noqa: E402
+from application import (  # noqa: E402
+    PREFERENCE_PROVIDED_FIELDS,
+    PlanRequest,
+    PlanningClarificationRequired,
+    PlanningCallbacks,
+    PlanningService,
+)
+from clarifications import (  # noqa: E402
+    ClarificationContinuationService,
+    ClarificationExpired,
+    ClarificationInProgress,
+    ClarificationNotFound,
+    ClarificationResolutionConflict,
+    InvalidClarificationTransition,
+)
+from operations import (  # noqa: E402
+    DEMO_RECONCILER_ID,
+    DEMO_TENANT_ID,
+    SideEffectOperationService,
+    approve_sandbox_booking,
+    build_sandbox_booking_draft,
+    execute_next_sandbox_booking,
+    request_sandbox_booking,
+)
+from outcomes import (  # noqa: E402
+    FeedbackExpired,
+    FeedbackIdempotencyConflict,
+    FeedbackNotFound,
+    FeedbackPhaseConflict,
+    PlanFeedbackService,
+    TrialClosed,
+    TrialConsentMismatch,
+    TrialEnrollmentConflict,
+    TrialIntegrityError,
+    TrialNotActive,
+    TrialNotFound,
+    TrialParticipantWithdrawn,
+    sha256_json,
+)
 from tools.amap_search import resolve_area_center, search_pois  # noqa: E402
 from tools.availability_probe import user_dissent_probe  # noqa: E402
 from tools.footprint import cumulative_stats, fetch_recent_sessions  # noqa: E402
-from tools.mock_book import book_restaurant  # noqa: E402
 from tools.mock_message import (  # noqa: E402
     DEMO_FRIEND_GROUP,
     broadcast_to_group,
@@ -71,12 +109,18 @@ from ui.trust_panel import (  # noqa: E402
 
 
 PRIMARY_WORKSPACE_COLUMNS = ("plan", "map")
-SECONDARY_RESULT_TABS = ("发送", "诊断")
+SECONDARY_RESULT_TABS = ("发送", "结果反馈", "诊断")
 DIAGNOSTIC_LABEL = "诊断"
 AGENT_SKILL_PANEL_LABEL = "Agent 能力目录"
 TASK_BAR_FIELDS = ("persona", "area", "budget", "start_time", "duration", "mode", "generate")
-SIDEBAR_SECTIONS = ("记忆",)
+SIDEBAR_SECTIONS = ("试用", "记忆")
 REROUTE_MEMORY_KEY = "reroute_memory_poi_names"
+PENDING_CLARIFICATION_KEY = "pending_clarification"
+SIDE_EFFECT_OPERATION_KEY = "side_effect_operation_id"
+PLAN_FEEDBACK_KEY = "plan_feedback_invitation"
+PLAN_FEEDBACK_ERROR_KEY = "plan_feedback_error"
+TRIAL_PARTICIPANT_KEY = "trial_participant"
+ACTIVE_TRIAL_ENV = "BJ_PAL_ACTIVE_TRIAL_ID"
 PRODUCT_PAGE_TITLE = "BJ-Pal · 周末闲时活动规划"
 PRODUCT_KICKER = "BJ-Pal · 北京周末闲时规划"
 PRODUCT_HEADLINE = "把周末半天，排成一条能出发的路线"
@@ -134,6 +178,11 @@ PRESETS = {
         "contact": "@群友",
     },
 }
+
+PLANNING_SERVICE = PlanningService()
+_CLARIFICATION_SERVICE = None
+_OPERATION_SERVICE = None
+_FEEDBACK_SERVICE = None
 
 AREAS = [
     "五道营-雍和宫片区",
@@ -455,6 +504,336 @@ def build_user_preferences(
     )
 
 
+def format_data_profile_notice(profile) -> str:
+    """Return an honest, compact data notice for the delivery layer."""
+    if profile.contains_synthetic_data:
+        return (
+            f"数据模式：{profile.name} / {profile.classification}。"
+            "当前结果用于公开可复现演示，不代表实时热度、余位或预订成功。"
+        )
+    return f"数据模式：{profile.name} / {profile.classification}。"
+
+
+def _clarification_service() -> ClarificationContinuationService:
+    """Lazily open the local continuation store only when a request needs it."""
+    global _CLARIFICATION_SERVICE
+    if _CLARIFICATION_SERVICE is None:
+        _CLARIFICATION_SERVICE = ClarificationContinuationService()
+    return _CLARIFICATION_SERVICE
+
+
+def _operation_service() -> SideEffectOperationService:
+    """Lazily open the local sandbox operation store for the product rehearsal."""
+    global _OPERATION_SERVICE
+    if _OPERATION_SERVICE is None:
+        _OPERATION_SERVICE = SideEffectOperationService()
+    return _OPERATION_SERVICE
+
+
+def _feedback_service() -> PlanFeedbackService:
+    """Lazily open the append-only feedback evidence store."""
+    global _FEEDBACK_SERVICE
+    if _FEEDBACK_SERVICE is None:
+        _FEEDBACK_SERVICE = PlanFeedbackService()
+    return _FEEDBACK_SERVICE
+
+
+def _active_trial_participant_capability() -> str | None:
+    participant = st.session_state.get(TRIAL_PARTICIPANT_KEY)
+    if not isinstance(participant, dict):
+        return None
+    capability = participant.get("capability")
+    return capability if isinstance(capability, str) else None
+
+
+def _render_trial_enrollment_panel() -> None:
+    """Opt into an operator-created trial without persisting raw capabilities."""
+    trial_id = os.environ.get(ACTIVE_TRIAL_ENV, "").strip()
+    if not trial_id:
+        return
+    st.markdown("## 知情试用")
+    try:
+        trial = _feedback_service().get_trial(trial_id)
+    except (TrialNotFound, TrialIntegrityError, OSError, RuntimeError, ValueError):
+        st.error("当前试用批次不可用；普通演示仍可继续。")
+        return
+    notice = trial.consent_notice
+    st.caption(
+        "自愿参与；只记录随机参与者/方案标识、枚举反馈和时间，不收姓名、联系方式或自由文本。"
+    )
+    st.caption(
+        f"反馈截止：{notice['ends_at']} · 原始记录保留提示：{notice['retention_until']}"
+    )
+    st.caption(
+        "每个阶段至少达到批次门槛才展示比率；不同参与凭证不等于已验证的不同真人。"
+    )
+    participant = st.session_state.get(TRIAL_PARTICIPANT_KEY)
+    if isinstance(participant, dict) and participant.get("trial_id") == trial_id:
+        st.success("本会话已完成知情加入；参与凭证只保存在当前会话。")
+        st.caption(
+            f"participant {str(participant.get('participant_id', ''))[-8:]} · "
+            f"notice {trial.consent_notice_sha256[:12]}…"
+        )
+        if st.button(
+            "退出本次试用",
+            key=f"withdraw-trial-{trial_id}",
+            use_container_width=True,
+        ):
+            try:
+                _feedback_service().withdraw_trial(
+                    trial_id=trial_id,
+                    participant_capability=participant["capability"],
+                )
+            except (TrialClosed, TrialNotActive):
+                st.warning("试用已经结束，冻结证据不会再改变。")
+                return
+            except (TrialNotFound, TrialIntegrityError, OSError, RuntimeError, ValueError):
+                st.error("暂时无法记录退出；没有把状态伪装成已退出。")
+                return
+            st.session_state.pop(TRIAL_PARTICIPANT_KEY, None)
+            st.session_state.pop(PLAN_FEEDBACK_KEY, None)
+            st.success("已退出：后续不能新增反馈，未冻结汇总会排除本参与者。")
+            st.rerun()
+        return
+    if trial.status == "closed":
+        st.info("本批次已经冻结，不再接受新参与者。")
+        return
+    with st.form(key=f"trial-enroll-{trial_id}"):
+        enrollment_capability = st.text_input(
+            "一次性加入码",
+            type="password",
+            help="由试用组织者单独发放；系统只在数据库保存其 SHA-256。",
+        )
+        consent_attested = st.checkbox(
+            "我已阅读上述用途、收集字段、退出和保留说明，并自愿参与"
+        )
+        submitted = st.form_submit_button(
+            "加入知情试用",
+            type="primary",
+            use_container_width=True,
+        )
+    if not submitted:
+        return
+    try:
+        enrolled = _feedback_service().enroll_trial(
+            trial_id=trial_id,
+            enrollment_capability=enrollment_capability.strip(),
+            consent_notice_sha256=trial.consent_notice_sha256,
+            consent_attested=consent_attested,
+        )
+    except TrialConsentMismatch:
+        st.warning("必须明确同意当前这版说明，不能沿用旧版同意。")
+        return
+    except TrialEnrollmentConflict:
+        st.warning("这个一次性加入码已经使用过。")
+        return
+    except (TrialNotFound, TrialNotActive, TrialClosed):
+        st.warning("加入码无效、已过期，或试用批次已结束。")
+        return
+    except (TrialIntegrityError, OSError, RuntimeError, ValueError):
+        st.error("暂时无法加入试用；加入码和同意状态没有被伪装成已保存。")
+        return
+    st.session_state[TRIAL_PARTICIPANT_KEY] = enrolled.to_public_dict()
+    st.success("已加入；下一份新生成方案会绑定到本批次。")
+    st.rerun()
+
+
+def _issue_ui_feedback_invitation(plan) -> None:
+    """Bind a session-only capability to the exact plan revision shown in UI."""
+    profile = st.session_state.get("data_profile")
+    st.session_state.pop(PLAN_FEEDBACK_KEY, None)
+    st.session_state.pop(PLAN_FEEDBACK_ERROR_KEY, None)
+    if profile is None:
+        st.session_state[PLAN_FEEDBACK_ERROR_KEY] = "本次方案缺少数据口径，无法收集结果证据。"
+        return
+    try:
+        invitation = _feedback_service().issue(
+            plan_id=plan.plan_id,
+            plan_artifact_sha256=sha256_json(plan.to_dict()),
+            data_profile_name=profile.name,
+            data_profile_classification=profile.classification,
+            trial_participant_capability=_active_trial_participant_capability(),
+        )
+    except (TrialNotFound, TrialNotActive, TrialClosed, TrialParticipantWithdrawn):
+        st.session_state.pop(TRIAL_PARTICIPANT_KEY, None)
+        st.session_state[PLAN_FEEDBACK_ERROR_KEY] = (
+            "试用参与凭证无效、已退出或批次已结束；本方案未计入试用证据。"
+        )
+        return
+    except Exception:
+        st.session_state[PLAN_FEEDBACK_ERROR_KEY] = "结果证据存储暂时不可用。"
+        return
+    st.session_state[PLAN_FEEDBACK_KEY] = {
+        "plan_id": plan.plan_id,
+        **invitation.to_public_dict(
+            feedback_url=f"/v1/plans/{plan.plan_id}/feedback"
+        ),
+    }
+
+
+def _store_planning_result(result):
+    """Commit one canonical result to UI state for initial and continued plans."""
+    p2 = result.final_plan
+    events = list(result.reroute_events)
+    prefs = result.request.preferences
+    area = result.request.area_anchor
+    st.session_state.plan_v1 = result.initial_plan
+    st.session_state.prefs = prefs
+    st.session_state.area = area
+    st.session_state.plan_v2 = p2
+    st.session_state.events = events
+    st.session_state.data_profile = result.data_profile
+    st.session_state.requirements = result.requirements
+    st.session_state.constraints = result.constraints
+    st.session_state.pop(SIDE_EFFECT_OPERATION_KEY, None)
+    _issue_ui_feedback_invitation(p2)
+    _seed_reroute_memory(p2, events)
+    st.session_state.addons = suggest_addons(p2, prefs)
+    preset = PRESETS.get(result.request.persona, PRESETS[st.session_state.persona])
+    card_style = (
+        "elderly_friendly"
+        if detect_has_elderly(result.request.user_input)
+        else "default"
+    )
+    st.session_state.card = render_im_card(
+        p2,
+        audience=preset["audience"],
+        style=card_style,
+    )
+    return p2, events, card_style
+
+
+def _render_clarification_continuation() -> None:
+    """Render and execute one persisted clarification decision."""
+    pending = st.session_state.get(PENDING_CLARIFICATION_KEY)
+    if not pending:
+        return
+    continuation_id = str(pending.get("continuation_id") or "")
+    try:
+        session = _clarification_service().get(continuation_id)
+    except Exception:
+        st.error("澄清会话暂时无法读取，请重新生成方案。")
+        return
+    if session is None:
+        st.error("澄清会话不存在，请重新生成方案。")
+        st.session_state.pop(PENDING_CLARIFICATION_KEY, None)
+        return
+    if session.status == "expired":
+        st.warning("这次澄清已过期，请重新生成方案。")
+        st.session_state.pop(PENDING_CLARIFICATION_KEY, None)
+        return
+
+    question = (session.decision_payload.get("questions") or [{}])[0]
+    options = {item.option_id: item for item in session.options}
+    with st.container(border=True):
+        st.markdown("### 生成前还需要你确认一项")
+        st.write(question.get("prompt") or "请选择本次应采用的约束。")
+        st.caption(
+            f"decision {session.decision_sha256[:12]}… · "
+            f"有效至 {session.expires_at}"
+        )
+        with st.form(key=f"clarification-{continuation_id}"):
+            option_id = st.radio(
+                "选择处理方式",
+                options=list(options),
+                format_func=lambda value: options[value].label,
+            )
+            answer = st.text_input(
+                "补充内容",
+                placeholder="选择“补充”或“重新描述”时填写",
+            )
+            submitted = st.form_submit_button(
+                "确认并继续生成",
+                type="primary",
+                use_container_width=True,
+            )
+        if not submitted:
+            return
+        option = options[option_id]
+        normalized_answer = answer.strip() if option.requires_answer else None
+        if option.requires_answer and not normalized_answer:
+            st.warning("该选项需要补充具体内容。")
+            return
+
+        owner = f"ui-{uuid.uuid4().hex}"
+        claimed = False
+        try:
+            _, resolved_request = _clarification_service().resolve_request(
+                continuation_id=continuation_id,
+                delivery="sync",
+                option_id=option_id,
+                answer=normalized_answer,
+            )
+            session = _clarification_service().claim_execution(
+                continuation_id=continuation_id,
+                owner=owner,
+            )
+            claimed = session.status == "executing"
+            if session.status == "completed":
+                st.session_state.pop(PENDING_CLARIFICATION_KEY, None)
+                st.info("该澄清已经执行完成。")
+                return
+            with st.status("已确认，继续生成方案", expanded=False):
+                result = PLANNING_SERVICE.execute(resolved_request)
+            _clarification_service().complete(
+                continuation_id=continuation_id,
+                owner=owner,
+                result_payload=result.to_dict(),
+            )
+            _store_planning_result(result)
+            st.session_state.pop(PENDING_CLARIFICATION_KEY, None)
+            st.rerun()
+        except PlanningClarificationRequired as exc:
+            try:
+                next_session = _clarification_service().issue(
+                    request=resolved_request,
+                    error=exc,
+                    delivery="sync",
+                )
+                _clarification_service().complete(
+                    continuation_id=continuation_id,
+                    owner=owner,
+                    result_payload={
+                        "next_clarification": {
+                            "requirements": exc.decision.to_dict(),
+                            "continuation": next_session.to_public_dict(),
+                        }
+                    },
+                )
+                st.session_state[PENDING_CLARIFICATION_KEY] = (
+                    next_session.to_public_dict()
+                )
+                st.rerun()
+            except Exception:
+                if claimed:
+                    _clarification_service().release_execution(
+                        continuation_id=continuation_id,
+                        owner=owner,
+                    )
+                st.error("下一项澄清无法保存，请稍后重试。")
+        except (
+            ClarificationExpired,
+            ClarificationInProgress,
+            ClarificationNotFound,
+            ClarificationResolutionConflict,
+            InvalidClarificationTransition,
+            ValueError,
+        ) as exc:
+            if claimed:
+                _clarification_service().release_execution(
+                    continuation_id=continuation_id,
+                    owner=owner,
+                )
+            st.warning(f"无法继续这次澄清：{exc}")
+        except Exception:
+            if claimed:
+                _clarification_service().release_execution(
+                    continuation_id=continuation_id,
+                    owner=owner,
+                )
+            st.error("继续生成失败；已保留本次答案，可以安全重试。")
+
+
 def _render_manual_memory_input(user_id: str) -> None:
     """Render the simple right-side memory capture control."""
     with st.container(border=True):
@@ -505,6 +884,9 @@ def main():
     current_user_id = st.session_state.user_id
 
     with st.sidebar:
+        _render_trial_enrollment_panel()
+        if os.environ.get(ACTIVE_TRIAL_ENV, "").strip():
+            st.divider()
         st.markdown("## 记忆")
         st.caption("当前用户画像会影响后续方案生成。")
         new_uid = st.text_input(
@@ -535,6 +917,7 @@ def main():
     st.session_state["mode"] = mode_choice
 
     if gen_btn:
+        st.session_state.pop(PENDING_CLARIFICATION_KEY, None)
         augmented_input = user_input
         st.session_state.user_input = user_input
         prefs = build_user_preferences(
@@ -569,24 +952,69 @@ def main():
 
             with st.status(PLAN_STATUS_LABEL, expanded=PLAN_STATUS_EXPANDED_WHILE_RUNNING) as status:
                 t0 = time.time()
+                request = PlanRequest(
+                    user_input=augmented_input,
+                    persona=persona_key,
+                    preferences=prefs,
+                    area_anchor=area,
+                    user_id=current_user_id,
+                    provided_fields=frozenset(
+                        {
+                            "user_input",
+                            "persona",
+                            "preferences",
+                            "area_anchor",
+                            "user_id",
+                        }
+                    ) | PREFERENCE_PROVIDED_FIELDS,
+                )
+
+                def _on_initial_plan(p1):
+                    st.session_state.plan_v1 = p1
+                    status.update(
+                        label=f"初版方案完成，{len(p1.steps)} 步，{time.time()-t0:.1f}s",
+                        state="running",
+                        expanded=PLAN_STATUS_EXPANDED_WHILE_RUNNING,
+                    )
+
                 try:
-                    p1 = _run_with_progress_trace(
-                        PLAN_STREAM_STEPS,
-                        lambda on_token, on_progress, on_stream_event: make_plan(
-                            user_input=augmented_input,
-                            persona=persona_key,
-                            user_id=current_user_id,
-                            prefs=prefs,
-                            area_anchor=area,
-                            on_token=on_token,
-                            on_progress=on_progress,
-                            on_stream_event=on_stream_event,
+                    result = _run_with_progress_trace(
+                        PLAN_STREAM_STEPS + PROBE_STREAM_STEPS,
+                        lambda on_token, on_progress, on_stream_event: PLANNING_SERVICE.execute(
+                            request,
+                            callbacks=PlanningCallbacks(
+                                on_token=on_token,
+                                on_progress=on_progress,
+                                on_stream_event=on_stream_event,
+                                on_initial_plan=_on_initial_plan,
+                            ),
                         ),
                         accepts_stream_callbacks=True,
                     )
-                    st.session_state.plan_v1 = p1
-                    status.update(label=f"初版方案完成，{len(p1.steps)} 步，{time.time()-t0:.1f}s",
-                                  state="running", expanded=PLAN_STATUS_EXPANDED_WHILE_RUNNING)
+                except PlanningClarificationRequired as exc:
+                    try:
+                        session = _clarification_service().issue(
+                            request=request,
+                            error=exc,
+                            delivery="sync",
+                        )
+                    except Exception:
+                        status.update(
+                            label="澄清会话保存失败",
+                            state="error",
+                            expanded=True,
+                        )
+                        st.error("生成前需要补充信息，但本次澄清无法持久化。")
+                        return
+                    st.session_state[PENDING_CLARIFICATION_KEY] = (
+                        session.to_public_dict()
+                    )
+                    status.update(
+                        label="生成前需要补充一项信息",
+                        state="complete",
+                        expanded=False,
+                    )
+                    st.rerun()
                 except Exception as e:
                     status.update(label=f"生成失败：{e}", state="error", expanded=True)
                     st.exception(e)
@@ -594,13 +1022,7 @@ def main():
 
                 status.update(label=PLAN_POSTCHECK_LABEL, state="running",
                               expanded=PLAN_STATUS_EXPANDED_WHILE_RUNNING)
-                p2, events = _run_with_progress_trace(
-                    PROBE_STREAM_STEPS,
-                    lambda: probe_plan(p1, prefs=prefs),
-                )
-                st.session_state.plan_v2 = p2
-                st.session_state.events = events
-                _seed_reroute_memory(p2, events)
+                p2, events, card_style = _store_planning_result(result)
                 if events:
                     status.update(
                         label=f"方案已生成，已自动调整 {len(events)} 处",
@@ -614,14 +1036,10 @@ def main():
                         expanded=PLAN_STATUS_EXPANDED_AFTER_DONE,
                     )
 
-            addons = suggest_addons(p2, prefs)
-            st.session_state.addons = addons
-
-            card_style = "elderly_friendly" if detect_has_elderly(user_input) else "default"
-            card = render_im_card(p2, audience=preset["audience"], style=card_style)
-            st.session_state.card = card
             if card_style == "elderly_friendly":
                 st.info("已切换到大字号简化卡片，便于老人阅读。")
+
+    _render_clarification_continuation()
 
     if "screening_result" in st.session_state and st.session_state.get("mode") == "screening":
         _render_screening(st.session_state.screening_result)
@@ -633,6 +1051,8 @@ def main():
         area = st.session_state.area
         center = resolve_area_center(area)
 
+        if st.session_state.get("data_profile") is not None:
+            st.caption(format_data_profile_notice(st.session_state.data_profile))
         _render_plan_overview(p2, st.session_state.get("events", []), area)
 
         plan_col, map_col = st.columns([1.02, 0.98], gap="large")
@@ -653,6 +1073,8 @@ def main():
         with tabs[0]:
             _render_share_panel(p2, prefs, PRESETS[st.session_state.persona])
         with tabs[1]:
+            _render_feedback_panel(p2)
+        with tabs[2]:
             _render_diagnostics(p2, prefs, area)
 
 
@@ -1090,8 +1512,12 @@ def _render_share_panel(plan, prefs, preset: dict) -> None:
             time.sleep(0.8)
             st.info(f"{preset['contact']}：OK，就这么定吧")
     with col_book:
-        if st.button("模拟预订", use_container_width=True):
-            _confirm_book(plan, prefs, preset)
+        if not st.session_state.get(SIDE_EFFECT_OPERATION_KEY):
+            if st.button("创建沙箱预订请求", use_container_width=True):
+                _request_sandbox_operation(plan, prefs)
+                st.rerun()
+
+    _render_sandbox_operation_panel()
 
     if st.session_state.persona == "friends":
         st.markdown("### 群内确认")
@@ -1102,7 +1528,220 @@ def _render_share_panel(plan, prefs, preset: dict) -> None:
             if st.session_state.get("member_profiles"):
                 render_member_weights_panel(st.session_state.member_profiles)
 
-    st.caption("当前是演示环境：发送、预订和下单都调用 mock 接口。")
+    st.caption(
+        "当前是演示环境：消息发送仍为 mock；预订必须经过精确报价、独立审批、"
+        "沙箱 worker 和可校验回执，不会触发真实扣款或商家请求。"
+    )
+
+
+FEEDBACK_REASON_LABELS = {
+    "too_expensive": "预算太高",
+    "too_far": "距离太远",
+    "schedule_unrealistic": "时间安排不现实",
+    "unsuitable_poi": "地点不合适",
+    "route_issue": "路线有问题",
+    "weather_issue": "天气影响",
+    "availability_issue": "营业或余位问题",
+    "group_disagreement": "同行人意见不一致",
+    "other": "其他（不收集自由文本）",
+}
+DECISION_FEEDBACK_LABELS = {
+    "accepted": "接受这版方案",
+    "requested_change": "需要调整后再决定",
+    "rejected": "不采用这版方案",
+}
+OUTCOME_FEEDBACK_LABELS = {
+    "completed": "按这版方案完成",
+    "partially_completed": "只完成了一部分",
+    "abandoned": "最终没有执行",
+}
+
+
+def _feedback_idempotency_key(plan_id: str, artifact_sha256: str, phase: str) -> str:
+    evidence = {
+        "session_id": st.session_state.session_id,
+        "plan_id": plan_id,
+        "plan_artifact_sha256": artifact_sha256,
+        "phase": phase,
+    }
+    return f"ui-feedback-{sha256_json(evidence)[:32]}"
+
+
+def _submit_ui_feedback(
+    *,
+    invitation: dict,
+    phase: str,
+    value: str,
+    reason_codes: list[str],
+) -> None:
+    try:
+        _feedback_service().submit(
+            plan_id=invitation["plan_id"],
+            capability=invitation["capability"],
+            idempotency_key=_feedback_idempotency_key(
+                invitation["plan_id"],
+                invitation["plan_artifact_sha256"],
+                phase,
+            ),
+            phase=phase,
+            value=value,
+            reason_codes=tuple(reason_codes),
+        )
+    except FeedbackExpired:
+        st.warning("这次反馈凭证已过期，请重新生成方案后再记录。")
+        return
+    except FeedbackNotFound:
+        st.warning("反馈凭证与当前方案不匹配，请重新生成方案。")
+        return
+    except FeedbackIdempotencyConflict:
+        st.error("同一次提交被改成了不同内容；系统已拒绝覆盖原记录。")
+        return
+    except FeedbackPhaseConflict:
+        st.info("这个方案版本已经记录过该阶段，追加写入存储不会覆盖原记录。")
+        return
+    except TrialParticipantWithdrawn:
+        st.warning("你已经退出这次试用，系统不会继续加入新证据。")
+        return
+    except (TrialClosed, TrialNotActive):
+        st.warning("试用批次已经结束；冻结证据不会再改变。")
+        return
+    except TrialIntegrityError:
+        st.error("试用证据链校验失败；本次选择没有被写入。")
+        return
+    except (OSError, RuntimeError, ValueError):
+        st.error("结果证据暂时无法保存；没有把本次选择伪装成已记录。")
+        return
+    st.success("已记录为用户自报、未经独立核验的结果证据。")
+    st.rerun()
+
+
+def _render_feedback_panel(plan) -> None:
+    st.markdown("### 这版方案后来怎么样")
+    st.caption(
+        "分两次记录：先记是否采纳，实际出行后再记是否完成。"
+        "只收集枚举原因，不收姓名、联系方式或自由文本；证据分类为用户自报、未经核验。"
+    )
+    error = st.session_state.get(PLAN_FEEDBACK_ERROR_KEY)
+    if error:
+        st.error(error)
+        return
+    invitation = st.session_state.get(PLAN_FEEDBACK_KEY)
+    if not invitation or invitation.get("plan_id") != plan.plan_id:
+        st.info("当前方案还没有可用的结果反馈凭证。")
+        return
+    try:
+        reports = _feedback_service().list_reports(
+            plan_id=plan.plan_id,
+            capability=invitation["capability"],
+        )
+        summary = (
+            _feedback_service().trial_summary(trial_id=invitation["trial_id"])
+            if invitation.get("trial_id")
+            else _feedback_service().public_summary()
+        )
+    except FeedbackExpired:
+        st.warning("反馈凭证已过期；重新生成方案会创建新的限时凭证。")
+        return
+    except (FeedbackNotFound, TrialIntegrityError, OSError, RuntimeError, ValueError):
+        st.error("暂时无法读取结果证据。")
+        return
+
+    reports_by_phase = {report.phase: report for report in reports}
+    decision_report = reports_by_phase.get("decision")
+    outcome_report = reports_by_phase.get("outcome")
+
+    if decision_report is None:
+        with st.form(
+            key=f"feedback-decision-{invitation['plan_artifact_sha256'][:12]}"
+        ):
+            decision = st.radio(
+                "你会采用这版安排吗",
+                options=list(DECISION_FEEDBACK_LABELS),
+                format_func=DECISION_FEEDBACK_LABELS.__getitem__,
+            )
+            decision_reasons = []
+            if decision != "accepted":
+                decision_reasons = st.multiselect(
+                    "主要原因",
+                    options=list(FEEDBACK_REASON_LABELS),
+                    format_func=FEEDBACK_REASON_LABELS.__getitem__,
+                )
+            decision_submitted = st.form_submit_button(
+                "记录采纳决定", type="primary", use_container_width=True
+            )
+        if decision_submitted:
+            if decision != "accepted" and not decision_reasons:
+                st.warning("请选择至少一个原因。")
+            else:
+                _submit_ui_feedback(
+                    invitation=invitation,
+                    phase="decision",
+                    value=decision,
+                    reason_codes=decision_reasons,
+                )
+    else:
+        st.success(
+            f"采纳阶段已记录：{DECISION_FEEDBACK_LABELS[decision_report.value]}"
+        )
+
+    if decision_report is not None and outcome_report is None:
+        with st.form(
+            key=f"feedback-outcome-{invitation['plan_artifact_sha256'][:12]}"
+        ):
+            outcome = st.radio(
+                "实际出行结果",
+                options=list(OUTCOME_FEEDBACK_LABELS),
+                format_func=OUTCOME_FEEDBACK_LABELS.__getitem__,
+            )
+            outcome_reasons = []
+            if outcome != "completed":
+                outcome_reasons = st.multiselect(
+                    "未完全完成的主要原因",
+                    options=list(FEEDBACK_REASON_LABELS),
+                    format_func=FEEDBACK_REASON_LABELS.__getitem__,
+                )
+            outcome_submitted = st.form_submit_button(
+                "记录实际结果", type="primary", use_container_width=True
+            )
+        if outcome_submitted:
+            if outcome != "completed" and not outcome_reasons:
+                st.warning("请选择至少一个原因。")
+            else:
+                _submit_ui_feedback(
+                    invitation=invitation,
+                    phase="outcome",
+                    value=outcome,
+                    reason_codes=outcome_reasons,
+                )
+    elif outcome_report is not None:
+        st.success(
+            f"结果阶段已记录：{OUTCOME_FEEDBACK_LABELS[outcome_report.value]}"
+        )
+
+    is_trial = bool(invitation.get("trial_id"))
+    phase_counts = summary[
+        "phase_participant_counts" if is_trial else "phase_counts"
+    ]
+    minimum = summary[
+        "minimum_participants" if is_trial else "minimum_phase_samples"
+    ]
+    st.divider()
+    st.caption(
+        f"公开汇总门槛：每个阶段至少 {minimum} 份。"
+        f"当前采纳阶段 {phase_counts['decision']} 份，结果阶段 {phase_counts['outcome']} 份。"
+    )
+    if is_trial:
+        st.caption(
+            "这里按未退出的不同参与凭证计数；它不等于经过身份核验的不同真人。"
+        )
+    if summary["decision_acceptance_rate"] is None:
+        st.caption("采纳率样本不足，暂不展示。")
+    else:
+        st.metric("自报采纳率", f"{summary['decision_acceptance_rate']:.1%}")
+    if summary["outcome_completion_rate"] is None:
+        st.caption("完成率样本不足，暂不展示。")
+    else:
+        st.metric("自报完成率", f"{summary['outcome_completion_rate']:.1%}")
 
 
 def _handle_group_broadcast(plan) -> None:
@@ -1133,6 +1772,27 @@ def _render_diagnostics(plan, prefs, area: str) -> None:
     render_calibration_timeline_panel(window_size=10, expanded=False)
     _render_top_pick_radar(area, prefs)
     _render_agent_skills_panel()
+
+    ledger = st.session_state.get("constraints")
+    if ledger is not None:
+        with st.expander("Constraint Ledger", expanded=False):
+            st.caption("自然语言约束、结构化控件值与最终生效值的可追溯记录。")
+            st.code(ledger.rewritten_query, language=None)
+            rows = [
+                {
+                    "field": entry.field,
+                    "value": entry.value,
+                    "source": entry.source,
+                    "outcome": entry.outcome,
+                    "evidence": entry.evidence,
+                }
+                for entry in ledger.entries
+                if entry.outcome != "default"
+            ]
+            if rows:
+                st.dataframe(rows, use_container_width=True, hide_index=True)
+            else:
+                st.caption("本次没有识别到额外文本约束。")
 
     with st.expander("Tool Call Trace", expanded=False):
         calls = fetch_calls(session_id=st.session_state.session_id, limit=200)
@@ -1334,6 +1994,7 @@ def _render_broadcast_panel(responses, plan, prefs):
                     )
                     st.session_state.plan_v2 = new_plan
                     st.session_state.events.append(event)
+                    _issue_ui_feedback_invitation(new_plan)
                     _write_reroute_memory(
                         excluded_names | collect_reroute_memory_names(new_plan, [event])
                     )
@@ -1416,6 +2077,7 @@ def _on_user_dissent(step_idx: int, prefs: UserPreferences):
         status.update(label="已完成替换检查", state="complete")
     st.session_state.plan_v2 = new_plan
     st.session_state.events.append(event)
+    _issue_ui_feedback_invitation(new_plan)
     _write_reroute_memory(
         excluded_names | collect_reroute_memory_names(new_plan, [event])
     )
@@ -1428,55 +2090,106 @@ def _on_user_dissent(step_idx: int, prefs: UserPreferences):
     st.rerun()
 
 
-def _confirm_book(plan, prefs, preset):
-    """主菜步骤 mock 下单。"""
+def _request_sandbox_operation(plan, prefs) -> None:
+    """Create a quote-bound request without implicitly approving or executing it."""
     meal_steps = [s for s in plan.steps if s.kind == "meal" and s.poi_id]
     if not meal_steps:
-        st.warning("方案里没有 meal step")
+        st.warning("方案里没有可申请预订的餐饮步骤。")
         return
-    s = meal_steps[0]
-    # 拉照片
-    from loader import get_conn
-    conn = get_conn()
-    row = conn.execute("SELECT photos_json FROM pois WHERE id = ?", (s.poi_id,)).fetchone()
-    conn.close()
-    photos = []
-    if row:
-        try:
-            import json
-            photo_list = json.loads(row["photos_json"] or "[]")
-            photos = [p.get("url") for p in photo_list if isinstance(p, dict) and p.get("url")][:3]
-        except Exception:
-            pass
-    book = book_restaurant(
-        poi_id=s.poi_id, poi_name=s.poi_name,
-        target_time=s.start_time, party_size=prefs.party_size,
-        contact_name=preset["contact"], photos=photos,
+    meal = meal_steps[0]
+    draft = build_sandbox_booking_draft(
+        session_id=st.session_state.session_id,
+        poi_id=meal.poi_id,
+        poi_name=meal.poi_name,
+        target_time=meal.start_time,
+        party_size=prefs.party_size,
+        amount_minor=prefs.budget_per_person * prefs.party_size * 100,
     )
-    if book.status == "confirmed":
-        st.success(f"🎬 [演示] {book.message}")
-        st.warning(
-            f"⚠ 这是 mock 调用，**未真实扣款 / 未真实预订**。\n\n"
-            f"模拟时间：`{book.simulated_at}`\n\n"
-            f"生产对接：`{book.real_api_path}`",
-            icon="ℹ️",
+    operation = request_sandbox_booking(_operation_service(), draft)
+    st.session_state[SIDE_EFFECT_OPERATION_KEY] = operation.operation_id
+
+
+def _render_sandbox_operation_panel() -> None:
+    """Render each safety transition as a separate, user-visible action."""
+    operation_id = st.session_state.get(SIDE_EFFECT_OPERATION_KEY)
+    if not operation_id:
+        return
+    operation = _operation_service().get(
+        operation_id,
+        tenant_id=DEMO_TENANT_ID,
+    )
+    if operation is None:
+        st.session_state.pop(SIDE_EFFECT_OPERATION_KEY, None)
+        st.warning("沙箱预订请求不存在，请重新创建。")
+        return
+
+    with st.container(border=True):
+        st.markdown("### 沙箱预订操作")
+        st.caption(
+            f"operation `{operation.operation_id}` · status `{operation.status}` · "
+            "sandbox `true`"
         )
-        st.code(f"booking_id: {book.booking_id}\n座位：{book.seat_no}\n"
-                f"等位：{book.waiting_parties} 桌\n"
-                f"延迟：{book.latency_ms:.0f}ms\n"
-                f"链接：{book.confirmation_url}\n"
-                f"is_mock: {book.is_mock}")
-        # 把 booking 信息回填到 step（下次刷新时 timeline 显示）
-        s.booking = {
-            "booking_id": book.booking_id,
-            "seat_no": book.seat_no,
-            "waiting_parties": book.waiting_parties,
-            "latency_ms": book.latency_ms,
-            "menu_preview": book.menu_preview,
-            "photos": book.photos,
-        }
-    else:
-        st.error(f"{book.status}: {book.message}")
+        st.code(
+            "\n".join(
+                (
+                    f"餐厅：{operation.action_payload['poi_name']}",
+                    f"时间：{operation.action_payload['target_time']}",
+                    f"人数：{operation.action_payload['party_size']}",
+                    f"报价：{operation.quote.currency} "
+                    f"{operation.quote.amount_minor / 100:.2f}",
+                    f"报价有效期：{operation.quote.valid_until}",
+                    f"审批指纹：{operation.approval_sha256}",
+                )
+            ),
+            language=None,
+        )
+        if operation.status == "pending_approval":
+            st.warning("请求已保存，但尚未审批，也未调用任何 provider。")
+            if st.button(
+                "由独立演示审批人确认精确报价",
+                key=f"approve-{operation.operation_id}",
+                use_container_width=True,
+            ):
+                approve_sandbox_booking(_operation_service(), operation)
+                st.rerun()
+        elif operation.status == "approved":
+            st.info("审批已留痕；沙箱 worker 尚未执行。")
+            if st.button(
+                "运行沙箱 worker",
+                key=f"execute-{operation.operation_id}",
+                use_container_width=True,
+            ):
+                executed = execute_next_sandbox_booking(_operation_service())
+                if executed is None or executed.operation_id != operation.operation_id:
+                    st.warning("worker 本轮没有领取当前操作，请再次检查队列。")
+                st.rerun()
+        elif operation.status == "uncertain":
+            st.warning("provider 调用结果不确定；系统不会自动重试写操作。")
+            if st.button(
+                "只读核对 provider 状态",
+                key=f"reconcile-{operation.operation_id}",
+                use_container_width=True,
+            ):
+                _operation_service().reconcile_uncertain(
+                    operation_id=operation.operation_id,
+                    tenant_id=operation.tenant_id,
+                    actor_id=DEMO_RECONCILER_ID,
+                )
+                st.rerun()
+        elif operation.status == "succeeded":
+            st.success("沙箱 provider 已确认；没有真实扣款、商家请求或消息发送。")
+            st.code(
+                f"receipt_sha256: {operation.receipt_sha256}\n"
+                f"provider_operation_id: {operation.provider_operation_id}",
+                language=None,
+            )
+        elif operation.status in {"failed", "denied", "expired"}:
+            st.error(
+                f"操作已终止：{operation.status} · "
+                f"{operation.error_code or operation.denial_reason_code or 'no_provider_write'}"
+            )
+        else:
+            st.info(f"worker 正在处理：{operation.status}")
 
 
 if __name__ == "__main__":

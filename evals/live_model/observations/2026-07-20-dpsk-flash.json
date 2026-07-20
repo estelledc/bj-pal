@@ -1,0 +1,58 @@
+{
+  "schema_id": "bj-pal.live-model-observation",
+  "schema_version": 1,
+  "classification": "operator_observed_live_provider_smoke",
+  "evidence_level": "configured_client_observation_not_signed_provider_receipt",
+  "observed_at": "2026-07-20",
+  "scenario_id": "synthetic-friends-sanlitun-3h-budget",
+  "provider": {
+    "configured_client": "dpsk",
+    "configured_model": "deepseek-v4-flash",
+    "endpoint_origin": "https://api.deepseek.com"
+  },
+  "execution_limits": {
+    "max_output_tokens": 4096,
+    "max_llm_calls": 2,
+    "max_data_provider_batches": 1,
+    "max_tool_calls": 8,
+    "max_transport_attempts_per_llm_call": 2,
+    "max_reported_tokens": 16384,
+    "max_wall_clock_ms": 90000
+  },
+  "result": {
+    "outcome": "rejected",
+    "elapsed_ms": 63885.045,
+    "error_code": "invalid_model_output",
+    "fail_closed": true,
+    "model_output_contract": {
+      "version": "model_output_contract_v1",
+      "status": "rejected",
+      "attempt_count": 2,
+      "repair_attempted": true,
+      "candidate_count": 26,
+      "issue_codes": [
+        "depart_duration_invalid",
+        "schema_literal_invalid"
+      ],
+      "artifact_sha256": "ecb29bf1432166d3960b6b37d64b27aea5fff1272bfb120641abf93cb663b743"
+    }
+  },
+  "privacy": {
+    "credential_persisted": false,
+    "raw_prompt_persisted": false,
+    "raw_model_output_persisted": false,
+    "generated_plan_persisted": false
+  },
+  "provenance": {
+    "recording_method": "operator_observed_command_output",
+    "external_call_attestation": "operator_observation_not_independently_verifiable",
+    "provider_identity": "configured_client_not_signed_provider_receipt"
+  },
+  "limitations": [
+    "One smoke sample is not a provider quality, repair, or failure rate.",
+    "The artifact cannot independently prove that the external call occurred.",
+    "Provider and model identity come from local client configuration, not a signed receipt.",
+    "No prompt, raw response, generated plan, credential, or billable currency cost is retained."
+  ],
+  "artifact_sha256": "6e9c124c9f058b7f683b7942352f41d2c3a10a2723dc67a2583ba2f0501a51cf"
+}

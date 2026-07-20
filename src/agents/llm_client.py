@@ -174,6 +174,8 @@ class MockLLMClient(LLMClient):
                 if "JSONL 事件流协议" in system:
                     response = _wrap_plan_as_event_stream(response)
                 return _emit_response_tokens(response, on_token)
+            if "结构化输出修复器" in system:
+                return _emit_response_tokens(self._mock_plan(user), on_token)
             if "Replanner" in system:
                 return _emit_response_tokens(self._mock_replan(user), on_token)
             if "Preference Mirror" in system:
@@ -289,7 +291,7 @@ class MockLLMClient(LLMClient):
         t = _hh(target_start)
         if first_scenic:
             steps.append({
-                "step_index": 1,
+                "step_index": len(steps) + 1,
                 "kind": "citywalk",
                 "poi_id": first_scenic["id"],
                 "poi_name": first_scenic["name"],
@@ -301,7 +303,7 @@ class MockLLMClient(LLMClient):
             t += 60
         if mid_food:
             steps.append({
-                "step_index": 2,
+                "step_index": len(steps) + 1,
                 "kind": "meal",
                 "poi_id": mid_food["id"],
                 "poi_name": mid_food["name"],
@@ -313,7 +315,7 @@ class MockLLMClient(LLMClient):
             t += 75
         if second_scenic and second_scenic.get("id") != (first_scenic or {}).get("id"):
             steps.append({
-                "step_index": 3,
+                "step_index": len(steps) + 1,
                 "kind": "culture",
                 "poi_id": second_scenic["id"],
                 "poi_name": second_scenic["name"],
@@ -325,7 +327,7 @@ class MockLLMClient(LLMClient):
             t += 90
         if coffee:
             steps.append({
-                "step_index": 4,
+                "step_index": len(steps) + 1,
                 "kind": "rest",
                 "poi_id": coffee["id"],
                 "poi_name": coffee["name"],
@@ -473,6 +475,9 @@ class LongCatClient(LLMClient):
             base_url=base_url,
             default_headers={"Authorization": f"Bearer {api_key}"},
             http_client=httpx.Client(trust_env=True, timeout=60.0),
+            # retry_with_backoff below is the single retry owner; disabling
+            # SDK retries prevents multiplicative retry storms.
+            max_retries=0,
         )
         model = os.environ.get(
             "BJ_PAL_LONGCAT_MODEL",
@@ -482,6 +487,7 @@ class LongCatClient(LLMClient):
         max_tokens = int(os.environ.get("BJ_PAL_LONGCAT_MAX_TOKENS", "8192"))
 
         # 鲁棒性层：RPM 限速 + 限流退避（[73][75] 改进）
+        from .execution_budget import max_transport_attempts
         from .llm_robust import get_global_limiter, repair_json, retry_with_backoff
 
         def _call():
@@ -528,7 +534,12 @@ class LongCatClient(LLMClient):
                     msg = stream.get_final_message()
                 return msg, "".join(parts)
 
-        msg, text = retry_with_backoff(_call, max_attempts=4, base_delay=2.0, max_delay=60.0)
+        msg, text = retry_with_backoff(
+            _call,
+            max_attempts=max_transport_attempts(),
+            base_delay=2.0,
+            max_delay=60.0,
+        )
         # repair_json 比 _extract_first_json 强：能恢复截断 / 抠 steps
         parsed = repair_json(text) if json_schema is not None else None
         if _sp is not None:
@@ -604,7 +615,7 @@ class DpskClient(LLMClient):
     使用独立 DPSK_* 环境变量，避免和 LONGCAT_* 混用：
         - DPSK_API_KEY
         - DPSK_BASE_URL（默认 https://api.deepseek.com/anthropic）
-        - DPSK_MODEL（默认 deepseek-v4-flash）
+        - DPSK_MODEL（必填，避免运行环境隐式选择模型档位）
         - DPSK_MAX_TOKENS（默认 8192）
 
     同时兼容 DEEPSEEK_* 变量名，但不会读取 LONGCAT_*。
@@ -626,6 +637,12 @@ class DpskClient(LLMClient):
             or os.environ.get("DEEPSEEK_MAX_TOKENS")
             or "8192"
         )
+        model = os.environ.get("DPSK_MODEL") or os.environ.get("DEEPSEEK_MODEL")
+        if not model:
+            raise RuntimeError(
+                "DPSK_MODEL 未设置。请显式选择已验收的模型档位，"
+                "不要依赖隐式默认值"
+            )
         return ProviderConfig(
             api_key=api_key,
             base_url=(
@@ -633,11 +650,7 @@ class DpskClient(LLMClient):
                 or os.environ.get("DEEPSEEK_BASE_URL")
                 or "https://api.deepseek.com/anthropic"
             ),
-            model=(
-                os.environ.get("DPSK_MODEL")
-                or os.environ.get("DEEPSEEK_MODEL")
-                or "deepseek-v4-flash"
-            ),
+            model=model,
             max_tokens=int(max_tokens_raw),
         )
 
@@ -660,8 +673,10 @@ class DpskClient(LLMClient):
             api_key=config.api_key,
             base_url=config.base_url,
             http_client=httpx.Client(trust_env=True, timeout=60.0),
+            max_retries=0,
         )
 
+        from .execution_budget import max_transport_attempts
         from .llm_robust import get_global_limiter, repair_json, retry_with_backoff
 
         def _call():
@@ -708,7 +723,12 @@ class DpskClient(LLMClient):
                     msg = stream.get_final_message()
                 return msg, "".join(parts)
 
-        msg, text = retry_with_backoff(_call, max_attempts=4, base_delay=2.0, max_delay=60.0)
+        msg, text = retry_with_backoff(
+            _call,
+            max_attempts=max_transport_attempts(),
+            base_delay=2.0,
+            max_delay=60.0,
+        )
         parsed = repair_json(text) if json_schema is not None else None
         if _sp is not None:
             _sp.set_attribute("response_chars", len(text))
@@ -735,13 +755,39 @@ class AnthropicClient(LLMClient):
         return "anthropic"
 
     def complete(self, system, user, json_schema=None, temperature=0.3, on_token=None, on_stream_event=None):
+        from .tracing import trace_span
+        with trace_span("llm.anthropic.complete", attrs={
+            "temperature": temperature, "user_chars": len(user),
+        }) as _sp:
+            return self._complete_inner(
+                system,
+                user,
+                json_schema,
+                temperature,
+                _sp,
+                on_token,
+                on_stream_event,
+            )
+
+    def _complete_inner(
+        self,
+        system,
+        user,
+        json_schema,
+        temperature,
+        _sp,
+        on_token=None,
+        on_stream_event=None,
+    ):
         try:
             import anthropic  # type: ignore
         except ImportError:
             raise RuntimeError(
                 "anthropic 未安装。pip install anthropic，或用 BJ_PAL_LLM=mock"
             )
-        client = anthropic.Anthropic()
+        # No second retry layer: one SDK attempt is within the request policy
+        # and avoids an unobservable retry multiplier.
+        client = anthropic.Anthropic(max_retries=0)
         model = os.environ.get("ANTHROPIC_MODEL", "claude-opus-4-7")
         if on_token is None:
             msg = client.messages.create(
@@ -790,6 +836,15 @@ class AnthropicClient(LLMClient):
                 parsed = _extract_first_json(text)
             except Exception:
                 parsed = None
+        usage = getattr(msg, "usage", None)
+        if usage is not None:
+            input_tokens = getattr(usage, "input_tokens", None)
+            output_tokens = getattr(usage, "output_tokens", None)
+            if input_tokens is not None:
+                _sp.set_attribute("input_tokens", input_tokens)
+            if output_tokens is not None:
+                _sp.set_attribute("output_tokens", output_tokens)
+        _sp.set_attribute("response_chars", len(text))
         return LLMResponse(text=text, parsed=parsed, raw=msg)
 
 

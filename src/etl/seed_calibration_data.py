@@ -88,7 +88,12 @@ def seed(n: int = 30, *, rng_seed: int = 42, verbose: bool = True) -> dict:
             noise = rng.uniform(-0.15, 0.10)
             actual_p = max(0.0, min(1.0, t.confidence + noise))
             success = rng.random() < actual_p
-            record_outcome(p.plan_id, t.step_index, success)
+            record_outcome(
+                p.plan_id,
+                t.step_index,
+                success,
+                evidence_classification="synthetic_test",
+            )
             n_outcomes += 1
 
         if verbose and n_plans % 5 == 0:

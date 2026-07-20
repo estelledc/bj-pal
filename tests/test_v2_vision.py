@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import base64
 import os
 import sys
 from pathlib import Path
@@ -17,15 +18,14 @@ from agents.llm_client import get_llm_client  # noqa: E402
 from agents.vision_extractor import extract_from_image, persist_to_db, upload_and_index  # noqa: E402
 from loader import query_ugc  # noqa: E402
 
-DATA_ROOT = ROOT / "data" / "ugc"
+SAMPLE_PNG_BYTES = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+)
 
 
 def t1_extract_with_mock():
     """mock client 抽取——不联网。"""
-    sample_jpg = next(DATA_ROOT.glob("*.jpg"), None)
-    assert sample_jpg, f"data/ugc/ 中应有 jpg 文件"
-    image_bytes = sample_jpg.read_bytes()
-    extracted = extract_from_image(image_bytes, image_mime="image/jpeg",
+    extracted = extract_from_image(SAMPLE_PNG_BYTES, image_mime="image/png",
                                     client=get_llm_client("mock"))
     print(f"\n[1] mock vision 抽取 → area={extracted['area_anchor']} "
           f"poi={extracted['poi_name']} aspects={len(extracted['aspects'])}")
@@ -65,8 +65,7 @@ def t2_persist_to_db():
 
 def t3_upload_and_index_e2e():
     """一站式：上传 → 抽取 → 入库 → 重新查得到。"""
-    sample_jpg = next(DATA_ROOT.glob("*.jpg"), None)
-    extracted, n = upload_and_index(sample_jpg.read_bytes(),
+    extracted, n = upload_and_index(SAMPLE_PNG_BYTES, image_mime="image/png",
                                      client=get_llm_client("mock"))
     print(f"\n[3] upload_and_index → {n} 条新 aspect 入库")
     rows = query_ugc(area_anchor=extracted["area_anchor"][:6])
@@ -85,8 +84,7 @@ def t4_longcat_vision_optional():
     if not os.environ.get("BJ_PAL_TEST_LONGCAT_VISION"):
         print("\n[4] LongCat vision 真调：跳过（设 BJ_PAL_TEST_LONGCAT_VISION=1 启用）")
         return None
-    sample_jpg = next(DATA_ROOT.glob("*.jpg"), None)
-    extracted = extract_from_image(sample_jpg.read_bytes(),
+    extracted = extract_from_image(SAMPLE_PNG_BYTES, image_mime="image/png",
                                     client=get_llm_client("longcat"))
     print(f"\n[4] LongCat vision → area={extracted.get('area_anchor')} "
           f"aspects={len(extracted.get('aspects', []))}")

@@ -1,4 +1,4 @@
-"""v2.4 D1 trust_panel — 把 plan_tracer 的 (decision, confidence, fallback) 可视化。
+"""v2.4 D1 trust_panel — 把 plan_tracer 的 (decision, evidence support, fallback) 可视化。
 
 用途：评委 demo 时一眼看到"AI 这步 70% 确定，因为 UGC 厚度只 5 条"。
 
@@ -34,9 +34,9 @@ from agents.types import Plan  # noqa: E402
 def _confidence_class(c: float) -> tuple[str, str]:
     """返回 (color_hex, label)。"""
     if c >= 0.85:
-        return ("#10b981", "高置信")
+        return ("#10b981", "证据较强")
     if c >= 0.70:
-        return ("#f59e0b", "中等置信")
+        return ("#f59e0b", "证据中等")
     return ("#ef4444", "需留意")
 
 
@@ -52,6 +52,9 @@ def _format_evidence_short(evidence: dict) -> str:
         parts.append("已 reroute")
     if evidence.get("has_booking"):
         parts.append("已预订")
+    source = evidence.get("confidence_source")
+    if source:
+        parts.append(f"来源: {source}")
     return " · ".join(parts) if parts else "(无 evidence)"
 
 
@@ -76,12 +79,12 @@ def render_trust_panel(plan: Plan, *, expanded: bool = False) -> None:
 
     # 头部信号
     with st.expander(
-        f"🛡️ AI 履约可信度面板 · 平均 {avg_conf:.0%} · {label} (覆盖 {cov:.0%})",
+        f"🛡️ 履约证据面板 · 平均支持度 {avg_conf:.0%} · {label} (覆盖 {cov:.0%})",
         expanded=expanded,
     ):
         st.caption(
             f"v2.4 D1 plan_tracer · plan_id `{plan.plan_id}` · "
-            f"共 {len(traces)} 步 · 度量目标：覆盖 100% / ECE ≤ 0.15"
+            f"共 {len(traces)} 步 · 支持度不是成功概率；ECE 只在有配对 outcome 时成立"
         )
 
         # 每步一行
@@ -98,7 +101,7 @@ def render_trust_panel(plan: Plan, *, expanded: bool = False) -> None:
 
 
 def _render_step_row(t: StepTrace) -> None:
-    """单步置信度行。"""
+    """单步证据支持度行。"""
     color, label = _confidence_class(t.confidence)
     pct = int(t.confidence * 100)
 
@@ -172,7 +175,7 @@ def render_member_weights_panel(
 # ============================================================
 
 def render_global_ece(samples_threshold: int = 5) -> None:
-    """全局 ECE 指标卡 — 跨所有 plan 的 confidence 校准状态。
+    """全局 ECE 指标卡 — 只统计与 outcome 配对的 trace。
 
     样本数 < samples_threshold 时不显示（避免误导）。
     """
@@ -189,7 +192,7 @@ def render_global_ece(samples_threshold: int = 5) -> None:
         f"""
         <div style='border-left:4px solid {color};padding:8px 12px;background:#f9fafb;
                     margin-top:12px;border-radius:4px'>
-          <div style='font-size:13px;color:#6b7280'>全局校准（v2.4 度量）</div>
+          <div style='font-size:13px;color:#6b7280'>配对 outcome 样本的全局校准</div>
           <div style='font-size:22px;font-weight:bold;color:{color}'>
             ECE = {ece:.3f}
           </div>

@@ -30,6 +30,7 @@ from .prediction_log import (  # noqa: E402
 )
 from .types import POI  # noqa: E402
 from .ugc_signals import fetch_risk_signals  # noqa: E402
+from .weather_shelter import ShelterType, WeatherContext, classify_poi  # noqa: E402
 
 ProbeStatus = Literal["ok", "crowd_warn", "unavailable", "closed", "weather_block", "user_dissent"]
 RerouteReason = Literal["queue", "weather", "closed", "user_dissent", "merchant_reject", "none"]
@@ -113,8 +114,36 @@ WEATHER_RAIN_WINDOW = ("14:00", "15:30")  # demo 控制时间窗
 WEATHER_OUTDOOR_CATEGORIES = {"风景名胜"}  # 户外类目
 
 
-def is_weather_blocked(target_time: str, poi: POI) -> Optional[str]:
-    """命题硬编码：14:00-15:30 北京小阵雨，户外景点不宜带 5 岁娃。"""
+def is_weather_blocked(
+    target_time: str,
+    poi: POI,
+    *,
+    weather_context: WeatherContext | None = None,
+    weather_shelter: str = "unknown",
+) -> Optional[str]:
+    """Block an exposed outdoor stop using typed weather evidence.
+
+    Direct legacy callers without a provider snapshot keep the deterministic
+    14:00-15:30 rehearsal window. The canonical application path always passes
+    the exact snapshot used by the planner.
+    """
+    if weather_context is not None:
+        if weather_context.state not in {"rain", "snow", "aqi_high"}:
+            return None
+        if weather_context.severity < 0.5:
+            return None
+        shelter: ShelterType = (
+            weather_shelter  # type: ignore[assignment]
+            if weather_shelter in {"open", "covered", "subway_direct", "full_indoor"}
+            else classify_poi(poi)
+        )
+        if shelter != "open":
+            return None
+        return (
+            f"{target_time} {weather_context.description}，"
+            f"{poi.name} 的遮蔽等级为 open"
+        )
+
     if not target_time:
         return None
     hh = _hh(target_time)
@@ -171,6 +200,8 @@ def probe(
     enable_closed: bool = True,
     record_prediction_log: bool = True,
     driving: bool = False,
+    weather_context: WeatherContext | None = None,
+    weather_shelter: str = "unknown",
 ) -> ProbeResult:
     """检测某 POI 在某时间是否可达 / 排队多久。
 
@@ -221,7 +252,12 @@ def probe(
 
     # 1) weather 优先（demo 窗口硬编码触发）
     if enable_weather:
-        weather_msg = is_weather_blocked(target_time, poi)
+        weather_msg = is_weather_blocked(
+            target_time,
+            poi,
+            weather_context=weather_context,
+            weather_shelter=weather_shelter,
+        )
         if weather_msg:
             return _finalize(ProbeResult(
                 poi_id=poi.id, poi_name=poi.name,

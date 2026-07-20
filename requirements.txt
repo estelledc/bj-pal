@@ -1,13 +1,24 @@
 # BJ-Pal 运行时依赖
-# 安装：pip3 install --user -r requirements.txt
+# 安装：make setup（推荐）或在隔离环境中 python -m pip install -r requirements.txt
 
 # LLM client（LongCat 走 Anthropic 兼容协议）
-anthropic>=0.30.0
-httpx>=0.27.0
-python-dotenv>=1.0.0
+anthropic>=0.30.0,<1
+httpx>=0.27.0,<1
+python-dotenv>=1.0.0,<2
+
+# HTTP delivery adapter
+fastapi>=0.115.0,<1
+pydantic>=2.8.0,<3
+uvicorn[standard]>=0.30.0,<1
 
 # Web UI
-streamlit>=1.30.0
-folium>=0.15.0
-streamlit-folium>=0.15.0
-pandas>=2.0.0
+streamlit>=1.30.0,<2
+folium>=0.15.0,<1
+streamlit-folium>=0.15.0,<1
+pandas>=2.0.0,<3
+
+# Deterministic ranking / optimization modules used by the offline core
+jieba>=0.42.1,<1
+networkx>=3.2,<4
+ortools>=9.10,<10
+rank-bm25>=0.2.2,<1

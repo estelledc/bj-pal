@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import sys
 from copy import deepcopy
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Optional
 
@@ -20,9 +21,33 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from tools.amap_search import resolve_area_center, search_pois  # noqa: E402
 from tools.availability_probe import ProbeResult, list_trap_pois, probe  # noqa: E402
 from tools.rank_fuse import fuse_and_rank  # noqa: E402
+from tools.route_enricher import refresh_plan_routes  # noqa: E402
 from tools.types import SearchConstraints  # noqa: E402
 
 from .types import Plan, RerouteEvent, Step, UserPreferences  # noqa: E402
+from .schedule_reconciler import reconcile_plan_schedule  # noqa: E402
+
+
+@dataclass(frozen=True)
+class ReplacementPolicy:
+    """Deterministic hard filters applied before replacement ranking."""
+
+    version: str
+    reason: str
+    original_kind: str
+    source_categories: tuple[str, ...]
+    require_full_meal: bool = False
+    reject_full_meal: bool = False
+    allowed_shelters: tuple[str, ...] = ()
+
+    def accepts(self, poi) -> bool:
+        if self.require_full_meal and not _is_full_meal(poi):
+            return False
+        if self.reject_full_meal and _is_full_meal(poi):
+            return False
+        if self.allowed_shelters and _weather_shelter(poi) not in self.allowed_shelters:
+            return False
+        return True
 
 
 def replan_step(
@@ -37,26 +62,36 @@ def replan_step(
     new_plan = deepcopy(original)
     failed = new_plan.steps[failed_step_idx]
 
-    # 1) 拉同 area + 同 category 的备选池（按 step.kind 推 category）
-    cat = _kind_to_category(failed.kind)
+    # 1) 普通失败保持同类替换；weather 必须跨类寻找室内地点，
+    # 否则“公园换公园”会让 reroute 看似成功但风险仍然存在。
+    policy = _replacement_policy(failed.kind, probe_result.reason)
     constraints = _prefs_to_constraints(prefs)
-    candidates = search_pois(
-        area_anchor=new_plan.area_anchor,
-        category=cat,
-        constraints=constraints,
-        limit=30,
-    )
+    raw_candidates = [
+        poi
+        for category in policy.source_categories
+        for poi in search_pois(
+            area_anchor=new_plan.area_anchor,
+            category=category,
+            constraints=constraints,
+            limit=20,
+        )
+    ]
+    candidates = list({poi.id: poi for poi in raw_candidates}.values())
+    unique_count = len(candidates)
     # 排除：failed POI / trap POI / plan 里其他 step 已选的 POI（避免重复）
     used_names = {s.poi_name for s in new_plan.steps if s.poi_name and s.step_index != failed.step_index}
     session_exclusions = set(excluded_poi_names or set())
     trap_set = {failed.poi_name, *list_trap_pois(), *used_names, *session_exclusions}
     candidates = [c for c in candidates if c.name not in trap_set]
-    # snack（小吃 / 茶饮 / 甜品）不要选成正餐
-    if failed.kind == "snack":
-        candidates = [c for c in candidates if not _is_full_meal(c)]
-    elif failed.kind == "rest":
-        # rest = 咖啡 / 茶饮，排除中餐 / 烤肉
-        candidates = [c for c in candidates if not _is_full_meal(c)]
+    identity_eligible_count = len(candidates)
+    candidates = [candidate for candidate in candidates if policy.accepts(candidate)]
+    policy_evidence = {
+        **asdict(policy),
+        "raw_candidate_count": len(raw_candidates),
+        "unique_candidate_count": unique_count,
+        "identity_eligible_count": identity_eligible_count,
+        "semantic_eligible_count": len(candidates),
+    }
 
     if not candidates:
         # 极端情况：找不到替补，把 step 标记为 cancel
@@ -77,6 +112,7 @@ def replan_step(
             change_summary_zh=f"找不到 {failed.poi_name} 的替补，第 {failed_step_idx + 1} 站维持原计划但请留意风险",
             unchanged_steps=unchanged,
             notify_strategy="warn_only",
+            replacement_policy=policy_evidence,
         )
 
     # 2) Ranking 选 top 1
@@ -103,7 +139,7 @@ def replan_step(
     rating_label = f"{new.rating:.1f}" if new.rating else "未评分"
     new_step = Step(
         step_index=failed.step_index,
-        kind=failed.kind,
+        kind=_replacement_kind(failed.kind, new, probe_result.reason),
         poi_id=new.id,
         poi_name=new.name,
         start_time=failed.start_time,
@@ -116,14 +152,35 @@ def replan_step(
         is_rerouted=True,
         reroute_reason=probe_result.reason,
         risk_tags=[],
+        weather_shelter=_weather_shelter(new),
     )
     new_plan.steps[failed_step_idx] = new_step
     new_plan.rerouted_at_step = failed_step_idx
+    route_refresh = refresh_plan_routes(
+        new_plan,
+        prefs,
+        changed_step_idx=failed_step_idx,
+    ).to_dict()
+    new_plan.route_context = route_refresh
+    schedule_refresh = reconcile_plan_schedule(new_plan, prefs).to_dict()
+    new_plan.schedule_context = schedule_refresh
 
     # P0.4：判定改动幅度 + 一句话总结 + 通知策略
     magnitude = _classify_magnitude(failed, new, original_area=original.area_anchor,
                                     new_area=new_plan.area_anchor)
-    summary_zh = _summary_zh(failed, new, probe_result, magnitude)
+    summary_zh = _summary_zh(
+        failed,
+        new,
+        probe_result,
+        magnitude,
+        replacement_start_time=new_plan.steps[failed_step_idx].start_time,
+    )
+    if schedule_refresh["time_adjustments"] or schedule_refresh["duration_adjustments"]:
+        summary_zh += (
+            f"；路线刷新后时间轴已重排，预计 {schedule_refresh['planned_end']} 结束"
+        )
+    if schedule_refresh["status"] == "overrun":
+        summary_zh += f"，仍超出目标 {schedule_refresh['overrun_minutes']} 分钟"
     unchanged = [i for i in range(len(new_plan.steps)) if i != failed_step_idx]
     notify = {
         "small": "group_direct",
@@ -141,6 +198,9 @@ def replan_step(
         change_summary_zh=summary_zh,
         unchanged_steps=unchanged,
         notify_strategy=notify,
+        replacement_policy=policy_evidence,
+        route_refresh=route_refresh,
+        schedule_refresh=schedule_refresh,
     )
 
 
@@ -209,7 +269,14 @@ def _category_matches_kind(category: str, kind: str) -> bool:
     return any(k in category for k in keys) or not keys
 
 
-def _summary_zh(failed: Step, new, probe_result: ProbeResult, magnitude: str) -> str:
+def _summary_zh(
+    failed: Step,
+    new,
+    probe_result: ProbeResult,
+    magnitude: str,
+    *,
+    replacement_start_time: Optional[str] = None,
+) -> str:
     """一句话给人看的改动说明。
 
     例：原 14:00 国子监改为 14:00 雍和宫，因为国子监周末爆 UGC 排队 60min
@@ -222,10 +289,15 @@ def _summary_zh(failed: Step, new, probe_result: ProbeResult, magnitude: str) ->
         "merchant_reject": "商家拒单",
     }
     cause = cause_map.get(probe_result.reason, probe_result.status)
-    scope = {"small": "只动 1 站", "medium": "换了片区", "large": "改了类型"}.get(magnitude, "")
+    scope = {
+        "small": "同片区同类换 1 站",
+        "medium": "片区或活动类型变化",
+        "large": "片区和活动类型都变化",
+    }.get(magnitude, "")
+    adjusted_start = replacement_start_time or failed.start_time
     return (
-        f"原 {failed.start_time} {failed.poi_name} 改为 {failed.start_time} {new.name}，"
-        f"因为{cause}（{scope}，其余维持）"
+        f"原 {failed.start_time} {failed.poi_name} 改为 {adjusted_start} {new.name}，"
+        f"因为{cause}（{scope}，其余地点维持）"
     )
 
 
@@ -257,7 +329,15 @@ def probe_plan(
                 longitude=None, latitude=None, rating=None, avg_price=None,
                 open_time=None, phone=None, photos=[],
             )
-            result = probe(stub_poi, party_size=prefs.party_size, target_time=step.start_time)
+            from providers import decision_weather_context
+
+            result = probe(
+                stub_poi,
+                party_size=prefs.party_size,
+                target_time=step.start_time,
+                weather_context=decision_weather_context(plan.weather_context, step.start_time),
+                weather_shelter=step.weather_shelter,
+            )
             if result.fallback_action == "reroute" and auto_reroute:
                 current_plan, ev = replan_step(current_plan, idx, result, prefs)
                 events.append(ev)
@@ -294,6 +374,41 @@ def _is_full_meal(poi) -> bool:
     if poi.avg_price and poi.avg_price > 120:
         return True
     return False
+
+
+def _weather_shelter(poi) -> str:
+    from tools.weather_shelter import classify_poi
+
+    return classify_poi(poi)
+
+
+def _replacement_kind(original_kind: str, poi, reason: str) -> str:
+    if reason != "weather":
+        return original_kind
+    if poi.category_lv1 == "购物服务":
+        return "shopping"
+    if poi.category_lv1 == "餐饮服务":
+        return "rest"
+    return "culture"
+
+
+def _replacement_policy(original_kind: str, reason: str) -> ReplacementPolicy:
+    if reason == "weather":
+        return ReplacementPolicy(
+            version="constraint_preserving_replan_v1",
+            reason=reason,
+            original_kind=original_kind,
+            source_categories=("museum", "shopping"),
+            allowed_shelters=("covered", "subway_direct", "full_indoor"),
+        )
+    return ReplacementPolicy(
+        version="constraint_preserving_replan_v1",
+        reason=reason,
+        original_kind=original_kind,
+        source_categories=(_kind_to_category(original_kind),),
+        require_full_meal=original_kind == "meal",
+        reject_full_meal=original_kind in {"snack", "rest"},
+    )
 
 
 def _kind_to_category(kind: str) -> str:

@@ -157,8 +157,9 @@ def build_graph(force_rebuild: bool = False, max_nodes: int = 5000) -> int:
     # 4) geographic_neighbor 边：距离 ≤ 0.5km
     n_geo = _add_geo_edges(G, nodes, threshold_km=0.5)
 
-    # 5) PageRank
-    pr = nx.pagerank(G, alpha=0.85, max_iter=100)
+    # 5) PageRank. NetworkX 3 delegates this to SciPy; the public demo keeps
+    # the dependency surface smaller with an explicit weighted power method.
+    pr = _weighted_pagerank(G, alpha=0.85, max_iter=100)
     for nid, score in pr.items():
         nodes[nid].pagerank = score
 
@@ -170,6 +171,40 @@ def build_graph(force_rebuild: bool = False, max_nodes: int = 5000) -> int:
         f"{G.number_of_edges()} 边 (co_mention={n_co} same_area={n_area} geo={n_geo})"
     )
     return G.number_of_nodes()
+
+
+def _weighted_pagerank(G, alpha: float = 0.85, max_iter: int = 100,
+                       tol: float = 1.0e-6) -> dict[str, float]:
+    """Compute weighted PageRank without the optional SciPy dependency."""
+    nodes = list(G.nodes())
+    if not nodes:
+        return {}
+    count = len(nodes)
+    rank = {node: 1.0 / count for node in nodes}
+    base = (1.0 - alpha) / count
+
+    for _ in range(max_iter):
+        next_rank = {node: base for node in nodes}
+        dangling = sum(rank[node] for node in nodes if G.degree(node) == 0)
+        dangling_share = alpha * dangling / count
+        if dangling_share:
+            for node in nodes:
+                next_rank[node] += dangling_share
+
+        for source in nodes:
+            neighbors = G[source]
+            total_weight = sum(float(data.get("weight", 1.0)) for data in neighbors.values())
+            if total_weight <= 0:
+                continue
+            contribution = alpha * rank[source] / total_weight
+            for target, data in neighbors.items():
+                next_rank[target] += contribution * float(data.get("weight", 1.0))
+
+        delta = sum(abs(next_rank[node] - rank[node]) for node in nodes)
+        rank = next_rank
+        if delta < count * tol:
+            break
+    return rank
 
 
 def _add_geo_edges(G, nodes: dict[str, POINode], threshold_km: float) -> int:

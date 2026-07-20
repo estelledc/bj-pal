@@ -18,20 +18,27 @@ import sys
 import threading
 from contextlib import closing
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Optional
+
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from . import plan_tracer  # noqa: E402
 from .plan_tracer import compute_ece  # noqa: E402
 
-ROOT = Path(__file__).resolve().parent.parent.parent
-_DB_PATH = ROOT / "tool_calls.db"
+# Compatibility override for tests; production follows plan_tracer's single
+# store resolver so trace/outcome joins can never point at different files.
+_DB_PATH: Path | None = None
 _LOCK = threading.Lock()
 
 
+def database_path() -> Path:
+    return Path(_DB_PATH) if _DB_PATH is not None else plan_tracer.database_path()
+
+
 def _conn() -> sqlite3.Connection:
-    conn = sqlite3.connect(_DB_PATH)
+    conn = sqlite3.connect(database_path())
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -58,11 +65,10 @@ class TimelineWindow:
         }
 
 
-def _fetch_paired() -> list[dict]:
+def _fetch_paired(*, evidence_classification: str | None = None) -> list[dict]:
     """读所有 plan_trace × plan_outcome 已配对的样本，按 outcome.recorded_at 升序。"""
     with _LOCK, closing(_conn()) as conn:
-        rows = conn.execute(
-            """
+        query = """
             SELECT t.confidence  AS conf,
                    o.actual_success AS success,
                    o.recorded_at AS recorded_at,
@@ -71,22 +77,28 @@ def _fetch_paired() -> list[dict]:
               FROM plan_trace t
               JOIN plan_outcome o
                 ON t.plan_id = o.plan_id AND t.step_index = o.step_index
-             ORDER BY o.recorded_at ASC, t.step_index ASC
-            """
-        ).fetchall()
+        """
+        params: tuple = ()
+        if evidence_classification is not None:
+            query += " WHERE o.evidence_classification = ?"
+            params = (evidence_classification,)
+        query += " ORDER BY o.recorded_at ASC, t.step_index ASC"
+        rows = conn.execute(query, params).fetchall()
     return [dict(r) for r in rows]
 
 
 def get_calibration_timeline(
     window_size: int = 20,
     n_bins: int = 5,
+    *,
+    evidence_classification: str | None = None,
 ) -> list[TimelineWindow]:
     """滑窗 ECE 时序。
 
     每 window_size 个样本一个窗口；窗口间不重叠。
     需要至少 window_size 个 (trace, outcome) 配对样本。
     """
-    paired = _fetch_paired()
+    paired = _fetch_paired(evidence_classification=evidence_classification)
     if len(paired) < window_size:
         return []
 
@@ -133,7 +145,7 @@ def get_confidence_distribution(n_bins: int = 10) -> list[dict]:
     return out
 
 
-def get_plan_count_summary() -> dict:
+def get_plan_count_summary(*, evidence_classification: str | None = None) -> dict:
     """快速汇总：plan 数 / trace step 数 / outcome 配对数 / 全局 ECE。"""
     with _LOCK, closing(_conn()) as conn:
         n_plans = conn.execute(
@@ -142,11 +154,18 @@ def get_plan_count_summary() -> dict:
         n_traces = conn.execute(
             "SELECT COUNT(*) AS n FROM plan_trace"
         ).fetchone()["n"]
-        n_outcomes = conn.execute(
-            "SELECT COUNT(*) AS n FROM plan_outcome"
-        ).fetchone()["n"]
+        if evidence_classification is None:
+            n_outcomes = conn.execute(
+                "SELECT COUNT(*) AS n FROM plan_outcome"
+            ).fetchone()["n"]
+        else:
+            n_outcomes = conn.execute(
+                "SELECT COUNT(*) AS n FROM plan_outcome "
+                "WHERE evidence_classification = ?",
+                (evidence_classification,),
+            ).fetchone()["n"]
 
-    paired = _fetch_paired()
+    paired = _fetch_paired(evidence_classification=evidence_classification)
     if paired:
         confs = [r["conf"] for r in paired]
         succs = [r["success"] for r in paired]

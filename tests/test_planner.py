@@ -82,6 +82,7 @@ def t3_serialization_roundtrip():
     p2 = Plan.from_dict(d)
     assert len(p1.steps) == len(p2.steps)
     assert p1.steps[0].poi_name == p2.steps[0].poi_name
+    assert p1.schedule_context == p2.schedule_context
     print(f"\n[3] roundtrip ok ({len(p1.steps)} 步)")
     return len(p1.steps)
 

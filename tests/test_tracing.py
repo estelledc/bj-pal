@@ -145,8 +145,7 @@ def test_planner_emits_trace():
         lines = [json.loads(l) for l in path.read_text().splitlines()]
         names = {l["name"] for l in lines}
         assert "planner.plan" in names, f"got {names}"
-        assert "planner.summarize_area" in names
-        assert "planner.search_candidates" in names
+        assert "planner.collect_data" in names
         assert "llm.mock.complete" in names
         # planner.plan 应该是 root（parent_id=None）
         root = next(l for l in lines if l["name"] == "planner.plan")

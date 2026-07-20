@@ -1,7 +1,7 @@
-"""真实路由时间查询（v2 改 1 + 改 6B）。
+"""缓存优先、确定性估算兜底的路线时间查询。
 
 策略：
-- 优先：从 routes 表里按 origin/destination 经纬度模糊匹配（≤ 100m）找缓存的 4 模式 leg
+- 优先：从 routes 表里按 origin/destination 经纬度模糊匹配找缓存的 4 模式 leg
 - fallback：直线距离 × 城市绕行系数 1.3，再用 4 模式速度估计：
     walking 5 km/h / bicycling 15 km/h / driving 25 km/h（市区慢）/ transit 18 km/h + 等车 5min
 - 输出：4 模式各自的 distance_m / duration_min / source（cached/estimated）

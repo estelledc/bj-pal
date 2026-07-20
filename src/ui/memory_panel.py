@@ -13,8 +13,9 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from agents.user_memory import (  # noqa: E402
+    confirm_memory,
+    delete_all,
     forget,
-    forget_all,
     get_preferences,
 )
 
@@ -35,7 +36,8 @@ KIND_LABELS = {
 
 MEMORY_PANEL_TITLE = "记忆"
 MEMORY_PANEL_EMPTY_TITLE = "记忆（暂无）"
-MEMORY_ROW_COLUMNS = [4.55, 1.55]
+MEMORY_ROW_COLUMNS = [3.1, 1.45, 1.45]
+MEMORY_CONFIRM_BUTTON_LABEL = "确认"
 MEMORY_FORGET_BUTTON_LABEL = "忘记"
 MEMORY_FORGET_BUTTON_USE_CONTAINER_WIDTH = True
 
@@ -133,6 +135,14 @@ UNKNOWN_MEMORY_VALUE_LABELS = {
     "poi": "其他地点偏好",
 }
 
+MEMORY_SOURCE_LABELS = {
+    "manual_entry": "手动记录",
+    "explicit_user_input": "明确输入",
+    "inferred": "模型候选",
+    "imported": "导入",
+    "legacy": "历史记录",
+}
+
 
 def display_memory_key(mem_key: str) -> str:
     """Return a Chinese-only display label for an internal memory key."""
@@ -155,12 +165,25 @@ def _display_memory_value(value: str, *, prefix: str = "") -> str:
     return UNKNOWN_MEMORY_VALUE_LABELS.get(prefix, "其他记忆")
 
 
+def display_memory_entry(entry) -> str:
+    """Render a key plus a non-boolean value without exposing internal JSON syntax."""
+    key_label = display_memory_key(entry.mem_key)
+    value = entry.mem_value
+    if value is True or value is None:
+        return key_label
+    if isinstance(value, (str, int, float)):
+        rendered = str(value)
+    else:
+        rendered = "已设置"
+    return f"{key_label}：{rendered[:40]}"
+
+
 def render_memory_panel(user_id: str) -> None:
     """sidebar 折叠面板：显示 AI 当前记得的偏好，提供 forget 按钮。"""
     if not user_id:
         return
 
-    prefs = get_preferences(user_id, apply_decay=True)
+    prefs = get_preferences(user_id, apply_decay=True, include_expired=True)
     if not prefs:
         with st.expander(MEMORY_PANEL_EMPTY_TITLE, expanded=False):
             st.caption("还没有偏好沉淀。多用几次，系统会逐步记住你的偏好和禁忌。")
@@ -170,7 +193,7 @@ def render_memory_panel(user_id: str) -> None:
     avg_conf = sum(p.confidence for p in prefs) / n if n else 0.0
     with st.expander(f"{MEMORY_PANEL_TITLE} · {n} 条（平均可靠度 {avg_conf:.0%}）", expanded=False):
         st.caption(
-            "跨次使用保留偏好；30 天没复现的内容会逐步淡化。你可以单条忘记。"
+            "只把已确认且未过期的内容用于规划；忘记是可逆停用，清空会永久删除。"
         )
 
         # 按 kind 分组
@@ -186,23 +209,34 @@ def render_memory_panel(user_id: str) -> None:
             kind_label = KIND_LABELS.get(kind, "记忆")
             st.markdown(f"**{badge} {kind_label}**")
             for p in sorted(items, key=lambda x: x.confidence, reverse=True):
-                display_label = display_memory_key(p.mem_key)
-                col_label, col_btn = st.columns(MEMORY_ROW_COLUMNS, gap="small")
+                display_label = display_memory_entry(p)
+                col_label, col_confirm, col_forget = st.columns(MEMORY_ROW_COLUMNS, gap="small")
                 with col_label:
                     decayed = "（已淡化）" if p.confidence < 0.5 else ""
+                    state = "已过期" if p.expired else "已确认" if p.confirmed else "待确认"
+                    source = MEMORY_SOURCE_LABELS.get(p.source, "来源未知")
                     st.markdown(
                         f"<span style='color:{color}'>{display_label}</span> "
                         f"<span style='color:#9ca3af;font-size:11px'>"
-                        f"已记录 · 可靠度 {p.confidence:.2f} {decayed}"
+                        f"{state} · {source} · 可靠度 {p.confidence:.2f} {decayed}"
                         f"</span>",
                         unsafe_allow_html=True,
                     )
-                with col_btn:
+                with col_confirm:
+                    if not p.confirmed and not p.expired and st.button(
+                        MEMORY_CONFIRM_BUTTON_LABEL,
+                        key=f"confirm_{kind}_{p.mem_key}",
+                        help=f"确认 {display_label} 后才会用于规划",
+                        use_container_width=True,
+                    ):
+                        confirm_memory(user_id, p.mem_key, kind=kind)
+                        st.rerun()
+                with col_forget:
                     btn_key = f"forget_{kind}_{p.mem_key}"
                     if st.button(
                         MEMORY_FORGET_BUTTON_LABEL,
                         key=btn_key,
-                        help=f"忘记 {display_label}",
+                        help=f"停用 {display_label}；再次明确记录可恢复",
                         use_container_width=MEMORY_FORGET_BUTTON_USE_CONTAINER_WIDTH,
                     ):
                         forget(user_id, p.mem_key, kind=kind)
@@ -210,7 +244,7 @@ def render_memory_panel(user_id: str) -> None:
 
         st.markdown("")
         if st.button("清空记忆", key="forget_all_btn",
-                     help="清空当前用户的所有记忆"):
-            n_cleared = forget_all(user_id)
-            st.success(f"已清空 {n_cleared} 条记忆")
+                     help="永久删除当前用户的全部记忆及其审计哈希"):
+            n_cleared = delete_all(user_id)
+            st.success(f"已永久删除 {n_cleared} 条记忆")
             st.rerun()

@@ -1,0 +1,411 @@
+{
+  "schema_version": 1,
+  "name": "bj-pal-constraint-ledger-synthetic-v1",
+  "classification": "synthetic",
+  "label_basis": "Hand-authored Mandarin planning phrases derived from the reproduced default-drift failure and supported BJ-Pal preference fields. Labels test exact typed preservation, explicit conflicts, negative phrases, rewrite coverage, and serialization idempotency.",
+  "cases": [
+    {
+      "case_id": "reproduced-multi-constraint-drift",
+      "user_input": "周六下午三点，两个人在三里屯玩三小时，人均预算100元，不吃辣",
+      "expected": {
+        "text_constraints": {
+          "preferences.party_size": 2,
+          "preferences.diet_flags": ["no_spicy"],
+          "preferences.budget_per_person": 100,
+          "preferences.target_start": "15:00",
+          "preferences.duration_hours": 3
+        },
+        "effective_constraints": {
+          "preferences.party_size": 2,
+          "preferences.diet_flags": ["no_spicy"],
+          "preferences.budget_per_person": 100,
+          "preferences.target_start": "15:00",
+          "preferences.duration_hours": 3
+        },
+        "rewrite_contains": ["人数=2", "忌口=no_spicy", "人均预算=100元", "开始=15:00", "时长=3小时"]
+      }
+    },
+    {
+      "case_id": "arabic-clock-decimal-duration",
+      "user_input": "明天15:30，3 人玩2.5小时，每人200元",
+      "expected": {
+        "text_constraints": {
+          "preferences.party_size": 3,
+          "preferences.budget_per_person": 200,
+          "preferences.target_start": "15:30",
+          "preferences.duration_hours": 2.5
+        },
+        "effective_constraints": {
+          "preferences.party_size": 3,
+          "preferences.budget_per_person": 200,
+          "preferences.target_start": "15:30",
+          "preferences.duration_hours": 2.5
+        },
+        "rewrite_contains": ["人数=3", "开始=15:30", "时长=2.5小时"]
+      }
+    },
+    {
+      "case_id": "solo-half-hour-walk-radius",
+      "user_input": "下午3点半一个人逛2个半小时，步行不超过2公里",
+      "expected": {
+        "text_constraints": {
+          "persona": "solo",
+          "preferences.party_size": 1,
+          "preferences.walk_radius_km": 2.0,
+          "preferences.target_start": "15:30",
+          "preferences.duration_hours": 2.5
+        },
+        "effective_constraints": {
+          "persona": "solo",
+          "preferences.party_size": 1,
+          "preferences.walk_radius_km": 2.0,
+          "preferences.target_start": "15:30",
+          "preferences.duration_hours": 2.5
+        },
+        "rewrite_contains": ["人群=solo", "人数=1", "步行半径=2公里"]
+      }
+    },
+    {
+      "case_id": "child-age-family-morning",
+      "user_input": "带 5 岁娃，上午十点玩四小时",
+      "expected": {
+        "text_constraints": {
+          "persona": "family",
+          "preferences.has_child": true,
+          "preferences.child_age": 5,
+          "preferences.target_start": "10:00",
+          "preferences.duration_hours": 4
+        },
+        "effective_constraints": {
+          "persona": "family",
+          "preferences.has_child": true,
+          "preferences.child_age": 5,
+          "preferences.target_start": "10:00",
+          "preferences.duration_hours": 4
+        },
+        "rewrite_contains": ["儿童同行=是", "儿童年龄=5", "开始=10:00"]
+      }
+    },
+    {
+      "case_id": "generic-child-light-diet",
+      "user_input": "亲子出行，小朋友同行，口味清淡",
+      "expected": {
+        "text_constraints": {
+          "persona": "family",
+          "preferences.has_child": true,
+          "preferences.diet_flags": ["light_diet"]
+        },
+        "effective_constraints": {
+          "persona": "family",
+          "preferences.has_child": true,
+          "preferences.diet_flags": ["light_diet"]
+        },
+        "rewrite_contains": ["人群=family", "儿童同行=是", "忌口=light_diet"]
+      }
+    },
+    {
+      "case_id": "multiple-diet-restrictions",
+      "user_input": "三个人，不吃辣，不要海鲜，乳糖不耐",
+      "expected": {
+        "text_constraints": {
+          "preferences.party_size": 3,
+          "preferences.diet_flags": ["no_spicy", "no_seafood", "no_lactose"]
+        },
+        "effective_constraints": {
+          "preferences.party_size": 3,
+          "preferences.diet_flags": ["no_spicy", "no_seafood", "no_lactose"]
+        },
+        "rewrite_contains": ["忌口=no_spicy,no_seafood,no_lactose"]
+      }
+    },
+    {
+      "case_id": "with-parents-evening",
+      "user_input": "陪爸妈晚上六点逛三小时",
+      "expected": {
+        "text_constraints": {
+          "persona": "with_parents",
+          "preferences.target_start": "18:00",
+          "preferences.duration_hours": 3
+        },
+        "effective_constraints": {
+          "persona": "with_parents",
+          "preferences.target_start": "18:00",
+          "preferences.duration_hours": 3
+        },
+        "rewrite_contains": ["人群=with_parents", "开始=18:00"]
+      }
+    },
+    {
+      "case_id": "friends-persona",
+      "user_input": "和朋友周六下午六点吃饭",
+      "expected": {
+        "text_constraints": {
+          "persona": "friends",
+          "preferences.target_start": "18:00"
+        },
+        "effective_constraints": {
+          "persona": "friends",
+          "preferences.target_start": "18:00"
+        },
+        "rewrite_contains": ["人群=friends", "开始=18:00"]
+      }
+    },
+    {
+      "case_id": "leading-friend-count",
+      "user_input": "四个朋友周六下午出去玩",
+      "expected": {
+        "text_constraints": {
+          "preferences.party_size": 4
+        },
+        "effective_constraints": {
+          "preferences.party_size": 4
+        },
+        "rewrite_contains": ["人数=4"]
+      }
+    },
+    {
+      "case_id": "walk-radius-meters",
+      "user_input": "两个人，步行最多800米，人均80块",
+      "expected": {
+        "text_constraints": {
+          "preferences.party_size": 2,
+          "preferences.walk_radius_km": 0.8,
+          "preferences.budget_per_person": 80
+        },
+        "effective_constraints": {
+          "preferences.party_size": 2,
+          "preferences.walk_radius_km": 0.8,
+          "preferences.budget_per_person": 80
+        },
+        "rewrite_contains": ["步行半径=0.8公里", "人均预算=80元"]
+      }
+    },
+    {
+      "case_id": "chinese-ten-party",
+      "user_input": "十个人上午九点玩五小时",
+      "expected": {
+        "text_constraints": {
+          "preferences.party_size": 10,
+          "preferences.target_start": "09:00",
+          "preferences.duration_hours": 5
+        },
+        "effective_constraints": {
+          "preferences.party_size": 10,
+          "preferences.target_start": "09:00",
+          "preferences.duration_hours": 5
+        },
+        "rewrite_contains": ["人数=10", "开始=09:00"]
+      }
+    },
+    {
+      "case_id": "matching-explicit-fields",
+      "user_input": "下午三点，两个人玩三小时",
+      "preferences": {"party_size": 2, "target_start": "15:00", "duration_hours": 3},
+      "provided_fields": ["user_input", "preferences.party_size", "preferences.target_start", "preferences.duration_hours"],
+      "expected": {
+        "text_constraints": {
+          "preferences.party_size": 2,
+          "preferences.target_start": "15:00",
+          "preferences.duration_hours": 3
+        },
+        "effective_constraints": {
+          "preferences.party_size": 2,
+          "preferences.target_start": "15:00",
+          "preferences.duration_hours": 3
+        },
+        "rewrite_contains": ["人数=2", "开始=15:00"]
+      }
+    },
+    {
+      "case_id": "diet-safe-union",
+      "user_input": "不吃辣",
+      "preferences": {"diet_flags": ["vegetarian"]},
+      "provided_fields": ["user_input", "preferences.diet_flags"],
+      "expected": {
+        "text_constraints": {"preferences.diet_flags": ["no_spicy"]},
+        "effective_constraints": {"preferences.diet_flags": ["vegetarian", "no_spicy"]},
+        "rewrite_contains": ["忌口=vegetarian,no_spicy"]
+      }
+    },
+    {
+      "case_id": "party-explicit-conflict",
+      "user_input": "两个人下午出去玩",
+      "preferences": {"party_size": 4},
+      "provided_fields": ["user_input", "preferences.party_size"],
+      "expected": {
+        "text_constraints": {"preferences.party_size": 2},
+        "effective_constraints": {"preferences.party_size": 4},
+        "conflicts": ["preferences.party_size"]
+      }
+    },
+    {
+      "case_id": "time-explicit-conflict",
+      "user_input": "下午三点出发",
+      "preferences": {"target_start": "14:00"},
+      "provided_fields": ["user_input", "preferences.target_start"],
+      "expected": {
+        "text_constraints": {"preferences.target_start": "15:00"},
+        "effective_constraints": {"preferences.target_start": "14:00"},
+        "conflicts": ["preferences.target_start"]
+      }
+    },
+    {
+      "case_id": "duration-explicit-conflict",
+      "user_input": "玩三小时",
+      "preferences": {"duration_hours": 4.5},
+      "provided_fields": ["user_input", "preferences.duration_hours"],
+      "expected": {
+        "text_constraints": {"preferences.duration_hours": 3},
+        "effective_constraints": {"preferences.duration_hours": 4.5},
+        "conflicts": ["preferences.duration_hours"]
+      }
+    },
+    {
+      "case_id": "budget-explicit-conflict",
+      "user_input": "人均100元",
+      "preferences": {"budget_per_person": 200},
+      "provided_fields": ["user_input", "preferences.budget_per_person"],
+      "expected": {
+        "text_constraints": {"preferences.budget_per_person": 100},
+        "effective_constraints": {"preferences.budget_per_person": 200},
+        "conflicts": ["preferences.budget_per_person"]
+      }
+    },
+    {
+      "case_id": "persona-explicit-conflict",
+      "user_input": "和朋友出去逛",
+      "persona": "family",
+      "provided_fields": ["user_input", "persona"],
+      "expected": {
+        "text_constraints": {"persona": "friends"},
+        "effective_constraints": {"persona": "family"},
+        "conflicts": ["persona"]
+      }
+    },
+    {
+      "case_id": "negative-vague-budget",
+      "user_input": "预算充足，下午随便，想在城里走走",
+      "expected": {"text_constraints": {}, "effective_constraints": {}}
+    },
+    {
+      "case_id": "negative-ordinal-person",
+      "user_input": "第二个人负责周六的安排",
+      "expected": {"text_constraints": {}, "effective_constraints": {}}
+    },
+    {
+      "case_id": "negative-light-diet-negation",
+      "user_input": "不想只吃清淡的，正常餐馆就行",
+      "expected": {"text_constraints": {}, "effective_constraints": {}}
+    },
+    {
+      "case_id": "negative-friends-discussed-not-party",
+      "user_input": "和4个朋友聊过这个方案，但人数还没定",
+      "expected": {"text_constraints": {}, "effective_constraints": {}}
+    },
+    {
+      "case_id": "negative-total-budget",
+      "user_input": "总预算500元，人数还没定",
+      "expected": {"text_constraints": {}, "effective_constraints": {}}
+    },
+    {
+      "case_id": "negative-vague-walking",
+      "user_input": "想多走走，但距离都可以商量",
+      "expected": {"text_constraints": {}, "effective_constraints": {}}
+    },
+    {
+      "case_id": "negative-adult-age",
+      "user_input": "带18岁孩子去看展",
+      "expected": {
+        "text_constraints": {"persona": "family"},
+        "effective_constraints": {"persona": "family"}
+      }
+    },
+    {
+      "case_id": "explicit-only-preserved",
+      "user_input": "周末出去玩",
+      "persona": "friends",
+      "preferences": {"party_size": 4, "budget_per_person": 300, "target_start": "16:00"},
+      "provided_fields": ["user_input", "persona", "preferences.party_size", "preferences.budget_per_person", "preferences.target_start"],
+      "expected": {
+        "text_constraints": {},
+        "effective_constraints": {
+          "persona": "friends",
+          "preferences.party_size": 4,
+          "preferences.budget_per_person": 300,
+          "preferences.target_start": "16:00"
+        },
+        "rewrite_contains": ["人群=friends", "人数=4", "人均预算=300元", "开始=16:00"]
+      }
+    },
+    {
+      "case_id": "halal-vegetarian",
+      "user_input": "两个人，需要清真，也吃素",
+      "expected": {
+        "text_constraints": {
+          "preferences.party_size": 2,
+          "preferences.diet_flags": ["halal", "vegetarian"]
+        },
+        "effective_constraints": {
+          "preferences.party_size": 2,
+          "preferences.diet_flags": ["halal", "vegetarian"]
+        },
+        "rewrite_contains": ["忌口=halal,vegetarian"]
+      }
+    },
+    {
+      "case_id": "midnight-normalization",
+      "user_input": "凌晨十二点一个人出发，两小时",
+      "expected": {
+        "text_constraints": {
+          "persona": "solo",
+          "preferences.party_size": 1,
+          "preferences.target_start": "00:00",
+          "preferences.duration_hours": 2
+        },
+        "effective_constraints": {
+          "persona": "solo",
+          "preferences.party_size": 1,
+          "preferences.target_start": "00:00",
+          "preferences.duration_hours": 2
+        },
+        "rewrite_contains": ["开始=00:00"]
+      }
+    },
+    {
+      "case_id": "child-without-age",
+      "user_input": "带孩子下午四点玩三个小时",
+      "expected": {
+        "text_constraints": {
+          "persona": "family",
+          "preferences.has_child": true,
+          "preferences.target_start": "16:00",
+          "preferences.duration_hours": 3
+        },
+        "effective_constraints": {
+          "persona": "family",
+          "preferences.has_child": true,
+          "preferences.target_start": "16:00",
+          "preferences.duration_hours": 3
+        },
+        "rewrite_contains": ["儿童同行=是"]
+      }
+    },
+    {
+      "case_id": "per-person-upper-phrase",
+      "user_input": "每人不超过150块，三个人玩四小时",
+      "expected": {
+        "text_constraints": {
+          "preferences.party_size": 3,
+          "preferences.budget_per_person": 150,
+          "preferences.duration_hours": 4
+        },
+        "effective_constraints": {
+          "preferences.party_size": 3,
+          "preferences.budget_per_person": 150,
+          "preferences.duration_hours": 4
+        },
+        "rewrite_contains": ["人均预算=150元"]
+      }
+    }
+  ]
+}

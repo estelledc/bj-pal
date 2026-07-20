@@ -1,16 +1,19 @@
-"""D1 履约 trace 内核 — 在 plan 每步记录 (decision, confidence, fallback)。
+"""D1 履约 trace 内核 — 在 plan 每步记录 (decision, support score, fallback)。
 
 参考：docs/V2.4_ITERATION_PLAN.md Round 3 + Round 7
 
 不做 SLA 外壳（mock 阶段说不清"赔付"）。本模块只做内核：
 - 每步落 SQLite plan_trace 表 + 同步走 trace_span（OTel 兼容）
-- 提供 ECE 校准接口：跑完 evaluation 后量化"AI 说 70% 确定时是不是真的 70% 对"
-- UI 侧栏读 SQLite，渲染"这步 70% 确定，因为 UGC 厚度只 5 条"
+- 保留历史列名 confidence；新 trace 必须在 evidence 里声明来源与语义
+- 仅在有配对 outcome 时提供 ECE，不能把无 outcome 的支持分当成功概率
+- UI 侧栏读 SQLite，展示分数来源和证据组成
 
-度量目标：plan_trace 完整覆盖率 100%，置信度校准 ECE ≤ 0.15。
+度量目标：plan_trace 完整覆盖率 100%；有真实配对样本后再讨论 ECE。
 
 API：
     record_step(plan_id, step_index, decision, confidence, fallback_action, evidence)
+    replace_steps(plan_id, steps) -> int
+    clear_steps(plan_id) -> int
     iter_steps(plan_id) -> list[StepTrace]
     compute_ece(predictions, outcomes, n_bins=10) -> float
 """
@@ -30,9 +33,18 @@ from typing import Iterable, Optional
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from agents.tracing import trace_span  # noqa: E402
+from storage.state_layout import (  # noqa: E402
+    LEGACY_SHARED_DB,
+    PLAN_EVIDENCE_SCHEMA,
+    ensure_plan_evidence_metadata,
+    resolve_plan_evidence_path,
+)
 
 ROOT = Path(__file__).resolve().parent.parent.parent
-_DB_PATH = ROOT / "tool_calls.db"
+# Explicit test/operator override.  Normal runtime resolution uses a verified
+# dedicated store, while existing installations remain on the legacy store
+# until the non-destructive migration receipt is present.
+_DB_PATH: Path | None = None
 _DB_LOCK = threading.Lock()
 
 
@@ -40,43 +52,38 @@ _DB_LOCK = threading.Lock()
 # Schema
 # ============================================================
 
-_SCHEMA = """
-CREATE TABLE IF NOT EXISTS plan_trace (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    plan_id         TEXT NOT NULL,
-    step_index      INTEGER NOT NULL,
-    step_kind       TEXT,                       -- visit / depart / wait / pickup
-    poi_id          TEXT,
-    decision        TEXT NOT NULL,              -- 简述这步选了什么
-    confidence      REAL NOT NULL,              -- [0, 1]
-    fallback_action TEXT,                       -- 失败回退动作（JSON）
-    evidence        TEXT,                       -- 选择依据（JSON：UGC 厚度 / rank / etc）
-    created_at      REAL NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_plan_trace_plan ON plan_trace(plan_id, step_index);
+_SCHEMA = PLAN_EVIDENCE_SCHEMA
 
-CREATE TABLE IF NOT EXISTS plan_outcome (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    plan_id         TEXT NOT NULL,
-    step_index      INTEGER NOT NULL,
-    actual_success  INTEGER NOT NULL,            -- 0 / 1
-    notes           TEXT,
-    recorded_at     REAL NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_plan_outcome_plan ON plan_outcome(plan_id, step_index);
-"""
+
+def database_path() -> Path:
+    return resolve_plan_evidence_path(_DB_PATH)
 
 
 def _conn() -> sqlite3.Connection:
-    conn = sqlite3.connect(_DB_PATH)
+    path = database_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(path, timeout=5)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA busy_timeout=5000")
     return conn
 
 
 def _ensure_schema():
     with _DB_LOCK, closing(_conn()) as conn:
         conn.executescript(_SCHEMA)
+        columns = {
+            str(row[1])
+            for row in conn.execute("PRAGMA table_info(plan_outcome)").fetchall()
+        }
+        if "evidence_classification" not in columns:
+            conn.execute(
+                "ALTER TABLE plan_outcome ADD COLUMN evidence_classification "
+                "TEXT NOT NULL DEFAULT 'legacy_unclassified'"
+            )
         conn.commit()
+    path = database_path()
+    if path.resolve() != LEGACY_SHARED_DB.resolve():
+        ensure_plan_evidence_metadata(path)
 
 
 _ensure_schema()
@@ -114,6 +121,19 @@ class StepTrace:
 
     def to_dict(self) -> dict:
         return asdict(self)
+
+
+@dataclass(frozen=True)
+class StepTraceInput:
+    """One pending trace row used by the atomic plan replacement path."""
+
+    step_index: int
+    decision: str
+    confidence: float
+    step_kind: Optional[str] = None
+    poi_id: Optional[str] = None
+    fallback_action: Optional[dict] = None
+    evidence: dict = field(default_factory=dict)
 
 
 # ============================================================
@@ -164,18 +184,94 @@ def record_step(
             return cur.lastrowid
 
 
+def clear_steps(plan_id: str) -> int:
+    """删除同一 plan 的旧 trace，供 reroute 后用最终方案重写。"""
+    with _DB_LOCK, closing(_conn()) as conn:
+        cur = conn.execute("DELETE FROM plan_trace WHERE plan_id=?", (plan_id,))
+        conn.commit()
+        return cur.rowcount
+
+
+def replace_steps(plan_id: str, steps: Iterable[StepTraceInput]) -> int:
+    """Atomically replace every trace row for one plan.
+
+    Materialization and validation happen before the transaction. Readers see
+    either the previous complete trace or the next complete trace, never the
+    historical delete-plus-partial-insert state.
+    """
+    if not plan_id:
+        raise ValueError("plan_id must not be empty")
+    pending = tuple(steps)
+    step_indices = [step.step_index for step in pending]
+    if len(step_indices) != len(set(step_indices)):
+        raise ValueError("step_index values must be unique within a plan trace")
+    for step in pending:
+        if not 0.0 <= step.confidence <= 1.0:
+            raise ValueError(f"confidence must be in [0,1], got {step.confidence}")
+
+    rows = [
+        (
+            plan_id,
+            step.step_index,
+            step.step_kind,
+            step.poi_id,
+            step.decision,
+            step.confidence,
+            json.dumps(step.fallback_action, ensure_ascii=False)
+            if step.fallback_action
+            else None,
+            json.dumps(step.evidence, ensure_ascii=False),
+            time.time(),
+        )
+        for step in pending
+    ]
+    with trace_span(
+        "plan_trace.replace",
+        attrs={"plan_id": plan_id, "step_count": len(rows)},
+    ):
+        with _DB_LOCK, closing(_conn()) as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            conn.execute("DELETE FROM plan_trace WHERE plan_id=?", (plan_id,))
+            conn.executemany(
+                "INSERT INTO plan_trace(plan_id, step_index, step_kind, poi_id, "
+                "decision, confidence, fallback_action, evidence, created_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?)",
+                rows,
+            )
+            conn.commit()
+    return len(rows)
+
+
 def record_outcome(
     plan_id: str,
     step_index: int,
     actual_success: bool,
     notes: str = "",
+    *,
+    evidence_classification: str = "synthetic_test",
 ) -> int:
-    """回填某步的实际成败（用于 ECE 校准）。"""
+    """回填某步成败；默认标为 synthetic，不能冒充真人结果。"""
+    allowed_classifications = {
+        "synthetic_test",
+        "legacy_unclassified",
+        "human_verified_step",
+    }
+    if evidence_classification not in allowed_classifications:
+        raise ValueError("unsupported outcome evidence classification")
+    if evidence_classification == "human_verified_step" and notes.strip():
+        raise ValueError("human step outcomes must not store free-text notes")
     with _DB_LOCK, closing(_conn()) as conn:
         cur = conn.execute(
-            "INSERT INTO plan_outcome(plan_id, step_index, actual_success, notes, recorded_at) "
-            "VALUES (?,?,?,?,?)",
-            (plan_id, step_index, 1 if actual_success else 0, notes, time.time()),
+            "INSERT INTO plan_outcome(plan_id, step_index, actual_success, notes, "
+            "evidence_classification, recorded_at) VALUES (?,?,?,?,?,?)",
+            (
+                plan_id,
+                step_index,
+                1 if actual_success else 0,
+                notes,
+                evidence_classification,
+                time.time(),
+            ),
         )
         conn.commit()
         return cur.lastrowid
@@ -272,18 +368,27 @@ def compute_ece(
     }
 
 
-def calibration_for_plan(plan_id: str, n_bins: int = 10) -> Optional[dict]:
+def calibration_for_plan(
+    plan_id: str,
+    n_bins: int = 10,
+    *,
+    evidence_classification: str | None = None,
+) -> Optional[dict]:
     """对一个 plan 跑 ECE：从 plan_trace + plan_outcome 联表。
 
     Returns None 如果没有 outcome 数据。
     """
     with _DB_LOCK, closing(_conn()) as conn:
-        rows = conn.execute(
+        query = (
             "SELECT t.confidence, o.actual_success FROM plan_trace t "
             "JOIN plan_outcome o ON t.plan_id=o.plan_id AND t.step_index=o.step_index "
-            "WHERE t.plan_id=?",
-            (plan_id,),
-        ).fetchall()
+            "WHERE t.plan_id=?"
+        )
+        params: tuple = (plan_id,)
+        if evidence_classification is not None:
+            query += " AND o.evidence_classification=?"
+            params += (evidence_classification,)
+        rows = conn.execute(query, params).fetchall()
     if not rows:
         return None
     return compute_ece([r["confidence"] for r in rows],
@@ -291,13 +396,22 @@ def calibration_for_plan(plan_id: str, n_bins: int = 10) -> Optional[dict]:
                        n_bins=n_bins)
 
 
-def calibration_global(n_bins: int = 10) -> Optional[dict]:
+def calibration_global(
+    n_bins: int = 10,
+    *,
+    evidence_classification: str | None = None,
+) -> Optional[dict]:
     """跨 plan 的全局 ECE。"""
     with _DB_LOCK, closing(_conn()) as conn:
-        rows = conn.execute(
+        query = (
             "SELECT t.confidence, o.actual_success FROM plan_trace t "
             "JOIN plan_outcome o ON t.plan_id=o.plan_id AND t.step_index=o.step_index"
-        ).fetchall()
+        )
+        params: tuple = ()
+        if evidence_classification is not None:
+            query += " WHERE o.evidence_classification=?"
+            params = (evidence_classification,)
+        rows = conn.execute(query, params).fetchall()
     if not rows:
         return None
     return compute_ece([r["confidence"] for r in rows],

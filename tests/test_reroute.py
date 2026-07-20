@@ -39,14 +39,14 @@ def t1_probe_trap_yonghegong():
 def t2_probe_normal_poi():
     """普通 POI 应该 ok 且 wait_min < 30。"""
     poi = POI(
-        id="poi-fang", name="方砖厂69号炸酱面(雍和宫店)",
+        id="poi-normal", name="普通无风险餐厅（测试夹具）",
         category_lv1="餐饮服务", category_lv2=None, category_lv3=None,
         typecode=None, district=None, business_area=None, address=None,
         longitude=None, latitude=None, rating=4.7, avg_price=38.0,
         open_time=None, phone=None, photos=[],
     )
     r = probe(poi, party_size=3, target_time="14:00", seed=42)
-    print(f"\n[2] probe(方砖厂炸酱面) → status={r.status} wait={r.wait_min}min "
+    print(f"\n[2] probe(普通无风险餐厅) → status={r.status} wait={r.wait_min}min "
           f"action={r.fallback_action}")
     assert r.fallback_action == "proceed"
     return r.wait_min

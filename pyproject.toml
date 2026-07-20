@@ -1,0 +1,8 @@
+[project]
+name = "bj-pal"
+version = "6.18.0"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"

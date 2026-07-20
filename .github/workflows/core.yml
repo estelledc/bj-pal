@@ -1,0 +1,136 @@
+name: Core reproducibility
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: core-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  offline-core:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Scan current release tree for credential-like literals
+        run: make secret-scan PYTHON=python
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements-dev.txt
+
+      - name: Bootstrap public demo data
+        run: make bootstrap-demo PYTHON=python
+
+      - name: Run tests
+        run: make test PYTHON=python
+
+      - name: Run HTTP contract smoke test
+        run: make api-smoke PYTHON=python
+
+      - name: Run durable job smoke test
+        run: make job-smoke PYTHON=python
+
+      - name: Build the public demo container
+        run: docker build --tag bj-pal:ci .
+
+      - name: Run offline end-to-end demo
+        run: make demo PYTHON=python
+
+      - name: Rehearse clarification continuation
+        run: make demo-clarification PYTHON=python
+
+      - name: Rehearse consent-bound trial lifecycle
+        run: make demo-trial PYTHON=python
+
+      - name: Build and verify public evaluation artifact
+        run: make eval-public PYTHON=python
+
+      - name: Build and verify retrieval evaluation artifact
+        run: make eval-retrieval PYTHON=python
+
+      - name: Build and verify requirement-gate evaluation artifact
+        run: make eval-requirements PYTHON=python
+
+      - name: Build and verify constraint-ledger evaluation artifact
+        run: make eval-constraints PYTHON=python
+
+      - name: Build and verify clarification-continuation artifact
+        run: make eval-clarifications PYTHON=python
+
+      - name: Build and verify execution-observation artifact
+        run: make eval-observability PYTHON=python
+
+      - name: Build and verify execution-budget artifact
+        run: make eval-execution-budget PYTHON=python
+
+      - name: Build and verify model-output contract artifact
+        run: make eval-model-output PYTHON=python
+
+      - name: Build and verify orchestration-comparison artifact
+        run: make eval-orchestration PYTHON=python
+
+      - name: Build and verify durable-scheduling artifact
+        run: make eval-scheduling PYTHON=python
+
+      - name: Build and verify access-control artifact
+        run: make eval-access-control PYTHON=python
+
+      - name: Build and verify side-effect safety artifact
+        run: make eval-side-effects PYTHON=python
+
+      - name: Build and verify human-outcome contract artifact
+        run: make eval-outcomes PYTHON=python
+
+      - name: Build and verify consent-bound trial evidence artifact
+        run: make eval-trials PYTHON=python
+
+      - name: Build and verify offline weather acceptance artifact
+        run: make eval-weather PYTHON=python
+
+      - name: Run bounded HTTP performance regression
+        run: make benchmark-http PYTHON=python PERFORMANCE_REQUESTS=20 PERFORMANCE_CONCURRENCY=4
+
+      - name: Upload offline evidence artifacts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: bj-pal-offline-evidence
+          path: |
+            evals/results/public-core.json
+            evals/results/retrieval-core.json
+            evals/results/requirements-core.json
+            evals/results/constraints-core.json
+            evals/results/clarifications-core.json
+            evals/results/observability-core.json
+            evals/results/execution-budget-core.json
+            evals/results/model-output-contract.json
+            evals/results/orchestration-comparison.json
+            evals/results/scheduling-core.json
+            evals/results/access-control-core.json
+            evals/results/side-effect-safety.json
+            evals/results/human-outcome-contract.json
+            evals/results/trial-evidence-contract.json
+            evals/results/weather-acceptance.json
+            evals/results/http-performance.json
+          if-no-files-found: warn
+          retention-days: 14

@@ -145,11 +145,14 @@ def t9_planner_e2e_records_to_tracer():
     assert cov == 1.0, f"coverage {cov} 不是 1.0"
     print(f"     coverage = {cov} (v2.4 D1 目标 100%)")
 
-    # 每步置信度合理
+    # 每步支持度有范围、来源和因子；字段名 confidence 仅为兼容旧 schema。
     for ts in traced:
-        assert 0.5 <= ts.confidence <= 0.95, f"conf 越界 {ts.confidence}"
+        assert 0.0 <= ts.confidence <= 0.95, f"support 越界 {ts.confidence}"
         assert ts.evidence is not None and "rationale" in ts.evidence
-    print(f"     所有 step 置信度 ∈ [0.5, 0.95]，evidence 含 rationale")
+        assert ts.evidence.get("confidence_source")
+        assert ts.evidence.get("confidence_factors")
+        assert "not a calibrated probability" in ts.evidence.get("confidence_semantics", "")
+    print("     所有 step 支持度均有 source / factors / semantics")
 
 
 if __name__ == "__main__":

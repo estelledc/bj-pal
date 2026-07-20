@@ -13,6 +13,7 @@ from tools.types import SearchConstraints  # noqa: E402
 CORE_AREAS = (
     "五道营-雍和宫片区",
     "三里屯片区",
+    "798艺术区片区",
     "王府井-东单片区",
     "什刹海-鼓楼片区",
     "天安门-故宫片区",

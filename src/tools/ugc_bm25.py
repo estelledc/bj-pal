@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import logging
 import sys
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -30,6 +31,7 @@ logger = logging.getLogger(__name__)
 # 全局索引（懒加载，进程内单例）
 _BM25_INDEX = None
 _BM25_DOCS: list[dict] = []
+_INDEX_LOCK = threading.Lock()
 
 
 @dataclass
@@ -74,36 +76,44 @@ def build_index(force_rebuild: bool = False) -> int:
     if _BM25_INDEX is not None and not force_rebuild:
         return len(_BM25_DOCS)
 
-    from rank_bm25 import BM25Okapi
-    from loader import get_conn
+    with _INDEX_LOCK:
+        if _BM25_INDEX is not None and not force_rebuild:
+            return len(_BM25_DOCS)
 
-    conn = get_conn()
-    rows = conn.execute(
-        """
-        SELECT record_id, area_anchor, poi_name, aspect_type, sentiment,
-               confidence, evidence_summary, weekend_afternoon_intensity
-        FROM ugc_aspects
-        WHERE evidence_summary IS NOT NULL AND evidence_summary != ''
-        """
-    ).fetchall()
-    conn.close()
+        from rank_bm25 import BM25Okapi
+        from loader import get_conn
 
-    docs = []
-    tokenized = []
-    for r in rows:
-        ev = r["evidence_summary"]
-        # 把 poi_name 和 aspect_type 也拼进去当字面 boost
-        full = f"{ev} {r['poi_name'] or ''} {r['aspect_type'] or ''}"
-        tokens = _tokenize(full)
-        if not tokens:
-            continue
-        docs.append(dict(r))
-        tokenized.append(tokens)
+        conn = get_conn()
+        rows = conn.execute(
+            """
+            SELECT record_id, area_anchor, poi_name, aspect_type, sentiment,
+                   confidence, evidence_summary, weekend_afternoon_intensity
+            FROM ugc_aspects
+            WHERE evidence_summary IS NOT NULL AND evidence_summary != ''
+            """
+        ).fetchall()
+        conn.close()
 
-    _BM25_INDEX = BM25Okapi(tokenized)
-    _BM25_DOCS = docs
-    logger.info(f"[ugc_bm25] indexed {len(docs)} UGC docs, avg_doc_len={_BM25_INDEX.avgdl:.1f}")
-    return len(docs)
+        docs = []
+        tokenized = []
+        for r in rows:
+            ev = r["evidence_summary"]
+            # 把 poi_name 和 aspect_type 也拼进去当字面 boost
+            full = f"{ev} {r['poi_name'] or ''} {r['aspect_type'] or ''}"
+            tokens = _tokenize(full)
+            if not tokens:
+                continue
+            docs.append(dict(r))
+            tokenized.append(tokens)
+
+        _BM25_INDEX = BM25Okapi(tokenized)
+        _BM25_DOCS = docs
+        logger.info(
+            "[ugc_bm25] indexed %s UGC docs, avg_doc_len=%.1f",
+            len(docs),
+            _BM25_INDEX.avgdl,
+        )
+        return len(docs)
 
 
 def search(

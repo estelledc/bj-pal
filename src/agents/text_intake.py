@@ -133,6 +133,15 @@ TASTE_KEYWORDS = {
     "sour": ["酸口", "酸味", "爱吃醋", "喜欢醋", "醋碟", "醋味"],
 }
 
+DIET_KEYWORDS = {
+    "light_diet": ["减脂", "低脂", "清淡", "轻食", "少油", "低糖"],
+    "no_spicy": ["不吃辣", "不能吃辣", "不要辣", "免辣", "避开辣", "少辣"],
+}
+
+NEGATED_TASTE_KEYWORDS = {
+    "spicy": DIET_KEYWORDS["no_spicy"],
+}
+
 SCENE_KEYWORDS = {
     "citywalk": ["遛弯", "散步", "溜达", "citywalk", "走走"],
     "photo": ["拍照", "出片", "网红", "打卡", "美照", "好看"],
@@ -169,13 +178,23 @@ def _rules_extract(text: str) -> TextIntakeResult:
 
     # taste
     for tag, kws in TASTE_KEYWORDS.items():
+        negated = NEGATED_TASTE_KEYWORDS.get(tag, [])
+        if any(kw in text or kw.lower() in text_lower for kw in negated):
+            continue
         if any(kw in text or kw.lower() in text_lower for kw in kws):
             result.taste_tags.append(tag)
+
+    # explicit dietary constraints must not be downgraded to taste preferences
+    for tag, kws in DIET_KEYWORDS.items():
+        if any(kw in text or kw.lower() in text_lower for kw in kws):
+            result.diet_flags.append(tag)
 
     # scene
     for tag, kws in SCENE_KEYWORDS.items():
         if any(kw in text or kw.lower() in text_lower for kw in kws):
             result.scene_tags.append(tag)
+    if re.search(r"带\s*\d+\s*岁\s*(?:娃|孩子)", text):
+        result.scene_tags.append("kid_friendly")
 
     # risk
     for tag, kws in RISK_KEYWORDS.items():

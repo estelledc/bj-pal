@@ -1,0 +1,55 @@
+{
+  "schema_id": "bj-pal.live-model-observation",
+  "schema_version": 1,
+  "classification": "operator_observed_live_provider_smoke",
+  "evidence_level": "configured_client_observation_not_signed_provider_receipt",
+  "observed_at": "2026-07-20T02:52:14Z",
+  "scenario_id": "synthetic-solo-798-3h-indoor",
+  "provider": {
+    "configured_client": "dpsk",
+    "configured_model": "deepseek-v4-pro",
+    "endpoint_origin": "https://api.deepseek.com"
+  },
+  "execution_limits": {
+    "max_output_tokens": 4096,
+    "max_llm_calls": 2,
+    "max_data_provider_batches": 1,
+    "max_tool_calls": 8,
+    "max_transport_attempts_per_llm_call": 2,
+    "max_reported_tokens": 16384,
+    "max_wall_clock_ms": 90000
+  },
+  "result": {
+    "outcome": "accepted",
+    "elapsed_ms": 23629.7,
+    "error_code": null,
+    "fail_closed": false,
+    "model_output_contract": {
+      "version": "model_output_contract_v1",
+      "status": "accepted",
+      "attempt_count": 1,
+      "repair_attempted": false,
+      "candidate_count": 2,
+      "issue_codes": [],
+      "artifact_sha256": "8412842b426f14eb20244db4e77837aae9f35f68eed50ddd29e37ce003c38ddb"
+    }
+  },
+  "privacy": {
+    "credential_persisted": false,
+    "raw_prompt_persisted": false,
+    "raw_model_output_persisted": false,
+    "generated_plan_persisted": false
+  },
+  "provenance": {
+    "recording_method": "runner_generated",
+    "external_call_attestation": "operator_observation_not_independently_verifiable",
+    "provider_identity": "configured_client_not_signed_provider_receipt"
+  },
+  "limitations": [
+    "One smoke sample is not a provider quality, repair, or failure rate.",
+    "The artifact cannot independently prove that the external call occurred.",
+    "Provider and model identity come from local client configuration, not a signed receipt.",
+    "No prompt, raw response, generated plan, credential, or billable currency cost is retained."
+  ],
+  "artifact_sha256": "b4544c091586d2ab78af485548bceaacaa75907f8553510186a45bc26e230afd"
+}

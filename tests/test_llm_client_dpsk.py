@@ -44,6 +44,17 @@ class DpskClientConfigTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "DPSK_API_KEY"):
                 DpskClient().config()
 
+    def test_dpsk_client_requires_explicit_model_selection(self) -> None:
+        from agents.llm_client import DpskClient
+
+        with patch.dict(
+            os.environ,
+            {"DPSK_API_KEY": "sk-dpsk"},
+            clear=True,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "DPSK_MODEL"):
+                DpskClient().config()
+
 
 if __name__ == "__main__":
     unittest.main()

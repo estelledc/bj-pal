@@ -3,13 +3,13 @@
 来源：USER_RESEARCH_FINDINGS Session C Q3（数据沉淀、迁移成本高、日常习惯是付费留存关键）
 
 设计：
-- 直接 query tool_calls.db 聚合每个 session 的：
+- 只读取独立 tool-audit runtime store 中的 v2 projected events，聚合每个 session 的：
   - 用了哪个片区 / persona / 大致时间
   - reroute 次数 + 触发原因分布
   - 群发响应（confirmed/rejected count）
   - mock_book 成功率
 - 输出 FootprintEntry[] 给 UI 渲染历史时间线
-- 形成迁移成本，让用户离不开
+- 形成可回看的连续使用记录
 """
 
 from __future__ import annotations
@@ -18,11 +18,9 @@ import json
 import sqlite3
 from contextlib import closing
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Optional
 
-ROOT = Path(__file__).resolve().parent.parent.parent
-LOG_DB = ROOT / "tool_calls.db"
+from . import tool_call_log
 
 
 @dataclass
@@ -45,14 +43,29 @@ class FootprintEntry:
 
 def fetch_recent_sessions(limit: int = 10) -> list[FootprintEntry]:
     """聚合最近 N 个 session 的足迹。"""
-    if not LOG_DB.exists():
+    tool_call_log.init_log_db()
+    database = tool_call_log.database_path()
+    if not database.exists():
         return []
-    with closing(sqlite3.connect(LOG_DB)) as conn:
+    with closing(sqlite3.connect(database)) as conn:
         conn.row_factory = sqlite3.Row
         rows = conn.execute(
-            "SELECT DISTINCT session_id FROM tool_calls "
-            "WHERE session_id IS NOT NULL "
-            "ORDER BY id DESC"
+            """
+            SELECT calls.session_id, MAX(calls.id) AS latest_id
+            FROM tool_calls AS calls
+            WHERE calls.session_id IS NOT NULL
+              AND calls.tool_name != 'audit.session_reset'
+              AND calls.privacy_version = 'tool_call_audit_v2'
+              AND calls.id > COALESCE((
+                  SELECT MAX(reset.id)
+                  FROM tool_calls AS reset
+                  WHERE reset.session_id = calls.session_id
+                    AND reset.tool_name = 'audit.session_reset'
+                    AND reset.privacy_version = 'tool_call_audit_v2'
+              ), 0)
+            GROUP BY calls.session_id
+            ORDER BY latest_id DESC
+            """
         ).fetchall()
         sessions = [r["session_id"] for r in rows][:limit]
 
@@ -61,11 +74,26 @@ def fetch_recent_sessions(limit: int = 10) -> list[FootprintEntry]:
 
 def _aggregate_session(session_id: str) -> FootprintEntry:
     entry = FootprintEntry(session_id=session_id)
-    with closing(sqlite3.connect(LOG_DB)) as conn:
+    with closing(sqlite3.connect(tool_call_log.database_path())) as conn:
         conn.row_factory = sqlite3.Row
-        rows = conn.execute(
-            "SELECT * FROM tool_calls WHERE session_id=? ORDER BY id ASC",
+        reset_row = conn.execute(
+            """
+            SELECT COALESCE(MAX(id), 0) AS reset_id
+            FROM tool_calls
+            WHERE session_id=? AND tool_name='audit.session_reset'
+              AND privacy_version='tool_call_audit_v2'
+            """,
             (session_id,),
+        ).fetchone()
+        reset_id = int(reset_row["reset_id"] or 0)
+        rows = conn.execute(
+            """
+            SELECT * FROM tool_calls
+            WHERE session_id=? AND id>? AND tool_name!='audit.session_reset'
+              AND privacy_version='tool_call_audit_v2'
+            ORDER BY id ASC
+            """,
+            (session_id, reset_id),
         ).fetchall()
     if not rows:
         return entry
@@ -147,19 +175,24 @@ def _safe_json(text: Optional[str]) -> dict:
 
 def cumulative_stats() -> dict:
     """全量累计指标——给 footprint 顶部"用了 X 次 / 改了 Y 站"用。"""
-    if not LOG_DB.exists():
+    tool_call_log.init_log_db()
+    database = tool_call_log.database_path()
+    if not database.exists():
         return {"total_sessions": 0, "total_reroutes": 0, "total_bookings": 0}
-    with closing(sqlite3.connect(LOG_DB)) as conn:
+    with closing(sqlite3.connect(database)) as conn:
         conn.row_factory = sqlite3.Row
         sess = conn.execute(
-            "SELECT COUNT(DISTINCT session_id) c FROM tool_calls"
+            "SELECT COUNT(DISTINCT session_id) c FROM tool_calls "
+            "WHERE privacy_version='tool_call_audit_v2'"
         ).fetchone()["c"] or 0
         rer = conn.execute(
-            "SELECT COUNT(*) c FROM tool_calls WHERE tool_name LIKE '%replan%'"
+            "SELECT COUNT(*) c FROM tool_calls WHERE tool_name LIKE '%replan%' "
+            "AND privacy_version='tool_call_audit_v2'"
         ).fetchone()["c"] or 0
         bk = conn.execute(
             "SELECT COUNT(*) c FROM tool_calls "
-            "WHERE tool_name='mock_book.book_restaurant'"
+            "WHERE tool_name='mock_book.book_restaurant' "
+            "AND privacy_version='tool_call_audit_v2'"
         ).fetchone()["c"] or 0
     return {
         "total_sessions": sess,

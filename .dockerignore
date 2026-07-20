@@ -1,0 +1,15 @@
+.git
+.github
+.venv
+__pycache__
+*.pyc
+*.pyo
+*.db
+*.db-*
+.env
+.env.*
+.screenshots
+_site
+data
+evals/results
+tests

@@ -175,6 +175,14 @@ def search_pois(
     sql += f" ORDER BY rating DESC LIMIT {prefilter_limit}"
 
     rows = conn.execute(sql, params).fetchall()
+    required_evidence_diets = frozenset(
+        flag for flag in constraints.diet_flags if isinstance(flag, str) and flag
+    )
+    supported_food_names = (
+        _food_names_supporting_diets(conn, required_evidence_diets)
+        if required_evidence_diets
+        else None
+    )
     conn.close()
 
     # 5) Post-filter: 半径
@@ -195,10 +203,14 @@ def search_pois(
     if constraints.has_child and constraints.child_age and constraints.child_age <= 6:
         # 偏向 typecode 不是酒吧 / 夜店 / 重辣的
         candidates = [p for p in candidates if not _looks_adult_only(p)]
-    if "light_diet" in constraints.diet_flags:
-        # 启发式：name 含 "烤鸭/麻辣/火锅/烤肉" 视为非轻食候选 → 降权但不剔除
-        # 这里只做软过滤，硬过滤交给 ranking 层做
-        pass
+    if supported_food_names is not None:
+        # 只对已有结构化正向证据的饮食约束执行 fail-closed 过滤。不能把
+        # “没有负面记录”偷换成“已证明可满足忌口”；非餐饮候选不受影响。
+        candidates = [
+            poi
+            for poi in candidates
+            if poi.category_lv1 != "餐饮服务" or poi.name in supported_food_names
+        ]
 
     return candidates[:limit]
 
@@ -206,6 +218,42 @@ def search_pois(
 # ============================================================
 # 辅助
 # ============================================================
+
+
+def _food_names_supporting_diets(
+    conn: sqlite3.Connection,
+    required_flags: frozenset[str],
+) -> frozenset[str]:
+    """Return food names with positive structured evidence for every flag."""
+    if not required_flags:
+        return frozenset()
+    tags_by_name: dict[str, set[str]] = {}
+    rows = conn.execute(
+        """
+        SELECT poi_name, normalized_value_json
+        FROM ugc_aspects
+        WHERE aspect_type = 'food'
+          AND sentiment = 'positive'
+          AND confidence >= 0.6
+          AND needs_review = 0
+        """
+    ).fetchall()
+    for row in rows:
+        try:
+            normalized = json.loads(row["normalized_value_json"] or "{}")
+        except (json.JSONDecodeError, TypeError):
+            continue
+        taste_tags = normalized.get("taste_tags") or []
+        if not isinstance(taste_tags, list):
+            continue
+        tags_by_name.setdefault(str(row["poi_name"]), set()).update(
+            tag for tag in taste_tags if isinstance(tag, str) and tag
+        )
+    return frozenset(
+        name
+        for name, tags in tags_by_name.items()
+        if required_flags.issubset(tags)
+    )
 
 def _row_to_poi(row: sqlite3.Row) -> POI:
     photos_raw = row["photos_json"] or "[]"
