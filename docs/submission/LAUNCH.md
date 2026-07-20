@@ -4,20 +4,20 @@
 
 ## 1. 环境要求
 
-- Python 3.9+
+- Python 3.11+
 - macOS / Linux shell
 - 根目录 `.env`
 
 依赖安装：
 
 ```bash
-pip3 install --user -r requirements.txt
+make setup PYTHON=python3.11
 ```
 
 首次运行或数据索引需要刷新时：
 
 ```bash
-python3 src/loader.py
+make bootstrap-demo PYTHON=.venv/bin/python
 ```
 
 ## 2. 配置 LLM API
@@ -48,6 +48,8 @@ DPSK_BASE_URL=你的_base_url
 DPSK_MODEL=你的_model
 DPSK_MAX_TOKENS=8192
 ```
+
+`DPSK_MODEL` 必须显式配置，应用不会静默选择模型档位。2026-07-20 的同场景单样本中，`deepseek-v4-pro` 首轮通过 strict contract，`deepseek-v4-flash` 两轮后仍被拒绝；当前只将 pro 作为下一轮有界试验的优先项，不把 1:1 样本写成成功率、延迟分布或成本结论。
 
 Anthropic：
 

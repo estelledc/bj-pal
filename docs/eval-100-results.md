@@ -1,5 +1,7 @@
 # Eval 对比 — v1 / v2 / v3 / v3.0 L3 / v3.1 D7
 
+> 本文主体是历史运行快照。v4.2 公开证据请以 `make eval-public` 生成的 `public-core.json` 为准；它包含 L1/L2/L3 raw cases、环境与数据 provenance，并可由 `evals/verify_artifact.py` 独立复算。v3.1 的 outcome 由 `etl.seed_calibration_data` 按 confidence 加随机噪声后反推，不是真人履约标签；即使保留原始 artifact，也只能演示 ECE 管道，不能表述为真实校准结果。
+
 > 自动生成自 `scripts/eval_compare.py`（TravelPlanner 4 指标）+ `evals/behavioral/run_l3.py`（5 信号检查）+ v3.1 calibration 输出
 >
 > 配套文档：`EVAL_FRAMEWORK.md`（评测体系设计）/ `100-improvements.md`（改进编号映射）
@@ -64,14 +66,14 @@ S1-S5 是 deterministic 检查（不依赖 LLM judge），只要：
 
 **总耗时**：~5min / 跑（混合 mock + 抽样 LongCat）。
 
-## 4. v3.1 D7 校准结果（滑窗 ECE + 置信度分布）
+## 4. v3.1 D7 Synthetic 校准演示（滑窗 ECE + 置信度分布）
 
 > v3.1 commit `d4b1c50` 后真实数据（5/29 跑出）。`agents/calibration_history.py` 输出。
 > 数据规模：**799 plans / 3,885 traces / 291 paired outcomes**
 
 ### 4.1 全局指标
 
-**Global ECE = 0.1089**（目标 ≤ 0.15，**达成**）
+**Synthetic-seed Global ECE = 0.1089**（只对反推标签达成历史阈值，无真人外部效度）
 
 可信度：291 paired (trace ↔ outcome) 样本计算，覆盖 v2.4 D1 接入主路径之后所有 plan。
 
@@ -113,17 +115,17 @@ window  n  ts_range          ece    mean_conf  mean_acc
 
 ⚠ **诚实地说，这是个问题**：79.1% 的 trace 落在 0.7-0.8 桶——说明当前 `plan_tracer.record_step` 的 confidence 来源主要是 plan_tracer 默认值（约 0.74-0.78），LLM 输出的细粒度 confidence 还没真正注入。
 
-**但 ECE 仍达标**：因为这批 step 的 actual_pass 率刚好接近 0.7-0.8（mean_actual_success 多数窗口在 0.7-0.95），plan_tracer 的"保守默认值"恰好打在真实表现附近。
+**该 ECE 数字不构成真实达标**：这批 `actual_pass` 是从 confidence 加噪声反推的 synthetic seed，因此自然容易与 0.7-0.8 的默认分接近；它只能检查图表和计算路径。
 
-**v4.0 改进项**（见 `ROADMAP.md`）：让 `planner_tot.py` / `planner.py` 把 ToT 自评分数（5 维加权）真正传到 plan_tracer.confidence，覆盖默认值，实现真正"诚实的置信度"。
+**v4.2 处理**（见 `ROADMAP.md`）：没有采用“把 ToT 自评分直传 confidence”的旧方案，因为 plan utility 不是 step 成功概率。当前改为透明的 `evidence_support_v1`，记录 source / factors / data profile，synthetic/mixed 数据封顶；只有 outcome 配对后才讨论 ECE。
 
-### 4.4 路演话术（基于真实数据）
+### 4.4 历史话术（不可作为当前公开实测照读）
 
-> "我们跑了 799 个 plan，3,885 步骤 trace，291 个真实 outcome 对照。Global ECE 0.1089——AI 自评的置信度和真实成功率，平均偏差 11 个百分点，达到 D1 校准目标。
+> "我们跑了 799 个 plan，3,885 步骤 trace，291 个 synthetic seed outcome。Global ECE 0.1089 只能演示校准计算，不能表示真人成功率。
 >
 > 但坦诚说，置信度还过于集中在 0.7-0.8——说明 LLM 自评的细粒度还没充分用上。这是 v4.0 的改进点。"
 
-不藏拙是更可信的路演。
+当前路演应改说：“公开 CI 的 deterministic mock 套件可复算通过；它证明控制流和行为契约未回归，不证明真实用户成功率。历史 ECE 使用 synthetic 反推标签，不作为当前真人证据。”
 
 ## 5. 怎么重跑
 
@@ -141,13 +143,17 @@ BJ_PAL_LLM=longcat python3 evals/behavioral/run_l2.py
 # L3 全量（每 release）
 BJ_PAL_LLM=longcat python3 evals/behavioral/run_l3.py
 
+# v4.2 公开零凭证 artifact
+make eval-public PYTHON=.venv/bin/python
+.venv/bin/python evals/verify_artifact.py evals/results/public-core.json
+
 # v3.1 校准重算（基于已有 prediction_log）
 python3 -c "from agents.calibration_history import recompute_all; recompute_all()"
 ```
 
 ## 6. 历史归档
 
-`evals/results/` 现存：
+历史报告曾引用下列本地文件名；它们不随公开仓库分发：
 
 | 文件 | 是 |
 |---|---|
@@ -155,4 +161,4 @@ python3 -c "from agents.calibration_history import recompute_all; recompute_all(
 | `L1_f7f8a62_1779702022.json` | v2.4 D1+D5 UI 加 trust_panel 后 |
 | `L3_6206e26_1779709810.json` | v3.0 L2 评测落地后首跑 L3（本文第 2 节数据来源） |
 
-L2 + v3.1 calibration 暂未归档 JSON（ROADMAP 待办）。
+v4.2 不再依赖“目录里恰好有某次 JSON”。CI 每次生成并上传 `bj-pal-offline-evidence`；L3 artifact 内保留 raw cases，verifier 会拒绝篡改或过期摘要。

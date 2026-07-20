@@ -26,7 +26,7 @@ flowchart LR
     B --> E
     E --> F[候选 POI 池]
     F --> G[LLM 只从候选中选择和排序]
-    G --> H[Plan.from_dict 校验结构]
+    G --> H[严格模型输出契约校验]
     H --> I[POI 白名单和去重处理]
 ```
 
