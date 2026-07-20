@@ -1,0 +1,693 @@
+.dockerignore
+  s_2618cd0d87760b::t_f354370505acc2 1-15
+.env_example
+  s_2618cd0d87760b::t_e408d90b53cf6c 20,33-35,40-95
+.github/workflows/core.yml
+  s_2618cd0d87760b::t_5384bb2e90c2f0 1-136
+.gitignore
+  s_2618cd0d87760b::t_3c6086c961ef93 34,38-40
+Dockerfile
+  s_2618cd0d87760b::t_2b38bd58fbf31a 1-27
+Makefile
+  s_2618cd0d87760b::t_3df3dfc9fbb977 1-225,227
+evals/__init__.py
+  s_2618cd0d87760b::t_5dee62294b0217 1
+evals/access_control/__init__.py
+  s_2618cd0d87760b::t_eeb779f34fdc0f 1
+evals/access_control/evaluate.py
+  s_2618cd0d87760b::t_f914e76ac8483f 1-653
+evals/access_control/verify.py
+  s_2618cd0d87760b::t_25314684787f29 1-370
+evals/artifact.schema.json
+  s_2618cd0d87760b::t_0743c7098e55d2 1-39
+evals/artifacts.py
+  s_2618cd0d87760b::t_f79604ad0ca40e 1-340
+evals/behavioral/L2_integration/memory_cases.py
+  s_2618cd0d87760b::t_0f0487ae298eb0 1,15-16,19,22,35-41,54,56,71,94,98,103-128,130-142,145-150,154,158,163-181,183-188,191-195,199,225-226,234,244,246-247,250,252-253
+evals/behavioral/run_l3.py
+  s_2618cd0d87760b::t_ae355bead34809 129-130
+evals/clarifications/__init__.py
+  s_2618cd0d87760b::t_ad0bf6db04e49a 1-5
+evals/clarifications/evaluate.py
+  s_2618cd0d87760b::t_d3e6206048ebe3 1-375
+evals/clarifications/golden.json
+  s_2618cd0d87760b::t_7b0bcefe88d51e 1-235
+evals/clarifications/verify.py
+  s_2618cd0d87760b::t_095323dc3f39f6 1-234
+evals/constraints/__init__.py
+  s_2618cd0d87760b::t_0f7e4c707bad3c 1-5
+evals/constraints/evaluate.py
+  s_2618cd0d87760b::t_6d56bd26c5f6ba 1-253
+evals/constraints/golden.json
+  s_2618cd0d87760b::t_4728bd5f161e0e 1-411
+evals/constraints/verify.py
+  s_2618cd0d87760b::t_0b7f9e989edf3a 1-141
+evals/execution_budget/__init__.py
+  s_2618cd0d87760b::t_c18ebef62cb83b 1
+evals/execution_budget/evaluate.py
+  s_2618cd0d87760b::t_541cf28198c0cc 1-245
+evals/execution_budget/verify.py
+  s_2618cd0d87760b::t_0dfe2107afcb7b 1-115
+evals/legacy_retirement/__init__.py
+  s_2618cd0d87760b::t_00b6a16b78d68f 1
+evals/legacy_retirement/evaluate.py
+  s_2618cd0d87760b::t_1f487b43f88707 1-209
+evals/legacy_retirement/verify.py
+  s_2618cd0d87760b::t_1a8c1399df397d 1-78
+evals/live_model/__init__.py
+  s_2618cd0d87760b::t_9fe422e9b4b8c3 1-5
+evals/live_model/observation.py
+  s_2618cd0d87760b::t_3d9149166daa5a 1-109
+evals/live_model/observations/2026-07-20-dpsk-flash-after-prompt-fix.json
+  s_2618cd0d87760b::t_255a33265ada87 1-59
+evals/live_model/observations/2026-07-20-dpsk-flash.json
+  s_2618cd0d87760b::t_bf75c9cf713018 1-58
+evals/live_model/observations/2026-07-20-dpsk-pro-after-prompt-fix.json
+  s_2618cd0d87760b::t_6bd8b8b911f5fd 1-55
+evals/live_model/observations/2026-07-20-dpsk-pro-family-quality-v2.json
+  s_2618cd0d87760b::t_0d7d3f27deb548 1-55
+evals/live_model/observations/2026-07-20-dpsk-pro-family-wudaoying.json
+  s_2618cd0d87760b::t_619047d3400ecf 1-55
+evals/live_model/observations/2026-07-20-dpsk-pro-sanlitun-quality-v2.json
+  s_2618cd0d87760b::t_8377ded94544b5 1-55
+evals/live_model/observations/2026-07-20-dpsk-pro-solo-798.json
+  s_2618cd0d87760b::t_3b94d66a9939f7 1-55
+evals/live_model/observations/2026-07-20-dpsk-pro-solo-quality-v2.json
+  s_2618cd0d87760b::t_02b40935043d86 1-57
+evals/live_model/quality.py
+  s_2618cd0d87760b::t_d7a8b4249c2d26 1-558
+evals/live_model/quality_artifacts/2026-07-20-dpsk-pro-family-quality-v2.json
+  s_2618cd0d87760b::t_46b612d7a4ad93 1-335
+evals/live_model/quality_artifacts/2026-07-20-dpsk-pro-sanlitun-quality-v2.json
+  s_2618cd0d87760b::t_98f2be32275320 1-293
+evals/live_model/quality_artifacts/2026-07-20-dpsk-pro-solo-quality-v2.json
+  s_2618cd0d87760b::t_43a84415cb51ee 1-299
+evals/live_model/quality_verify.py
+  s_2618cd0d87760b::t_f3575a94157cf3 1-332
+evals/live_model/scenarios.py
+  s_2618cd0d87760b::t_aef5788baf71ac 1-185
+evals/live_model/verify.py
+  s_2618cd0d87760b::t_bf6767d174347e 1-302
+evals/model_output/__init__.py
+  s_2618cd0d87760b::t_9b1027aad2d0cf 1
+evals/model_output/evaluate.py
+  s_2618cd0d87760b::t_3212ec08652e7a 1-468
+evals/model_output/verify.py
+  s_2618cd0d87760b::t_d3b6b82c5b11ff 1-489
+evals/observability/__init__.py
+  s_2618cd0d87760b::t_e4ec57fc959a64 1
+evals/observability/evaluate.py
+  s_2618cd0d87760b::t_1d193e60c71493 1-154
+evals/observability/verify.py
+  s_2618cd0d87760b::t_1d394167bf885c 1-151
+evals/orchestration/__init__.py
+  s_2618cd0d87760b::t_04f4f527a615b2 1
+evals/orchestration/evaluate.py
+  s_2618cd0d87760b::t_4109721e708db2 1-364
+evals/orchestration/verify.py
+  s_2618cd0d87760b::t_74ac821b451fb5 1-207
+evals/outcomes/__init__.py
+  s_2618cd0d87760b::t_198672daef2b2e 1
+evals/outcomes/evaluate.py
+  s_2618cd0d87760b::t_58d5dc049860db 1-379
+evals/outcomes/verify.py
+  s_2618cd0d87760b::t_5b611da61f2f9c 1-127
+evals/performance/__init__.py
+  s_2618cd0d87760b::t_06fd174869f7a0 1-15
+evals/performance/verify.py
+  s_2618cd0d87760b::t_956f3a789c53a3 1-262
+evals/prediction_state/__init__.py
+  s_2618cd0d87760b::t_feeef09b813779 1
+evals/prediction_state/evaluate.py
+  s_2618cd0d87760b::t_c65967dc99b4a5 1-181
+evals/prediction_state/verify.py
+  s_2618cd0d87760b::t_5c95ddc41eeb57 1-88
+evals/release_candidate/__init__.py
+  s_2618cd0d87760b::t_5ba5f8c55843cb 1
+evals/release_candidate/verify.py
+  s_2618cd0d87760b::t_4f2c166b336272 1-186
+evals/requirements/__init__.py
+  s_2618cd0d87760b::t_a88b4d1c534115 1-5
+evals/requirements/evaluate.py
+  s_2618cd0d87760b::t_ee7a1f87c2af17 1-149
+evals/requirements/golden.json
+  s_2618cd0d87760b::t_3eeb9a19bfcb2f 1-153
+evals/requirements/verify.py
+  s_2618cd0d87760b::t_00c30b35e9727f 1-77
+evals/retrieval/__init__.py
+  s_2618cd0d87760b::t_d8e61fd320427e 1-5
+evals/retrieval/evaluate.py
+  s_2618cd0d87760b::t_2447325c224812 1-144
+evals/retrieval/golden.json
+  s_2618cd0d87760b::t_468635b35f93d8 1-124
+evals/retrieval/verify.py
+  s_2618cd0d87760b::t_e43986ff652361 1-122
+evals/run_access_control.py
+  s_2618cd0d87760b::t_fea00cb584699d 1-34
+evals/run_clarifications.py
+  s_2618cd0d87760b::t_391f261c119efc 1-92
+evals/run_constraints.py
+  s_2618cd0d87760b::t_88e97f7c67e49c 1-88
+evals/run_execution_budget.py
+  s_2618cd0d87760b::t_27b7d14f742fa6 1-37
+evals/run_http_benchmark.py
+  s_2618cd0d87760b::t_c9922302856cc7 1-294
+evals/run_legacy_retirement.py
+  s_2618cd0d87760b::t_9751de7c62d50e 1-29
+evals/run_live_model.py
+  s_2618cd0d87760b::t_3570202ab1750f 1-142
+evals/run_model_output.py
+  s_2618cd0d87760b::t_d497fd07868a41 1-34
+evals/run_observability.py
+  s_2618cd0d87760b::t_74c6309f74ed9c 1-34
+evals/run_orchestration.py
+  s_2618cd0d87760b::t_04d57486ddfc0a 1-35
+evals/run_outcomes.py
+  s_2618cd0d87760b::t_9b743709cb9333 1-32
+evals/run_prediction_state.py
+  s_2618cd0d87760b::t_9a1562d5376667 1-26
+evals/run_public.py
+  s_2618cd0d87760b::t_08a1b0daa2a484 1-52
+evals/run_requirements.py
+  s_2618cd0d87760b::t_b36bc3b4bebd98 1-80
+evals/run_retrieval.py
+  s_2618cd0d87760b::t_bf2e356fd8ca54 1-134
+evals/run_scheduling.py
+  s_2618cd0d87760b::t_f11f435776a726 1-34
+evals/run_side_effects.py
+  s_2618cd0d87760b::t_514a678f9e0a74 1-33
+evals/run_socket_http_benchmark.py
+  s_2618cd0d87760b::t_0f15afa3a2f53a 1-375
+evals/run_state_layout.py
+  s_2618cd0d87760b::t_1f732fa83f84cd 1-32
+evals/run_tool_audit.py
+  s_2618cd0d87760b::t_e4a6c5e07d8efc 1-34
+evals/run_trials.py
+  s_2618cd0d87760b::t_c358a5cfcfa730 1-32
+evals/run_user_memory_state.py
+  s_2618cd0d87760b::t_cee88150f689a0 1-29
+evals/run_weather_acceptance.py
+  s_2618cd0d87760b::t_ac5664cebc428a 1-46
+evals/scheduling/__init__.py
+  s_2618cd0d87760b::t_2ef34fa11597bc 1
+evals/scheduling/evaluate.py
+  s_2618cd0d87760b::t_a1885402b7db8b 1-315
+evals/scheduling/verify.py
+  s_2618cd0d87760b::t_d6c1bed15cc0ee 1-269
+evals/side_effects/__init__.py
+  s_2618cd0d87760b::t_794c085b617b53 1
+evals/side_effects/evaluate.py
+  s_2618cd0d87760b::t_3ee5c9d15e2224 1-479
+evals/side_effects/verify.py
+  s_2618cd0d87760b::t_aac19e389f5fa6 1-232
+evals/state_layout/__init__.py
+  s_2618cd0d87760b::t_661b3c932056ff 1
+evals/state_layout/evaluate.py
+  s_2618cd0d87760b::t_e78fb440906354 1-198
+evals/state_layout/verify.py
+  s_2618cd0d87760b::t_fa986b1341bfc8 1-121
+evals/tool_audit/__init__.py
+  s_2618cd0d87760b::t_2689fadc7d297f 1
+evals/tool_audit/evaluate.py
+  s_2618cd0d87760b::t_c8aceee051f9f1 1-236
+evals/tool_audit/verify.py
+  s_2618cd0d87760b::t_aa759f11464c61 1-176
+evals/trials/__init__.py
+  s_2618cd0d87760b::t_e6ccd7465389d4 1
+evals/trials/evaluate.py
+  s_2618cd0d87760b::t_bd13ee6e5c9cf4 1-727
+evals/trials/verify.py
+  s_2618cd0d87760b::t_344ac7b7439dee 1-286
+evals/user_memory_state/__init__.py
+  s_2618cd0d87760b::t_ef0fc40c990e5a 1
+evals/user_memory_state/evaluate.py
+  s_2618cd0d87760b::t_26860b4999fdad 1-232
+evals/user_memory_state/verify.py
+  s_2618cd0d87760b::t_6f2ee3f67625da 1-123
+evals/verify_access_control.py
+  s_2618cd0d87760b::t_c86b1168e9be8f 1-26
+evals/verify_artifact.py
+  s_2618cd0d87760b::t_3d389a3d20e0c8 1-37
+evals/verify_clarifications.py
+  s_2618cd0d87760b::t_f5cbce4aaac422 1-37
+evals/verify_constraints.py
+  s_2618cd0d87760b::t_81c9ece125fa31 1-37
+evals/verify_execution_budget.py
+  s_2618cd0d87760b::t_9c62d1995fad40 1-26
+evals/verify_http_benchmark.py
+  s_2618cd0d87760b::t_1baf3e6316c927 1-38
+evals/verify_legacy_retirement.py
+  s_2618cd0d87760b::t_0fbfc128d16a3b 1-28
+evals/verify_live_model.py
+  s_2618cd0d87760b::t_98d21a7c05b1d0 1-28
+evals/verify_live_model_comparison.py
+  s_2618cd0d87760b::t_3352a6f7d3cfdf 1-27
+evals/verify_live_model_suite.py
+  s_2618cd0d87760b::t_df478d20afd155 1-26
+evals/verify_live_plan_quality.py
+  s_2618cd0d87760b::t_7cdf005aff2ba7 1-41
+evals/verify_live_plan_quality_suite.py
+  s_2618cd0d87760b::t_6d2520fb661c01 1-40
+evals/verify_model_output.py
+  s_2618cd0d87760b::t_83809a9651e96b 1-26
+evals/verify_observability.py
+  s_2618cd0d87760b::t_0b09bfebfd8937 1-26
+evals/verify_orchestration.py
+  s_2618cd0d87760b::t_ea88787cd6877e 1-26
+evals/verify_outcomes.py
+  s_2618cd0d87760b::t_640b0fc19098e2 1-26
+evals/verify_prediction_state.py
+  s_2618cd0d87760b::t_ef14f4c00a527b 1-26
+evals/verify_requirements.py
+  s_2618cd0d87760b::t_0843a7895c6c36 1-37
+evals/verify_retrieval.py
+  s_2618cd0d87760b::t_63e09b3aff02e2 1-36
+evals/verify_scheduling.py
+  s_2618cd0d87760b::t_725f1192617afb 1-26
+evals/verify_side_effects.py
+  s_2618cd0d87760b::t_b3310ff7083442 1-26
+evals/verify_state_layout.py
+  s_2618cd0d87760b::t_1b000c494dc395 1-26
+evals/verify_tool_audit.py
+  s_2618cd0d87760b::t_cc7c8ca4a604a5 1-26
+evals/verify_trials.py
+  s_2618cd0d87760b::t_eb92af229e9193 1-26
+evals/verify_user_memory_state.py
+  s_2618cd0d87760b::t_d99c44204a4451 1-28
+evals/verify_weather_acceptance.py
+  s_2618cd0d87760b::t_3b717640ca9c0a 1-37
+evals/weather/__init__.py
+  s_2618cd0d87760b::t_728bf40c03df67 1
+evals/weather/acceptance.py
+  s_2618cd0d87760b::t_cca673b5f58f64 1-120
+evals/weather/verify.py
+  s_2618cd0d87760b::t_128c5049a177a7 1-77
+fixtures/weather/beijing_synthetic.json
+  s_2618cd0d87760b::t_7046f4bb7bd5a8 1-46
+pyproject.toml
+  s_2618cd0d87760b::t_87cd4e0df17248 1-8
+requirements-dev.txt
+  s_2618cd0d87760b::t_a6897d00c70ab2 1-4
+requirements.txt
+  s_2618cd0d87760b::t_25d6a9c8241c47 2,5-12,15-24
+scripts/audit_legacy_retirement.py
+  s_2618cd0d87760b::t_9206f1147c888d 1-32
+scripts/audit_release_candidate.py
+  s_2618cd0d87760b::t_b5e5ebe15bccfe 1-51
+scripts/build_mock_data.py
+  s_2618cd0d87760b::t_040cc29f9f0ea9 1,3-7,10-11,17,30,34-35,68-69,71,73-78,81,90-96,98,102-146,167,170,182,190-231,339-342,361-384,479,678-682,709-743,926-934
+scripts/check_no_secrets.py
+  s_2618cd0d87760b::t_2a928cd9c8d986 1-186
+scripts/manage_trial.py
+  s_2618cd0d87760b::t_adc164995c48a9 1-371
+scripts/migrate_plan_evidence.py
+  s_2618cd0d87760b::t_0e07162cf8a960 1-54
+scripts/migrate_prediction_feedback.py
+  s_2618cd0d87760b::t_ef593b902c67ce 1-59
+scripts/migrate_user_memory.py
+  s_2618cd0d87760b::t_98a893012260be 1-56
+scripts/rehearse_trial.py
+  s_2618cd0d87760b::t_ab4db173e45ab7 1-113
+scripts/run_job_worker.py
+  s_2618cd0d87760b::t_e420906ff6b37e 1-51
+scripts/run_operation_worker.py
+  s_2618cd0d87760b::t_591242c95c741a 1-32
+scripts/smoke_http_api.py
+  s_2618cd0d87760b::t_c0fb44003f3fa8 1-397
+scripts/smoke_job_worker.py
+  s_2618cd0d87760b::t_db6c95b4b23966 1-191
+scripts/smoke_weather_provider.py
+  s_2618cd0d87760b::t_edbd79c15d8d6e 1-84
+scripts/verify_release_candidate_manifest.py
+  s_2618cd0d87760b::t_26328233e3f573 1-36
+src/agents/calibration_history.py
+  s_2618cd0d87760b::t_e60b0a804a994c 23-24,27,30-32,36-39,41,68,71,80-86,93-94,101,148,157-168
+src/agents/confidence.py
+  s_2618cd0d87760b::t_26da9daeaf3ae1 1-180
+src/agents/execution_budget.py
+  s_2618cd0d87760b::t_01110555ccc164 1-390
+src/agents/llm_client.py
+  s_2618cd0d87760b::t_dc993aab6a958d 177-178,294,306,318,330,478-480,490,537-542,618,640-645,653,676,679,726-731,758-781,788-790,839-847
+src/agents/model_output_contract.py
+  s_2618cd0d87760b::t_e59aaddbfb4fa1 1-357
+src/agents/plan_tracer.py
+  s_2618cd0d87760b::t_9178bcd3bf753f 1,7-9,11,15-16,36-41,44-47,55-59,63-65,67,74-82,84-86,126-138,187-244,250-251,253-262,265-274,371-376,382,385-391,399-403,406,409-414
+src/agents/planner.py
+  s_2618cd0d87760b::t_b35abc981812fb 8,23,26,29-38,47-58,61,71,73,76,81,86,88-97,108,128,130-131,134-138,157,163-164,174,176,185,189-191,196,202,207-217,219-235,249-268,276-279,290-291,303-339,341-346,348,350,352-354,356,358,367,369,371-376,379-447,449-482,604-605,607,644-645,650-651,654,662-664,670-671,678-679,685-687,722,743-744,763-773
+src/agents/planner_tot.py
+  s_2618cd0d87760b::t_1c5fd08843f6cf 1,7,19-21,23,28,33,38,68-70,293,295-298,304,315-317,322,325,329,338,350-353,361-366,391-427
+src/agents/replanner.py
+  s_2618cd0d87760b::t_2f7f6baba221d2 15,24,28-50,65-67,69-80,86-94,115,142,155,159-166,171-183,201-203,272-279,292-297,299-300,332-340,379-413
+src/agents/schedule_reconciler.py
+  s_2618cd0d87760b::t_4c00637aa3cb2c 1-332
+src/agents/text_intake.py
+  s_2618cd0d87760b::t_74fcd2c415ca82 136-144,181-183,187-191,196-197
+src/agents/tracing.py
+  s_2618cd0d87760b::t_5ef63e347f6b0a 1,20,22-23,57,83-85,93-95,121,138,140-144,146,149-154,161,203-267,310-319,321,325-337,355-363,377-378,380-381,385-389
+src/agents/types.py
+  s_2618cd0d87760b::t_90898b0a60181b 23,32-38,51-62,76-85,118-120
+src/agents/user_memory.py
+  s_2618cd0d87760b::t_a7ee44ec766e8b 1-6,11,19,21,25-33,40-48,50-68,72-74,79-95,101,106,111-124,130-135,137-153,158,160-171,173-189,193,196,199,201-202,204-222,224-225,227-229,231-301,304-308,312-335,340-341,344,350-351,359-362,365-367,369-371,373-393,396-426,430-431,433-435,437-469,471,473-518,538-544,547-554,558-568,574-584,604-605,607-608,612,619-624,636,639-645,648-658,660-661,666-765
+src/application/__init__.py
+  s_2618cd0d87760b::t_3bfaf00f5923f3 1-92
+src/application/constraint_ledger.py
+  s_2618cd0d87760b::t_836b1622d21ad8 1-678
+src/application/contracts.py
+  s_2618cd0d87760b::t_a54dba8fab3049 1-256
+src/application/execution_observation.py
+  s_2618cd0d87760b::t_5eb4245605c304 1-322
+src/application/planning_service.py
+  s_2618cd0d87760b::t_e5b372cc32b3db 1-167
+src/application/preflight.py
+  s_2618cd0d87760b::t_0862b558fe84f6 1-93
+src/application/requirement_gate.py
+  s_2618cd0d87760b::t_e13c200602b1ff 1-475
+src/application/resolution.py
+  s_2618cd0d87760b::t_25991380833235 1-76
+src/clarifications/__init__.py
+  s_2618cd0d87760b::t_a86771d79589f8 1-26
+src/clarifications/models.py
+  s_2618cd0d87760b::t_a0f907b1e3d0b4 1-86
+src/clarifications/repository.py
+  s_2618cd0d87760b::t_ca159557dc8189 1-586
+src/clarifications/service.py
+  s_2618cd0d87760b::t_2b43ac4068f7a0 1-231
+src/data_profile.py
+  s_2618cd0d87760b::t_7509b5184102cf 1-198
+src/demo_cli.py
+  s_2618cd0d87760b::t_0a0978f6406e07 14,21-36,52,72-73,85-104,106-107,120-147,149-192,214,216,218-234,236-274,277,292,306-379,386-392,394,400-408,412
+src/etl/seed_calibration_data.py
+  s_2618cd0d87760b::t_728ea2e7546e04 91-96
+src/http_api/__init__.py
+  s_2618cd0d87760b::t_f6a6e8f650237d 1-5
+src/http_api/app.py
+  s_2618cd0d87760b::t_4bc701f8506335 1-2776
+src/http_api/auth.py
+  s_2618cd0d87760b::t_9cf50211623ff8 1-275
+src/http_api/schemas.py
+  s_2618cd0d87760b::t_1347268a3dfb9b 1-1045
+src/http_api/sse.py
+  s_2618cd0d87760b::t_45a579fbe7ced9 1-47
+src/jobs/__init__.py
+  s_2618cd0d87760b::t_49acb4ae6a858c 1-42
+src/jobs/models.py
+  s_2618cd0d87760b::t_3657681bd5f564 1-121
+src/jobs/repository.py
+  s_2618cd0d87760b::t_00cc394f71a4e1 1-1958
+src/jobs/service.py
+  s_2618cd0d87760b::t_e4398c28a502c5 1-363
+src/loader.py
+  s_2618cd0d87760b::t_79d707e197e298 15,25-26,34,91-95,244-259,415,421,427-428
+src/operations/__init__.py
+  s_2618cd0d87760b::t_e3941aac3dd5ef 1-73
+src/operations/models.py
+  s_2618cd0d87760b::t_3f7d6f7905de64 1-107
+src/operations/rehearsal.py
+  s_2618cd0d87760b::t_e57866f0d2ffea 1-141
+src/operations/repository.py
+  s_2618cd0d87760b::t_cf2dde935f1c47 1-1162
+src/operations/service.py
+  s_2618cd0d87760b::t_5fe2eeae16876a 1-246
+src/outcomes/__init__.py
+  s_2618cd0d87760b::t_667f0186669d76 1-89
+src/outcomes/models.py
+  s_2618cd0d87760b::t_8b4f4b226195a3 1-203
+src/outcomes/repository.py
+  s_2618cd0d87760b::t_83d3d2c1c770c4 1-2192
+src/outcomes/service.py
+  s_2618cd0d87760b::t_d9a90d112eb27c 1-70
+src/providers/__init__.py
+  s_2618cd0d87760b::t_a867b9469a7cf9 1-47
+src/providers/contracts.py
+  s_2618cd0d87760b::t_798a3a1e9e1a28 1-85
+src/providers/sqlite_demo.py
+  s_2618cd0d87760b::t_515052e3e3cf8e 1-293
+src/providers/weather.py
+  s_2618cd0d87760b::t_f3f938131de6c1 1-810
+src/release_candidate.py
+  s_2618cd0d87760b::t_c289b736c0c408 1-245
+src/retrieval/__init__.py
+  s_2618cd0d87760b::t_73f19b0889d318 1-5
+src/retrieval/ugc.py
+  s_2618cd0d87760b::t_682028f7320e3f 1-161
+src/storage/__init__.py
+  s_2618cd0d87760b::t_979dc66bd2c738 1-31
+src/storage/legacy_retirement.py
+  s_2618cd0d87760b::t_9ddc41bdc50938 1-253
+src/storage/prediction_feedback.py
+  s_2618cd0d87760b::t_dbacbea582d106 1-94
+src/storage/state_layout.py
+  s_2618cd0d87760b::t_2cacee85f11fbe 1-114
+src/storage/user_memory.py
+  s_2618cd0d87760b::t_7eff2a896f2f37 1-160
+src/storage/verified_copy.py
+  s_2618cd0d87760b::t_c7e1711ef99f7e 1-409
+src/tools/amap_search.py
+  s_2618cd0d87760b::t_99e3c7b9d991b5 178-185,206-213,222-257
+src/tools/availability_probe.py
+  s_2618cd0d87760b::t_84273609ef94b5 33,117-146,203-204,255-260
+src/tools/footprint.py
+  s_2618cd0d87760b::t_26b437ccefac81 6,12,23,46-48,50,53-68,77,79-85,87-96,178-180,182,185-186,189-190,194-195
+src/tools/poi_graph.py
+  s_2618cd0d87760b::t_81be1132450da3 160-162,176-209
+src/tools/prediction_log.py
+  s_2618cd0d87760b::t_631db559ac5590 12,23-33,39-45,47-49,51
+src/tools/rank_fuse.py
+  s_2618cd0d87760b::t_4bfc46714388a3 73,222-223,226-227
+src/tools/route_enricher.py
+  s_2618cd0d87760b::t_2d1fcb557e716e 1-208
+src/tools/route_lookup.py
+  s_2618cd0d87760b::t_b4e6ee7b4e9ee8 1,4
+src/tools/tool_call_log.py
+  s_2618cd0d87760b::t_9bcfa480628bf4 1,3-6,8-12,17-18,20-22,25,28,33,35-44,46,56-62,66-80,83-163,166-171,174-213,223-232,238-240,242-265,267-278,280-281,284-298,300-301,303-338,340-632
+src/tools/ugc_bm25.py
+  s_2618cd0d87760b::t_e228e33ceb4712 22,34,79-116
+src/ui/app.py
+  s_2618cd0d87760b::t_422c05da50e76f 8,39,44,48-86,112,116,118-123,182-186,507-836,887-889,920,955-979,981-990,994-1017,1025,1042-1043,1054-1055,1076-1077,1515-1520,1531-1744,1776-1796,1997,2080,2093-2094,2097,2099-2106,2108-2130,2132-2192
+src/ui/calibration_timeline.py
+  s_2618cd0d87760b::t_83da7e44e1b541 32-35,38,44-46,54,59-63
+src/ui/memory_panel.py
+  s_2618cd0d87760b::t_0fb2eb3a6131f1 16-17,39-40,138-145,168-180,186,196,212-213,216-217,221,225-234,239,247-249
+src/ui/trust_panel.py
+  s_2618cd0d87760b::t_2c239170965d3a 1,37,39,55-57,82,87,104,178,195
+tests/conftest.py
+  s_2618cd0d87760b::t_456cda341f038b 1-24
+tests/smoke_test.py
+  s_2618cd0d87760b::t_a26c080e073a5d 42,91-92
+tests/test_access_control_eval.py
+  s_2618cd0d87760b::t_e4b0bdac73b9c6 1-144
+tests/test_application_service.py
+  s_2618cd0d87760b::t_8e4ef29da8281c 1-252
+tests/test_calibration_evidence_classification.py
+  s_2618cd0d87760b::t_662458e803c4e4 1-96
+tests/test_clarification_continuation.py
+  s_2618cd0d87760b::t_d3bf8013cf985c 1-324
+tests/test_clarification_eval.py
+  s_2618cd0d87760b::t_fbfa2610c2ef82 1-78
+tests/test_clarification_resolution.py
+  s_2618cd0d87760b::t_e18573ebc03685 1-140
+tests/test_confidence_provenance.py
+  s_2618cd0d87760b::t_f0220fd4f5cc84 1-114
+tests/test_constraint_eval.py
+  s_2618cd0d87760b::t_066f260f533c99 1-82
+tests/test_constraint_ledger.py
+  s_2618cd0d87760b::t_6116b14e9d14c6 1-234
+tests/test_data_profile.py
+  s_2618cd0d87760b::t_c6cb031bf4fc81 1-144
+tests/test_data_provider.py
+  s_2618cd0d87760b::t_25f57e789d3798 1-184
+tests/test_demo_rehearsal.py
+  s_2618cd0d87760b::t_2fd5ebe652c756 1-106
+tests/test_diet_evidence_filter.py
+  s_2618cd0d87760b::t_02b04effb24079 1-105
+tests/test_eval_artifacts.py
+  s_2618cd0d87760b::t_4228cbdbc92394 1-101
+tests/test_execution_budget.py
+  s_2618cd0d87760b::t_47fc41b243a715 1-323
+tests/test_execution_budget_eval.py
+  s_2618cd0d87760b::t_a315462c002776 1-72
+tests/test_execution_observation.py
+  s_2618cd0d87760b::t_b6a5d8813b2237 1-196
+tests/test_http_api.py
+  s_2618cd0d87760b::t_1b67e4a4754d13 1-2265
+tests/test_http_performance_artifact.py
+  s_2618cd0d87760b::t_a58bafbb8a8c63 1-166
+tests/test_legacy_acceptance.py
+  s_2618cd0d87760b::t_df072e014da556 1-53
+tests/test_legacy_retirement.py
+  s_2618cd0d87760b::t_f11a201b50b4d7 1-250
+tests/test_legacy_retirement_eval.py
+  s_2618cd0d87760b::t_32c7516b6bb586 1-41
+tests/test_live_model_observation.py
+  s_2618cd0d87760b::t_340051fcfbb22e 1-195
+tests/test_live_plan_quality.py
+  s_2618cd0d87760b::t_843409ac8fbfea 1-176
+tests/test_llm_client_dpsk.py
+  s_2618cd0d87760b::t_9d70e11880f6b2 47-57
+tests/test_llm_streaming.py
+  s_2618cd0d87760b::t_792e89690150ac 90,93,98-105,108,114,120-123
+tests/test_model_output_contract.py
+  s_2618cd0d87760b::t_2cc07faa59ce8b 1-370
+tests/test_model_output_eval.py
+  s_2618cd0d87760b::t_902c9517fe2ef2 1-96
+tests/test_mutable_state_isolation.py
+  s_2618cd0d87760b::t_48d01179084623 1-28
+tests/test_observability_eval.py
+  s_2618cd0d87760b::t_2e0b3032147a7f 1-85
+tests/test_orchestration_eval.py
+  s_2618cd0d87760b::t_745c298fbd38ce 1-70
+tests/test_outcome_eval.py
+  s_2618cd0d87760b::t_7a5816a9c91686 1-90
+tests/test_plan_evidence_storage.py
+  s_2618cd0d87760b::t_213d52b41076e8 1-244
+tests/test_plan_feedback.py
+  s_2618cd0d87760b::t_a316ba4826d2f4 1-217
+tests/test_plan_trace_atomic.py
+  s_2618cd0d87760b::t_eb42c2e87d311a 1-87
+tests/test_planner.py
+  s_2618cd0d87760b::t_790321a726434f 85
+tests/test_planner_tot.py
+  s_2618cd0d87760b::t_6f855bedecea1d 16-17,21-25,32,113-114,123-129,137,141-213,223-226
+tests/test_planning_jobs.py
+  s_2618cd0d87760b::t_6c4651f210f480 1-1965
+tests/test_prediction_feedback_storage.py
+  s_2618cd0d87760b::t_9a4ef925b959c6 1-160
+tests/test_prediction_state_eval.py
+  s_2618cd0d87760b::t_b1ea1ad6a9f712 1-37
+tests/test_real_poi_data.py
+  s_2618cd0d87760b::t_e1e3dd25b6c6f2 11,14-17
+tests/test_release_candidate.py
+  s_2618cd0d87760b::t_d4ffd750f880b9 1-149
+tests/test_replan_policy.py
+  s_2618cd0d87760b::t_e8f49a4f444e8d 1-178
+tests/test_requirement_eval.py
+  s_2618cd0d87760b::t_af5c96f70c983d 1-76
+tests/test_requirement_gate.py
+  s_2618cd0d87760b::t_0bf2da3a59eb59 1-176
+tests/test_reroute.py
+  s_2618cd0d87760b::t_af06795034bfe2 42,49
+tests/test_reroute_candidate_coverage.py
+  s_2618cd0d87760b::t_020e12ac5836f8 16
+tests/test_retrieval_eval.py
+  s_2618cd0d87760b::t_61a804fd41a1e9 1-126
+tests/test_route_enricher.py
+  s_2618cd0d87760b::t_d8892a6ef9852e 1-161
+tests/test_schedule_reconciler.py
+  s_2618cd0d87760b::t_b5a36cfdb5202c 1-219
+tests/test_scheduling_eval.py
+  s_2618cd0d87760b::t_d02f01b280af30 1-118
+tests/test_seasonal.py
+  s_2618cd0d87760b::t_b7975c12d0ced3 5,103,114-117
+tests/test_secret_scan.py
+  s_2618cd0d87760b::t_5c293787fc200e 1-53
+tests/test_side_effect_eval.py
+  s_2618cd0d87760b::t_29588f01c83edf 1-117
+tests/test_side_effect_operations.py
+  s_2618cd0d87760b::t_6d0b3a2be58e08 1-464
+tests/test_socket_http_benchmark.py
+  s_2618cd0d87760b::t_1ce76bfa5b0942 1-46
+tests/test_state_layout_eval.py
+  s_2618cd0d87760b::t_f5d780620fbfa3 1-92
+tests/test_text_intake_negation.py
+  s_2618cd0d87760b::t_b6dbd5b7519f63 1-31
+tests/test_tool_audit_eval.py
+  s_2618cd0d87760b::t_7fad47c541b170 1-137
+tests/test_tool_audit_storage.py
+  s_2618cd0d87760b::t_7a3780cd10e209 1-127
+tests/test_tool_call_audit.py
+  s_2618cd0d87760b::t_efddf79b26f4a6 1-162
+tests/test_tool_call_log_concurrency.py
+  s_2618cd0d87760b::t_c053f2fd85185c 1-41
+tests/test_tracing.py
+  s_2618cd0d87760b::t_7870d61e823c8c 148
+tests/test_trial_eval.py
+  s_2618cd0d87760b::t_14ba018dfb397f 1-99
+tests/test_trial_evidence.py
+  s_2618cd0d87760b::t_a9a48caa7d082e 1-684
+tests/test_trial_operator_cli.py
+  s_2618cd0d87760b::t_c6f8416e27aaf9 1-363
+tests/test_trial_rehearsal.py
+  s_2618cd0d87760b::t_000bc1d0487867 1-29
+tests/test_ugc_retrieval.py
+  s_2618cd0d87760b::t_76c3808a061154 1-74
+tests/test_ui_refactor.py
+  s_2618cd0d87760b::t_f041039a4370f6 44,69-71,115-174,237
+tests/test_user_memory_state.py
+  s_2618cd0d87760b::t_8e91d55b04d371 1-257
+tests/test_user_memory_state_eval.py
+  s_2618cd0d87760b::t_16eebc7ab300b5 1-43
+tests/test_user_memory_storage.py
+  s_2618cd0d87760b::t_0f07bc98aca56a 1-214
+tests/test_v2_4_plan_tracer.py
+  s_2618cd0d87760b::t_05f5622bc552a1 148,150,152-155
+tests/test_v2_vision.py
+  s_2618cd0d87760b::t_1576dd9b9f3b7c 9,21-23,28,68,87
+tests/test_version_consistency.py
+  s_2618cd0d87760b::t_7cdbadf7465af5 1-16
+tests/test_weather_acceptance.py
+  s_2618cd0d87760b::t_677ac2be0b0842 1-46
+tests/test_weather_provider.py
+  s_2618cd0d87760b::t_ca77579d125e4f 1-228
+docs/DEMO_SCRIPT.md
+  s_dd5e070c8c1596::t_51d49b8a28f324 1,3-16,176,178,222,224,228-230,234,236-358
+docs/TECHNICAL_REPORT.md
+  s_dd5e070c8c1596::t_666409bd1f0811 1,3,5,7,9,11-17,19,21,23,25,27,29-33,35,37-39,41,43,45-50,52,54-58,60,62-66,68,70-75,77,79-84,86,88-92,94,96-292,294-301,303-309,311-317,319-324,326,328-331,333,335-338,340,342-345,347,349-352,354,356-393,395,397,399,401-407,409,411,413,415-423,425,427,429,431,433-506
+docs/ARCHITECTURE_EVIDENCE.md
+  s_dd5e070c8c1596::t_203354ad090781 1-183
+docs/QA_PREP.md
+  s_dd5e070c8c1596::t_b2c00ad9450871 1,3,5,7,9,11,13,15,17-22,24,26,28,30,32,34,36,38,40,42,44,46,48,50,52,54,56,58,60,62,64,66,68,70,72,74,76,78,80,82,84,86,88,90-151
+docs/INTERVIEW_MARKET_EVIDENCE.md
+  s_dd5e070c8c1596::t_f5f24f97e7df07 1-186
+docs/DESIGN.md
+  s_dd5e070c8c1596::t_6ede658d91a97d 1-53,55-101,103,105-111,113-160,163-186,188-189,191,193,195,197-204,206,208,210,212,214,216-223,225,227,229,231-235,237,239,241,243-486
+docs/INTERVIEW_GUIDE.md
+  s_dd5e070c8c1596::t_ca6ae87f4e58df 1-439
+docs/ROADMAP.md
+  s_dd5e070c8c1596::t_194a5ab319b50f 1,3,5,7,9-49,51,53,55,57-63,65,67,69,71,73-78,80,82,84,86,88-93,95,97,99,101,103,105-110,112,114,116,118,120,122-127,129,131,133,135,137,139-144,146-259,261,263,265,267-273,275,277,279,281-288,290,292,294,296-303,305,307,309,311-476
+docs/submission/LAUNCH.md
+  s_dd5e070c8c1596::t_0d6ddb4c5e06c8 7,14,20,52-53
+README.md
+  s_dd5e070c8c1596::t_c29ad54afb16d7 3,8-13,16,18,20,22,24,26,28,30,32-124,126-161,164,166-174,176-358,361-363,366-370,372,374-423,425,427,429,431,433-439,442-446,448-449,451,453-458,460,462,464,466,469-477,480,482,484-555
+docs/eval-100-results.md
+  s_dd5e070c8c1596::t_70e14c9d8b0805 3-4,69,76,118,120,122,124,128,146-149,156,164
+docs/100-improvements.md
+  s_dd5e070c8c1596::t_8fafe77cbcdd35 12,127,169
+docs/DATA_INVENTORY.md
+  s_dd5e070c8c1596::t_1e86cb54f809f4 61,63,65,67-71,73-98,316,364-366
+docs/MOCK_API_README.md
+  s_dd5e070c8c1596::t_80493c54f8bf74 1,3-5,9-12,107-116,155,157
+docs/submission/env.example
+  s_dd5e070c8c1596::t_c2abfa5b860660 4-13,25,36-66
+docs/submission/TECHNICAL_REPORT.md
+  s_dd5e070c8c1596::t_fee9ea19bb18a9 3-4,203-204,260
+docs/EVAL_FRAMEWORK.md
+  s_dd5e070c8c1596::t_9c84b6dbc7d3fa 3,17-21,53,55,64,96,105-136,138-139,141-176,183,185,187-191,193-239,241,250-252,262-265
+docs/submission/FLOWCHART.md
+  s_dd5e070c8c1596::t_811d894d6e7f68 29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "263a86f418335bb295940211dd96f3507553e121",
+  "prompts": {},
+  "sessions": {
+    "s_2618cd0d87760b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_2618cd0d87760b",
+        "model": "unknown"
+      },
+      "human_author": "zhouxun <zhouxun.13@bytedance.com>"
+    },
+    "s_dd5e070c8c1596": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_dd5e070c8c1596",
+        "model": "unknown"
+      },
+      "human_author": "zhouxun <zhouxun.13@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
