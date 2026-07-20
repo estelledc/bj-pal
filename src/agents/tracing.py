@@ -1,13 +1,13 @@
-"""Request-local tracing with optional JSONL/OpenTelemetry export.
+"""Request-local tracing with privacy-minimized JSONL/OTLP export.
 
 用途：在 hackathon demo 里把 planner / replanner / llm_client / 工具调用
 绑成一棵 trace 树，便于复现 + 性能分析 + 失败复盘。
 
 后端选择（环境变量 BJ_PAL_TRACE）：
 - off    （默认）   不写 trace，零开销
-- jsonl              写 data/traces/{session_id}.jsonl，每行一个 span
-- otel               用 opentelemetry SDK + ConsoleSpanExporter
-                     （安装 opentelemetry-sdk 后启用，未装自动降级到 jsonl）
+- jsonl              写 data/traces/trace-{session_hash}.jsonl，每行一个脱敏 span
+- otlp               用 OTLP/HTTP protobuf 批量导出；必须显式配置 endpoint
+- otel               `otlp` 的兼容别名，不再向 stdout 打印或静默回退 JSONL
 
 API：
 - with trace_span("name", attrs={...}) as sp:
@@ -18,14 +18,14 @@ API：
 
 设计：
 - span 之间通过 ContextVar 维护 parent；async task 继承 context，新线程须显式复制 context
-- session_id 由 set_session() 设置，写到每个 span 的 attrs
+- session_id 由 set_session() 设置，但 exporter 只保留 SHA，不输出原值
 - 后端 = off 时，普通调用仍是 no-op；PlanningService 可显式开启内存 capture
   生成可验证的 execution observation，不依赖外部 collector
+- export I/O 失败不污染业务结果，但会进入 payload-free health snapshot
 """
 from __future__ import annotations
 
 import contextvars
-import json
 import os
 import threading
 import time
@@ -35,12 +35,20 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional
 
+from .trace_export import (
+    MonitoredSpanExporter,
+    TraceExportMonitor,
+    TraceExportStatus,
+    apply_span_projection,
+    hashed_trace_filename,
+    safe_span_name,
+    sanitized_jsonl_payload,
+    validate_otlp_http_configuration,
+)
+
 # ============================================================
 # 后端检测 + 单例
 # ============================================================
-
-_BACKEND_ENV = os.environ.get("BJ_PAL_TRACE", "off").lower()
-
 
 @dataclass
 class _SpanRecord:
@@ -55,21 +63,6 @@ class _SpanRecord:
     status: str = "unset"
     error: str = ""
     backend_handle: Any = field(default=None, repr=False, compare=False)
-
-    def to_jsonl(self) -> str:
-        return json.dumps({
-            "name": self.name,
-            "span_id": self.span_id,
-            "parent_id": self.parent_id,
-            "trace_id": self.trace_id,
-            "session_id": self.session_id,
-            "start_ts": round(self.start_ts, 6),
-            "duration_ms": round((self.end_ts - self.start_ts) * 1000, 2),
-            "attrs": self.attrs,
-            "status": self.status,
-            "error": self.error or None,
-        }, ensure_ascii=False)
-
 
 _current_span: contextvars.ContextVar[Optional[_SpanRecord]] = contextvars.ContextVar(
     "bj_pal_current_span", default=None
@@ -96,6 +89,12 @@ class _Backend:
     def emit(self, sp: _SpanRecord) -> None:
         ...
 
+    def force_flush(self, timeout_millis: int = 5000) -> bool:
+        return True
+
+    def shutdown(self) -> None:
+        return
+
 
 class _NoopBackend(_Backend):
     def emit(self, sp: _SpanRecord) -> None:
@@ -103,46 +102,73 @@ class _NoopBackend(_Backend):
 
 
 class _JsonlBackend(_Backend):
-    def __init__(self, dir_path: Path):
+    def __init__(self, dir_path: Path, monitor: TraceExportMonitor):
         self.dir = dir_path
         self.dir.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
+        self._monitor = monitor
+        monitor.configure(backend="jsonl", state="configured_unproven", processor="sync")
 
     def emit(self, sp: _SpanRecord) -> None:
-        sid = sp.session_id or "default"
-        path = self.dir / f"{sid}.jsonl"
-        line = sp.to_jsonl()
-        with self._lock:
-            with path.open("a", encoding="utf-8") as f:
-                f.write(line + "\n")
+        path = self.dir / hashed_trace_filename(sp.session_id)
+        payload, dropped = sanitized_jsonl_payload(sp)
+        import json
+
+        line = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+        try:
+            with self._lock:
+                with path.open("a", encoding="utf-8") as f:
+                    f.write(line + "\n")
+        except OSError:
+            self._monitor.record_batch_result(
+                span_count=1,
+                succeeded=False,
+                error_code="jsonl_write_failed",
+            )
+            raise
+        self._monitor.record_projection(dropped)
+        self._monitor.record_local_export()
 
 
-class _OtelBackend(_Backend):
-    """OpenTelemetry SDK adapter with explicit parent propagation."""
+class _OtlpBackend(_Backend):
+    """OpenTelemetry SDK adapter with batch OTLP/HTTP export."""
 
-    def __init__(self):
+    def __init__(self, monitor: TraceExportMonitor):
         from opentelemetry import trace as otel_trace
+        from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
+            OTLPSpanExporter,
+        )
         from opentelemetry.sdk.resources import Resource
         from opentelemetry.sdk.trace import TracerProvider
-        from opentelemetry.sdk.trace.export import (
-            ConsoleSpanExporter,
-            SimpleSpanProcessor,
+        from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+        endpoint_hash = validate_otlp_http_configuration(dict(os.environ))
+        resource = Resource.create(
+            {
+                "service.name": "bj-pal",
+                "service.version": "6.21.0",
+            }
         )
-        resource = Resource.create({"service.name": "bj-pal"})
         provider = TracerProvider(resource=resource)
-        exporter = ConsoleSpanExporter()
-        # Simple（非 Batch）保证 hackathon demo 能立即看到 trace
-        provider.add_span_processor(SimpleSpanProcessor(exporter))
-        otel_trace.set_tracer_provider(provider)
-        self._tracer = otel_trace.get_tracer("bj-pal")
+        exporter = MonitoredSpanExporter(OTLPSpanExporter(), monitor)
+        provider.add_span_processor(BatchSpanProcessor(exporter))
+        self._provider = provider
+        self._tracer = provider.get_tracer("bj-pal", "6.21.0")
         self._otel_trace = otel_trace
+        self._monitor = monitor
+        monitor.configure(
+            backend="otlp",
+            state="configured_unproven",
+            processor="batch",
+            endpoint_origin_sha256=endpoint_hash,
+        )
 
     def begin(self, sp: _SpanRecord, parent_handle: Any = None) -> Any:
         context = None
         if parent_handle is not None:
             context = self._otel_trace.set_span_in_context(parent_handle)
         return self._tracer.start_span(
-            sp.name,
+            safe_span_name(sp.name),
             context=context,
             start_time=int(sp.start_ts * 1e9),
         )
@@ -152,22 +178,32 @@ class _OtelBackend(_Backend):
         otel_span = sp.backend_handle
         if otel_span is None:
             return
-        for k, v in sp.attrs.items():
-            try:
-                otel_span.set_attribute(k, v)
-            except Exception:
-                otel_span.set_attribute(k, str(v))
-        otel_span.set_attribute("session_id", sp.session_id)
-        otel_span.set_attribute("bj_pal.trace_id", sp.trace_id)
+        dropped = apply_span_projection(otel_span, sp)
+        self._monitor.record_projection(dropped)
         if sp.status == "error":
-            otel_span.set_status(Status(StatusCode.ERROR, sp.error or "error"))
+            otel_span.set_status(Status(StatusCode.ERROR))
         else:
             otel_span.set_status(Status(StatusCode.OK))
         otel_span.end(end_time=int(sp.end_ts * 1e9))
 
+    def force_flush(self, timeout_millis: int = 5000) -> bool:
+        try:
+            return self._provider.force_flush(timeout_millis)
+        except Exception:
+            self._monitor.record_runtime_failure("force_flush_failed")
+            return False
+
+    def shutdown(self) -> None:
+        self._provider.shutdown()
+
+
+class _DegradedBackend(_NoopBackend):
+    """Non-fatal sink used when explicit export configuration is invalid."""
+
 
 _backend_instance: Optional[_Backend] = None
 _backend_lock = threading.Lock()
+_export_monitor = TraceExportMonitor()
 
 
 def _resolve_backend() -> _Backend:
@@ -180,15 +216,49 @@ def _resolve_backend() -> _Backend:
         choice = (os.environ.get("BJ_PAL_TRACE") or "off").lower()
         if choice == "off":
             _backend_instance = _NoopBackend()
-        elif choice == "otel":
+            _export_monitor.configure(
+                backend="off",
+                state="disabled",
+                processor="none",
+            )
+        elif choice in {"otel", "otlp"}:
             try:
-                _backend_instance = _OtelBackend()
+                _backend_instance = _OtlpBackend(_export_monitor)
+            except Exception as exc:
+                error_code = (
+                    str(exc)
+                    if isinstance(exc, ValueError)
+                    else "exporter_initialization_failed"
+                )
+                _export_monitor.configure(
+                    backend="otlp",
+                    state="degraded",
+                    processor="none",
+                    error_code=error_code,
+                )
+                _backend_instance = _DegradedBackend()
+        elif choice == "jsonl":
+            try:
+                _backend_instance = _JsonlBackend(
+                    _default_jsonl_dir(),
+                    _export_monitor,
+                )
             except Exception:
-                # OTel SDK 未装 → 降级到 JSONL
-                _backend_instance = _JsonlBackend(_default_jsonl_dir())
+                _export_monitor.configure(
+                    backend="jsonl",
+                    state="degraded",
+                    processor="none",
+                    error_code="jsonl_initialization_failed",
+                )
+                _backend_instance = _DegradedBackend()
         else:
-            # 默认或显式 "jsonl"
-            _backend_instance = _JsonlBackend(_default_jsonl_dir())
+            _export_monitor.configure(
+                backend="invalid",
+                state="degraded",
+                processor="none",
+                error_code="invalid_backend",
+            )
+            _backend_instance = _DegradedBackend()
     return _backend_instance
 
 
@@ -278,7 +348,27 @@ def get_session() -> str:
 def reset_backend_for_tests() -> None:
     """测试用：强制 backend 单例重新加载（让 BJ_PAL_TRACE env 改动生效）。"""
     global _backend_instance
+    if _backend_instance is not None:
+        try:
+            _backend_instance.shutdown()
+        except Exception:
+            pass
     _backend_instance = None
+    _export_monitor.reset()
+
+
+def trace_export_status(*, resolve: bool = True) -> TraceExportStatus:
+    """Return payload-free export health; optionally initialize configured backend."""
+    if resolve:
+        _resolve_backend()
+    return _export_monitor.snapshot()
+
+
+def force_flush_trace_export(timeout_millis: int = 5000) -> bool:
+    """Flush queued spans without exposing collector credentials or payloads."""
+    if timeout_millis < 1 or timeout_millis > 30_000:
+        raise ValueError("trace export flush timeout must be between 1 and 30000 ms")
+    return _resolve_backend().force_flush(timeout_millis)
 
 
 class _Span:
@@ -361,6 +451,7 @@ def trace_span(name: str, attrs: Optional[dict] = None):
             )
         except Exception:
             rec.backend_handle = None
+            _export_monitor.record_runtime_failure("span_start_failed")
     span = _Span(rec)
     token = _current_span.set(rec)
     try:
@@ -381,7 +472,7 @@ def trace_span(name: str, attrs: Optional[dict] = None):
                 backend.emit(rec)
         except Exception:
             # trace 不能让业务挂
-            pass
+            _export_monitor.record_runtime_failure("span_emit_failed")
         # Provider-reported usage only exists after the operation returns.
         # Enforcing here stops the next stage without pretending the tokens
         # already spent by that call can be recovered.

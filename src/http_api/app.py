@@ -16,6 +16,8 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import ValidationError
 
+from agents.tracing import trace_export_status
+
 from application import (
     ExecutionBudgetExceeded,
     ModelOutputContractError,
@@ -130,6 +132,7 @@ from .schemas import (
     TrialNoticeResponse,
     TrialParticipantEventResponse,
     TrialParticipantResponse,
+    TraceExportStatusResponse,
 )
 from .auth import (
     JOBS_CONTROL,
@@ -157,7 +160,7 @@ from .sse import (
 )
 
 
-SERVICE_VERSION = "6.20.0"
+SERVICE_VERSION = "6.21.0"
 REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
 LOGGER = logging.getLogger(__name__)
 
@@ -927,6 +930,20 @@ def create_app(
         if result.status != "ready":
             response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
         return result
+
+    @application.get(
+        "/v1/trace-export-status",
+        response_model=TraceExportStatusResponse,
+        tags=["operations"],
+        summary="Read privacy-minimized trace export health",
+    )
+    def get_trace_export_status(
+        principal: ControlPrincipal = Depends(require_read_auth),
+    ) -> TraceExportStatusResponse:
+        del principal
+        return TraceExportStatusResponse.model_validate(
+            trace_export_status().to_dict()
+        )
 
     @application.post(
         "/v1/plans",

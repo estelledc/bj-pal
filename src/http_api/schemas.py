@@ -1133,6 +1133,25 @@ class HealthResponse(StrictModel):
     version: str
 
 
+class TraceExportStatusResponse(StrictModel):
+    version: Literal["trace_export_status_v1"]
+    backend: Literal["off", "jsonl", "otlp", "invalid"]
+    state: Literal["disabled", "configured_unproven", "healthy", "degraded"]
+    processor: Literal["none", "sync", "batch"]
+    privacy_policy: Literal["trace_export_minimal_v1"]
+    semconv_profile: Literal["gen_ai_minimal_v1"]
+    content_capture_enabled: Literal[False]
+    endpoint_origin_sha256: Optional[str] = Field(
+        default=None,
+        pattern=r"^[a-f0-9]{64}$",
+    )
+    export_attempt_count: int = Field(ge=0)
+    exported_span_count: int = Field(ge=0)
+    failed_span_count: int = Field(ge=0)
+    dropped_attribute_count: int = Field(ge=0)
+    last_error_code: Optional[str] = Field(default=None, min_length=1, max_length=64)
+
+
 class ReadinessResponse(StrictModel):
     status: Literal["ready", "not_ready"]
     data_profile: str
