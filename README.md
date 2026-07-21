@@ -17,7 +17,7 @@
 
 BJ-Pal 把一句“周末下午带孩子在北京玩四小时”的自然语言需求，转换成带时间、路线、风险、替补方案和证据来源的结构化计划。项目源自黑客松原型，当前重构目标不是继续堆 Agent 数量，而是补齐一个简历项目应该具备的工程闭环：稳定契约、数据边界、持久任务、失败语义、公开评测和可部署入口。
 
-> 发布状态（2026-07-21）：v6.26 的 HTTP composition-root 重构已经 [PR #17](https://github.com/estelledc/bj-pal/pull/17) 合并。merge commit `fda3944` 的 [Core workflow](https://github.com/estelledc/bj-pal/actions/runs/29803632211)、[Pages 部署](https://github.com/estelledc/bj-pal/actions/runs/29803632206) 与 [OCI publish workflow](https://github.com/estelledc/bj-pal/actions/runs/29803766469) 均已通过；[v6.26.0 Release](https://github.com/estelledc/bj-pal/releases/tag/v6.26.0) 已公开。
+> 发布状态（2026-07-21）：v6.27 的 PostgreSQL durable-job store 已经 [PR #19](https://github.com/estelledc/bj-pal/pull/19) 合并。merge commit `400b92d` 的 [Core workflow](https://github.com/estelledc/bj-pal/actions/runs/29807147818)、[Pages 部署](https://github.com/estelledc/bj-pal/actions/runs/29807147836) 与 [OCI publish workflow](https://github.com/estelledc/bj-pal/actions/runs/29807340262) 均已通过；[v6.27.0 Release](https://github.com/estelledc/bj-pal/releases/tag/v6.27.0) 已公开。
 
 本地 v6.23 follow-up 在 v6.22 的 durable-job/OTLP/告警链路之上，增加显式 CSSwitch DeepSeek 凭证交接和一次真实 provider acceptance：配置必须是当前用户持有的 regular 0600 文件、active DeepSeek/Anthropic profile、credential-free HTTPS endpoint，并且调用前显式确认费用和固定模型/预算。产物只保留 provider-reported token、耗时、契约/质量 gate 与哈希，不保留 Key、配置路径、prompt、raw output 或 plan。它仍不能证明 provider 签名身份、账单金额、线上成功率、实时 POI/路线、真实预订或用户满意度。
 
@@ -27,7 +27,7 @@ v6.25 把公开容器与完整控制面拆开：镜像默认只启动 mock/synth
 
 v6.26 重构 HTTP composition root：把 system、planning、durable jobs、side-effect operations、trial/feedback 拆成 5 个显式依赖注入的 domain router，共享错误响应和 public-surface 过滤分别独立。`app.py` 从 3,099 行降到 303 行，只保留服务装配、认证依赖、异常处理与 router 注册；结构测试限制 composition root 不超过 400 行且禁止重新内联业务路由。重构前后的 32-path OpenAPI 去版本规范化 SHA 完全一致，并修复新版 FastAPI `_IncludedRouter` 在 public allowlist 中误删 health/readiness 的回归。本地与远程 Core 均通过 936 tests，3 条 real-cache 专用用例按预期 skipped；`v6.26.0` 的 release/SHA/latest 与匿名 manifest 共同绑定 digest `sha256:a4242a80e0952f10ebc03ee61014465c38b17353a690b4960e6cdcc1fb117051`。
 
-v6.27 候选把 durable job 从 SQLite 具体类后面抽出 `PlanningJobStore` 边界，并增加显式选择的 PostgreSQL adapter。SQLite 继续作为零依赖默认；`BJ_PAL_JOB_STORE=postgres` 时，提交、全局 tenant admission、claim、lease fencing、状态与 append-only event 共享同一 PostgreSQL schema。真实 PostgreSQL 17 验收使用 4 个独立 OS worker 进程领取 12 个 job，验证无重复 claim，并覆盖 8 路并发提交下精确 3 admitted / 5 rejected、过期 lease 回收、旧 owner 拒绝、replay 与事件防篡改；`/readyz` 现在也探测所选 store。包含 PostgreSQL 用例的本地完整门禁为 954 collected / 951 passed / 3 real-cache skipped，所有 smoke、eval、showcase 和两条 HTTP benchmark 通过。实现用短事务级 advisory lock 换取确定性调度/准入正确性，不声称高吞吐、exactly-once、数据库 RLS、线上迁移或生产容量。本段是本地 release candidate，尚不是已合并/发布事实。
+v6.27 把 durable job 从 SQLite 具体类后面抽出 `PlanningJobStore` 边界，并增加显式选择的 PostgreSQL adapter。SQLite 继续作为零依赖默认；`BJ_PAL_JOB_STORE=postgres` 时，提交、全局 tenant admission、claim、lease fencing、状态与 append-only event 共享同一 PostgreSQL schema。真实 PostgreSQL 17 验收使用 4 个独立 OS worker 进程领取 12 个 job，验证无重复 claim，并覆盖 8 路并发提交下精确 3 admitted / 5 rejected、过期 lease 回收、旧 owner 拒绝、replay 与事件防篡改；`/readyz` 现在也探测所选 store。包含 PostgreSQL 用例的完整门禁为 954 collected / 951 passed / 3 real-cache skipped，所有 smoke、eval、showcase 和两条 HTTP benchmark 通过。实现用短事务级 advisory lock 换取确定性调度/准入正确性，不声称高吞吐、exactly-once、数据库 RLS、线上迁移或生产容量。`v6.27.0` 的 release/SHA/latest 与匿名 manifest 共同绑定 digest `sha256:9ff768ec8901b24e6f5ea79cf207e3a3cb6a5e58d32e9a88eb254a72a698ffe6`。
 
 ## 一句话简历描述
 
@@ -79,7 +79,7 @@ v6.27 候选把 durable job 从 SQLite 具体类后面抽出 `PlanningJobStore` 
 | 真实配置模型坏例、修复与小型 live 质量代理可复核 | 历史 5 份 DeepSeek observation 保留 Flash 坏例、同场景 Flash/Pro 选型与第一轮 3-case acceptance；v6.10 在修复 798 候选覆盖和证据型忌口过滤后重新运行 3 个 Pro 场景，并分别保存脱敏 observation 与 plan projection。独立 verifier 从 POI facts、路线、时间轴和固定 policy 复算三里屯 9/9、五道营家庭 12/12、798 单人 11/11 个必需检查，0 项不可评估 | 新三例仍各只运行 1 次；798 经一次模型修复后才通过。检查使用 synthetic POI/UGC/路线与确定性代理，不评判 rationale、真实 freshness 或用户偏好；provider 不是 signed receipt，不能外推成功率、满意度、生产质量或金额成本 |
 | 真实 provider 凭证交接与 usage/质量证据绑定 | `run_live_provider_acceptance.py` 仅在显式费用确认下读取 active CSSwitch DeepSeek profile；拒绝 symlink、非 owner、group/other 可读、非 HTTPS、隐式模型和覆盖已有目录。2026-07-21 固定三里屯场景一次调用首轮通过，1 个 LLM call 实报 53 input + 1411 output = 1464 token，执行约 28.9 秒；三份 0600 工件 Key 精确命中为 0，独立 verifier 重算 observation/quality/budget/acceptance 多层 SHA 和六项 gate | 单次 operator observation，不是成功率或延迟分布；configured model/provider 不是签名回执；token 是 provider 经配置 client 回报，不是发票或币种成本；CSSwitch 本地交接不等于服务端轮换/过期/撤销、KMS 或多租户金额预算 |
 | 编排选型有对照证据 | 旧 ToT 被收紧为最多 3 个同构 planner 分支并显式继承请求 budget/trace；3-case synthetic 对照从 raw plan、规则分解和 budget snapshot 复算单分支与多分支的质量、调用、数据批次、耗时与故障注入 | deterministic mock 忽略 branch hint：当前质量提升率和输出变化率均为 0，LLM/data 调用均为 3 倍，因此主链保持单分支；这不是对真实模型或全部多 Agent 架构的普遍结论 |
-| OCI 发布失败关闭 | `vMAJOR.MINOR.PATCH` tag 必须匹配 package/service version；固定 UID 10001 镜像在只读 rootfs、临时 runtime/tmp、cap-drop 与 no-new-privileges 下通过 health/readiness/精确 public OpenAPI/fixed synthetic plan/headers 后才登录 GHCR；发布 release/SHA/latest tag 并记录 digest | `v6.26.0` 已在 GitHub runner 全链通过，匿名 manifest HTTP 200 且 digest `a4242a…117051` 与 workflow 一致；单次 amd64/mock/synthetic container acceptance 仍不代表公网 API、TLS、多实例或 SLA |
+| OCI 发布失败关闭 | `vMAJOR.MINOR.PATCH` tag 必须匹配 package/service version；固定 UID 10001 镜像在只读 rootfs、临时 runtime/tmp、cap-drop 与 no-new-privileges 下通过 health/readiness/精确 public OpenAPI/fixed synthetic plan/headers 后才登录 GHCR；发布 release/SHA/latest tag 并记录 digest | `v6.27.0` 已在 GitHub runner 全链通过，匿名 manifest HTTP 200 且 digest `9ff768…98ffe6` 与 workflow 一致；单次 amd64/mock/synthetic container acceptance 仍不代表公网 API、TLS、多实例或 SLA |
 | 公网 demo 与内部控制面隔离 | `http_api.public_app` 启动时强制 mock + public synthetic data 且拒绝 provider/control credential；OpenAPI 只注册 health/readiness/sync plan；raw attempt、并发和 body 在 planner 前限流，计划不写 feedback/clarification state | 17 条定向测试、本机 Uvicorn smoke、远端 Core Docker build 与 hardened release smoke 已通过；aggregate limiter 只在单进程生效，不信任 proxy identity；当前无长期 HTTPS URL、TLS 平台回执、多实例或 SLA |
 
 更细的“主张 → 代码 → 测试 → 限制”映射见 [工程证据地图](docs/ARCHITECTURE_EVIDENCE.md)。
@@ -221,7 +221,9 @@ v6.24 本机完整门禁另收集 913 条 pytest：910 passed、3 条 `real-cach
 
 v6.26 composition-root 重构后的本地全量 pytest 为 936 passed、3 条 `real-cache` 专用用例 skipped；新增结构测试同时复核 5 个 domain router、32-path 完整 OpenAPI 去版本 SHA 和 public 3-path surface。PR #17、merge commit `fda3944` 的 Core/Pages、`v6.26.0` tag/Release 与 OCI 发布均已完成；匿名 registry manifest 返回 HTTP 200 和 workflow 一致 digest。
 
-这些结果仍不代表 Git 历史无泄露、真实模型幻觉分布/修复率、真实用户结果、真人身份、真实供应商、外部 IdP、动态 RBAC、数据库 RLS、网关 raw-attempt 配额/金额预算、主动强杀阻塞调用、取证级擦除或生产容量。v6.27 候选的 PostgreSQL cross-process 验收也不等于跨主机故障恢复或线上迁移。v6.26 公开镜像已可匿名读取 manifest，但可拉取镜像不等于公网 API 或生产部署。Open-Meteo live smoke 未执行。
+v6.27 PostgreSQL shared-store 重构后的完整 pytest 为 954 collected / 951 passed / 3 条 `real-cache` 专用用例 skipped；PR #19、merge commit `400b92d` 的 Core/Pages、`v6.27.0` tag/Release 与 OCI 发布均已完成。release/SHA/latest 与匿名 registry manifest 共同绑定 digest `sha256:9ff768ec8901b24e6f5ea79cf207e3a3cb6a5e58d32e9a88eb254a72a698ffe6`。
+
+这些结果仍不代表 Git 历史无泄露、真实模型幻觉分布/修复率、真实用户结果、真人身份、真实供应商、外部 IdP、动态 RBAC、数据库 RLS、网关 raw-attempt 配额/金额预算、主动强杀阻塞调用、取证级擦除或生产容量。v6.27 的 PostgreSQL cross-process 验收也不等于跨主机故障恢复或线上迁移。v6.27 公开镜像已可匿名读取 manifest，但可拉取镜像不等于公网 API 或生产部署。Open-Meteo live smoke 未执行。
 
 ### 启动 Streamlit
 
