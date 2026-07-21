@@ -98,6 +98,9 @@ jobs:
       - name: Build and verify model-output contract artifact
         run: make eval-model-output PYTHON=python
 
+      - name: Verify checked-in bounded live-provider acceptance
+        run: make verify-live-provider-acceptance PYTHON=python
+
       - name: Build and verify orchestration-comparison artifact
         run: make eval-orchestration PYTHON=python
 

@@ -35,6 +35,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional
 
+from version import SERVICE_VERSION
+
 from .trace_export import (
     MonitoredSpanExporter,
     TraceExportMonitor,
@@ -146,14 +148,14 @@ class _OtlpBackend(_Backend):
         resource = Resource.create(
             {
                 "service.name": "bj-pal",
-                "service.version": "6.22.0",
+                "service.version": SERVICE_VERSION,
             }
         )
         provider = TracerProvider(resource=resource)
         exporter = MonitoredSpanExporter(OTLPSpanExporter(), monitor)
         provider.add_span_processor(BatchSpanProcessor(exporter))
         self._provider = provider
-        self._tracer = provider.get_tracer("bj-pal", "6.22.0")
+        self._tracer = provider.get_tracer("bj-pal", SERVICE_VERSION)
         self._otel_trace = otel_trace
         self._monitor = monitor
         monitor.configure(

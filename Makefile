@@ -41,6 +41,12 @@ LIVE_QUALITY_FRIENDS ?= evals/live_model/quality_artifacts/2026-07-20-dpsk-pro-s
 LIVE_QUALITY_FAMILY ?= evals/live_model/quality_artifacts/2026-07-20-dpsk-pro-family-quality-v2.json
 LIVE_QUALITY_SOLO ?= evals/live_model/quality_artifacts/2026-07-20-dpsk-pro-solo-quality-v2.json
 LIVE_PLAN_QUALITY_OUTPUT ?= evals/results/live-plan-quality.json
+LIVE_PROVIDER_ACCEPTANCE_ROOT ?= evals/live_provider/observations/2026-07-21-deepseek-pro-sanlitun
+LIVE_PROVIDER_ACCEPTANCE ?= $(LIVE_PROVIDER_ACCEPTANCE_ROOT)/acceptance.json
+LIVE_PROVIDER_OBSERVATION ?= $(LIVE_PROVIDER_ACCEPTANCE_ROOT)/observation.json
+LIVE_PROVIDER_QUALITY ?= $(LIVE_PROVIDER_ACCEPTANCE_ROOT)/quality.json
+LIVE_PROVIDER_OUTPUT_DIR ?= evals/results/live-provider-acceptance
+LIVE_PROVIDER_MODEL ?= deepseek-v4-pro
 ACK_PROVIDER_COST ?= 0
 PERFORMANCE_REQUESTS ?= 20
 PERFORMANCE_CONCURRENCY ?= 4
@@ -52,7 +58,7 @@ CHECK_CLARIFICATION_DB ?= $(CURDIR)/runtime/check/clarifications.db
 CHECK_JOB_DB ?= $(CURDIR)/runtime/check/planning-jobs.db
 CHECK_FEEDBACK_DB ?= $(CURDIR)/runtime/check/plan-feedback.db
 
-.PHONY: python-check secret-scan setup bootstrap-demo test api api-smoke job-worker job-smoke operation-worker docker-build demo demo-clarification demo-trial trial-operator-help showcase audit-legacy-retirement audit-release-candidate eval-public eval-retrieval eval-requirements eval-constraints eval-clarifications eval-observability eval-job-diagnostics eval-workload-health eval-otlp-export eval-operational-alerts eval-tool-audit eval-state-layout eval-prediction-state eval-user-memory-state eval-legacy-retirement eval-execution-budget eval-model-output eval-orchestration eval-scheduling eval-access-control eval-side-effects eval-outcomes eval-trials eval-weather verify-live-model-observation verify-live-plan-quality live-model-smoke weather-live-smoke benchmark-http benchmark-socket-http check-runtime-reset check
+.PHONY: python-check secret-scan setup bootstrap-demo test api api-smoke job-worker job-smoke operation-worker docker-build demo demo-clarification demo-trial trial-operator-help showcase audit-legacy-retirement audit-release-candidate eval-public eval-retrieval eval-requirements eval-constraints eval-clarifications eval-observability eval-job-diagnostics eval-workload-health eval-otlp-export eval-operational-alerts eval-tool-audit eval-state-layout eval-prediction-state eval-user-memory-state eval-legacy-retirement eval-execution-budget eval-model-output eval-orchestration eval-scheduling eval-access-control eval-side-effects eval-outcomes eval-trials eval-weather verify-live-model-observation verify-live-plan-quality verify-live-provider-acceptance live-model-smoke live-provider-acceptance weather-live-smoke benchmark-http benchmark-socket-http check-runtime-reset check
 
 python-check:
 	$(PYTHON) -c 'import sys; assert sys.version_info >= (3, 11), "BJ-Pal requires Python 3.11+"'
@@ -196,11 +202,19 @@ verify-live-plan-quality: python-check
 	$(PYTHON) evals/verify_live_plan_quality.py $(LIVE_QUALITY_SOLO) $(LIVE_QUALITY_OBS_SOLO)
 	$(PYTHON) evals/verify_live_plan_quality_suite.py $(LIVE_QUALITY_FRIENDS)=$(LIVE_QUALITY_OBS_FRIENDS) $(LIVE_QUALITY_FAMILY)=$(LIVE_QUALITY_OBS_FAMILY) $(LIVE_QUALITY_SOLO)=$(LIVE_QUALITY_OBS_SOLO)
 
+verify-live-provider-acceptance: python-check
+	$(PYTHON) evals/verify_live_provider_acceptance.py $(LIVE_PROVIDER_ACCEPTANCE) $(LIVE_PROVIDER_OBSERVATION) $(LIVE_PROVIDER_QUALITY)
+
 live-model-smoke: python-check
 	$(PYTHON) -c 'assert "$(ACK_PROVIDER_COST)" == "1", "set ACK_PROVIDER_COST=1 to authorize one external model smoke"'
 	$(PYTHON) evals/run_live_model.py --ack-provider-cost --output $(LIVE_MODEL_OUTPUT) --quality-output $(LIVE_PLAN_QUALITY_OUTPUT)
 	$(PYTHON) evals/verify_live_model.py $(LIVE_MODEL_OUTPUT)
 	$(PYTHON) evals/verify_live_plan_quality.py $(LIVE_PLAN_QUALITY_OUTPUT) $(LIVE_MODEL_OUTPUT)
+
+live-provider-acceptance: python-check
+	$(PYTHON) -c 'assert "$(ACK_PROVIDER_COST)" == "1", "set ACK_PROVIDER_COST=1 to authorize one external provider acceptance"'
+	$(PYTHON) evals/run_live_provider_acceptance.py --ack-provider-cost --credential-source csswitch --model $(LIVE_PROVIDER_MODEL) --output-dir $(LIVE_PROVIDER_OUTPUT_DIR)
+	$(PYTHON) evals/verify_live_provider_acceptance.py $(LIVE_PROVIDER_OUTPUT_DIR)/acceptance.json $(LIVE_PROVIDER_OUTPUT_DIR)/observation.json $(LIVE_PROVIDER_OUTPUT_DIR)/quality.json
 
 eval-orchestration: python-check
 	BJ_PAL_LLM=mock $(PYTHON) evals/run_orchestration.py --output $(ORCHESTRATION_ARTIFACT)
@@ -251,5 +265,5 @@ check: export BJ_PAL_TOOL_AUDIT_DB := $(CHECK_TOOL_AUDIT_DB)
 check: export BJ_PAL_CLARIFICATION_DB := $(CHECK_CLARIFICATION_DB)
 check: export BJ_PAL_JOB_DB := $(CHECK_JOB_DB)
 check: export BJ_PAL_FEEDBACK_DB := $(CHECK_FEEDBACK_DB)
-check: check-runtime-reset secret-scan bootstrap-demo test api-smoke job-smoke demo demo-clarification demo-trial trial-operator-help showcase eval-public eval-retrieval eval-requirements eval-constraints eval-clarifications eval-observability eval-job-diagnostics eval-workload-health eval-otlp-export eval-operational-alerts eval-tool-audit eval-state-layout eval-prediction-state eval-user-memory-state eval-legacy-retirement eval-execution-budget eval-model-output verify-live-model-observation verify-live-plan-quality eval-orchestration eval-scheduling eval-access-control eval-side-effects eval-outcomes eval-trials eval-weather benchmark-http benchmark-socket-http
+check: check-runtime-reset secret-scan bootstrap-demo test api-smoke job-smoke demo demo-clarification demo-trial trial-operator-help showcase eval-public eval-retrieval eval-requirements eval-constraints eval-clarifications eval-observability eval-job-diagnostics eval-workload-health eval-otlp-export eval-operational-alerts eval-tool-audit eval-state-layout eval-prediction-state eval-user-memory-state eval-legacy-retirement eval-execution-budget eval-model-output verify-live-model-observation verify-live-plan-quality verify-live-provider-acceptance eval-orchestration eval-scheduling eval-access-control eval-side-effects eval-outcomes eval-trials eval-weather benchmark-http benchmark-socket-http
 	$(MAKE) check-runtime-reset PYTHON=$(PYTHON)

@@ -6,6 +6,7 @@ import base64
 import hashlib
 import json
 import re
+import tomllib
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
@@ -42,6 +43,15 @@ FORBIDDEN_BYTES = (
     b"error_message",
     b"tool.arguments",
 )
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def _declared_service_version() -> str:
+    package = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    version = package.get("project", {}).get("version")
+    if not isinstance(version, str) or not re.fullmatch(r"\d+\.\d+\.\d+", version):
+        raise ValueError("package service version is invalid")
+    return version
 
 
 def _sha(payload: Any) -> str:
@@ -124,7 +134,7 @@ def _verify_accepted(case: dict[str, Any]) -> None:
         raise ValueError("forbidden private marker in OTLP payload")
     if not resources or any(
         item.get("service.name") != "bj-pal"
-        or item.get("service.version") != "6.22.0"
+        or item.get("service.version") != _declared_service_version()
         for item in resources
     ):
         raise ValueError("OTLP resource identity mismatch")
