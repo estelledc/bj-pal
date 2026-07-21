@@ -1,0 +1,25 @@
+promo/landing-page.html
+  s_52aaeb6495f527::t_1abddab624c229 7,20,28,39,46,671,678,683,689,696-697,700-701,704,763,772,811,838-840,844-847,850-853,856-859,862-865,871-872,875-878,881-883,893,897,900,903,905-906,908-909,911-912,926-930,968
+tests/test_promo_refresh.py
+  s_52aaeb6495f527::t_b505bd734c012c 145,151,170-181,183,189,200-209
+tests/test_showcase_site.py
+  s_52aaeb6495f527::t_036001ed1cf525 97,100-103,123-124,150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "0c6b45f2b272bec1e88424aad48e97c8496dde8e",
+  "prompts": {},
+  "sessions": {
+    "s_52aaeb6495f527": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_52aaeb6495f527",
+        "model": "unknown"
+      },
+      "human_author": "zhouxun <zhouxun.13@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
