@@ -1,0 +1,41 @@
+.env_example
+  s_317114da48441a::t_ddb3ce243b4f35 81-83
+.github/workflows/core.yml
+  s_317114da48441a::t_e024937e39a0f5 59
+Makefile
+  s_317114da48441a::t_0a54930ddb69a7 83
+pyproject.toml
+  s_317114da48441a::t_179c3ec0df36b4 3
+scripts/migrate_planning_jobs.py
+  s_317114da48441a::t_4998a9f149860a 1-89
+src/jobs/migration.py
+  s_317114da48441a::t_e003f3d2d93804 1-700
+src/jobs/postgres_repository.py
+  s_317114da48441a::t_ed9df4c8fef5ed 142-155,212-223
+src/version.py
+  s_317114da48441a::t_01460fc43f1392 3
+tests/test_container_release.py
+  s_317114da48441a::t_5b2fc6275a9dbd 21-22
+tests/test_job_store_migration.py
+  s_317114da48441a::t_8d7644b9a1ccd9 1-518
+tests/test_trace_export.py
+  s_317114da48441a::t_89088454d32e2c 116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "fe31c04e8a2e82f7a85e052952029e9b2b4c4de9",
+  "prompts": {},
+  "sessions": {
+    "s_317114da48441a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_317114da48441a",
+        "model": "unknown"
+      },
+      "human_author": "zhouxun <zhouxun.13@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
