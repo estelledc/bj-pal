@@ -1,0 +1,43 @@
+README.md
+  s_d437a00be24b5d::t_cc9c7a77474f2c 20,34,88,232,234,253,257
+docs/ARCHITECTURE_EVIDENCE.md
+  s_d437a00be24b5d::t_2d3003227dccef 107-108
+docs/CONTAINER_RELEASE.md
+  s_d437a00be24b5d::t_d06ea0b6c91802 11-21,76,80
+docs/DESIGN.md
+  s_d437a00be24b5d::t_0290984807978b 121,482
+docs/INTERVIEW_GUIDE.md
+  s_d437a00be24b5d::t_2587ac6ff763a3 209
+docs/INTERVIEW_MARKET_EVIDENCE.md
+  s_d437a00be24b5d::t_0c0b6388724441 125
+docs/PUBLIC_DEMO.md
+  s_d437a00be24b5d::t_fa2d8fd8178b64 54,61
+docs/QA_PREP.md
+  s_d437a00be24b5d::t_5e58e6991d5972 130
+docs/ROADMAP.md
+  s_d437a00be24b5d::t_419bd3681dac88 59-60
+docs/TECHNICAL_REPORT.md
+  s_d437a00be24b5d::t_5e3c0090d6d388 5,470
+promo/landing-page.html
+  s_d437a00be24b5d::t_d9471ade345ecd 671,683,689,704,840,846-847,851,853,883,911-912,968
+tests/test_showcase_site.py
+  s_d437a00be24b5d::t_05b63f2f65bbbd 97,102,112-115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "171584a470c2a0cc85dc30c25b33e7a3f247b9e2",
+  "prompts": {},
+  "sessions": {
+    "s_d437a00be24b5d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_d437a00be24b5d",
+        "model": "unknown"
+      },
+      "human_author": "zhouxun <zhouxun.13@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
