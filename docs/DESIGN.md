@@ -465,6 +465,8 @@ v6.25 将镜像默认入口改成独立 `public_app`，不再把完整 control p
 
 `v6.25.0` tag workflow 已在登录 registry 前完成 credential-free Linux build 与 hardened public-contract smoke，release/SHA/latest 和匿名 manifest 都绑定 digest `sha256:7ee708a056d1a9797af4739ec876c346a17f282d902b386c171efe2e7235861d`。这是镜像发布证据，不是长期 HTTPS endpoint、WAF、跨实例配额或 SLA。
 
+v6.26 将 HTTP adapter 从 3,099 行单体函数重构为 composition root + 5 个 domain router。`app.py` 只负责 lazy service composition、scope dependency、exception/middleware 注册和 router 装配；system、sync planning、durable jobs、operation、trial/feedback 各自持有自己的 endpoint/serializer/error mapping。跨 sync/job 的 clarification 与 feedback delivery 收敛到 `PlanningRouteSupport`，共享 request/error response 与 public-surface policy 分别独立。结构测试固定每个 router 的 method/path/name、完整 OpenAPI 去版本 SHA、公开 3-path allowlist 和 `app.py <= 400`，因此“拆文件”不能靠遗漏端点或改变错误契约过关。新版 FastAPI 会以 `_IncludedRouter` 包装 include；public filter 按显式 `original_router` 子路由收窄，避免把 health/readiness 与私有 router 一起误删。该证据证明本次单进程 HTTP adapter 的行为等价和可审查性，不证明 API 长期兼容、多实例运行或生产部署。
+
 2026-07-21 的一次固定三里屯调用首轮通过：1 次 LLM 调用、53 input + 1411 output = 1464 provider-reported token，canonical execution 约 28.9 秒，六项 acceptance check 全通过。该数字只是单次 operator observation；配置的 provider/model 与 external execution 没有签名回执，token 也不是发票或币种成本。CSSwitch 0600 交接只解决本机测试入口，不等于 KMS、服务端凭证过期/轮换/撤销、多租户金额账户或 billing reconciliation。
 
 `Step.confidence` 为兼容历史保留字段名，当前语义是 `evidence_support_v1`：

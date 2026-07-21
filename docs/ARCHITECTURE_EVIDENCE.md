@@ -27,7 +27,7 @@ BJ-Pal 没有复制三语言、A2A 或某个编排框架；只采纳能解决当
 | 约束抽取与冲突策略可量化 | `evals/constraints/golden.json`、`run_constraints.py` | `tests/test_constraint_eval.py`、`make eval-constraints` | 30 条 hand-authored synthetic case；全指标 1.000 不代表真实用户理解率 |
 | 澄清可从原请求继续 | `src/clarifications/*`、`ClarificationResolution`、两个 continuation route | resolution/session/TTL/lease/HTTP/UI/CLI tests、`make demo-clarification` | 单机明文 SQLite；sync 依赖 capability ID；job continuation 已 tenant-scoped，sync 仍无用户身份；不承诺 exactly-once |
 | 澄清续跑证据可复算 | `evals/clarifications/golden.json`、runner/verifier | `tests/test_clarification_eval.py`、`make eval-clarifications` | 16 条 hand-authored synthetic case；不是开放域多轮理解或真实用户满意度 |
-| HTTP 契约稳定 | `src/http_api/schemas.py`、`app.py` | `tests/test_http_api.py`、`scripts/smoke_http_api.py` | API v1 未承诺长期兼容期 |
+| HTTP 契约稳定且 composition root 有界 | `src/http_api/app.py`、`routes/{system,planning,jobs,operations,outcomes}.py`、`responses.py`、`public_surface.py`、`schemas.py` | `test_http_api_architecture.py` 固定 5 个 router 的 method/path/name、32-path 去版本 OpenAPI SHA、public 3-path surface 与 `app.py <= 400`；另有 `test_http_api.py` 和 API smoke | 证明本次重构行为等价与结构边界；API v1 仍未承诺长期兼容期，单个 domain router 仍可继续按职责细分 |
 | 数据面类型化 | `src/providers/contracts.py`、`weather.py` | `tests/test_data_provider.py`、`test_weather_provider.py` | POI/UGC/路线仍是 SQLite；天气 live 未授权验收 |
 | 并行结果独立、单点合并 | `src/providers/sqlite_demo.py` | provider merge/partial failure tests | 共享 8-worker executor 只约束单进程资源，不代表多实例容量 |
 | Query UGC 检索可解释 | `src/retrieval/ugc.py` | `tests/test_ugc_retrieval.py` | 领域扩展是小型规则表，不是通用语义检索 |
