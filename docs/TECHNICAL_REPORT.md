@@ -1,8 +1,8 @@
 # BJ-Pal 技术报告
 
-> 本文面向代码评审者，解释项目从黑客松 Demo 到 v6.22 offline-first、需求门控、自然语言约束账本、可续跑澄清、可验证执行观测、隐私最小化 OTLP 导出与可复算运行告警、请求级执行预算、模型输出失败关闭、编排选型对照、tenant-aware durable 调度、持久证据驱动的故障诊断与 workload health、原子准入、身份感知控制面、审批式沙箱副作用状态机、用户结果证据链、知情试用分母、安全 operator 工作流、证据型计划质量代理、localhost socket acceptance、隐私最小化工具调用账本、诊断隔离、非破坏业务状态迁移与可复核发布边界的演进。系统细节见 [DESIGN.md](DESIGN.md)，逐项证据见 [ARCHITECTURE_EVIDENCE.md](ARCHITECTURE_EVIDENCE.md)。
+> 本文面向代码评审者，解释项目从黑客松 Demo 到 v6.23 offline-first、需求门控、自然语言约束账本、可续跑澄清、可验证执行观测、隐私最小化 OTLP 导出与可复算运行告警、请求级执行预算、显式 live-provider 凭证交接和 usage/质量验收、模型输出失败关闭、编排选型对照、tenant-aware durable 调度、持久证据驱动的故障诊断与 workload health、原子准入、身份感知控制面、审批式沙箱副作用状态机、用户结果证据链、知情试用分母、安全 operator 工作流、证据型计划质量代理、localhost socket acceptance、隐私最小化工具调用账本、诊断隔离、非破坏业务状态迁移与可复核发布边界的演进。系统细节见 [DESIGN.md](DESIGN.md)，逐项证据见 [ARCHITECTURE_EVIDENCE.md](ARCHITECTURE_EVIDENCE.md)。
 
-> 发布状态（2026-07-20）：v6.18 / v6.19 / v6.20 / v6.21 / v6.22 分别位于 Draft PR #5 / #6 / #7 / #8 / [#9](https://github.com/estelledc/bj-pal/pull/9)；v6.22 的本地完整门禁与 [Ubuntu branch workflow](https://github.com/estelledc/bj-pal/actions/runs/29734771068)（含 Docker build）均已通过。本文的“已实现”按本机/远端分支证据分别标注，不能外推为 `main` 已发布能力。
+> 发布状态（2026-07-21）：v6.18-v6.22 位于 Draft PR #5-#9；v6.23 当前在 `codex/live-provider-acceptance-v6-23` 完成实现、一次真实调用和本地完整门禁，stacked Draft PR 与远端 workflow 尚待完成。本文的“已实现”按本机/远端分支证据分别标注，不能外推为 `main` 已发布能力。
 
 ## 1. 问题定义
 
@@ -189,7 +189,7 @@ Delivery adapter 不再拥有 Planner/Probe 顺序。Planner、Prober、ProfileL
 - job、列表、event/SSE、cancel、replay、continuation 与 idempotency key 全部 tenant-scoped；跨 tenant 返回 404，失败的外租户或越 cap continuation 不改变 pending session；
 - v5.8 schema 保留式迁移补齐 `tenant_id/submitted_by`，旧行映射 `default/legacy-migration`，同时把全局 idempotency 唯一约束改成 tenant-local partial unique，保留 event ID/history；
 - 新增真实 FastAPI + SQLite 的 4-case access-control artifact；独立 verifier 从 raw HTTP outcome 和 principal policy 复算 scope/cap/tenant/continuation 结果、校验 SHA，并排除凭证泄露；
-- 这不是 OAuth/OIDC、动态 RBAC、数据库 RLS 或企业 IAM；仍无 credential 生命周期、tenant quota/公平调度、请求加密和多实例 job store。
+- 这不是 OAuth/OIDC、动态 RBAC、数据库 RLS 或企业 IAM；v6.23 只补本机 live-provider handoff，仍无服务端 credential 过期/轮换/撤销、tenant quota/公平调度、请求加密和多实例 job store。
 
 ### v6.0：Tenant Admission 与同优先级公平调度
 
@@ -382,6 +382,15 @@ Delivery adapter 不再拥有 Planner/Probe 顺序。Planner、Prober、ProfileL
 - tenant-scoped HTTP 复用 `jobs:read`；离线 CLI 显式读取两个已有 JSON source，以 O_EXCL 创建 mode-0600 结果，避免新进程把空 exporter monitor 伪装成服务状态；
 - 4-case artifact 覆盖健康、四规则 firing、小样本和 OTLP off，独立 verifier 重算来源 rate、规则、总状态和哈希。这是 fixed synthetic decision contract，不是生产 baseline、连续窗口、Alertmanager delivery、SLO 或事故处置效果。
 
+### v6.23：Bounded Live-provider Acceptance
+
+- 新增显式 CSSwitch credential handoff：只有费用确认、credential source 与 model 同时声明时才读取本机配置；拒绝 symlink、非普通文件、非当前用户 owner、group/other 权限、超大/非法 schema、active profile 歧义、非 DeepSeek/Anthropic format 与非 HTTPS endpoint；
+- API Key 只在 context manager 内进入 `DPSK_*`，不进入 CLI、Agent message、repr/equality、配置路径或 evidence；runner 退出后恢复原环境，并避免与 LongCat/Anthropic/DEEPSEEK alias 混用；
+- 真实调用仍走 canonical `PlanningService`、fixed scenario、strict model-output contract、quality proxy、trace usage 与 request-local budget；bundle 目录必须不存在，创建为 0700，observation/quality/acceptance 以 O_EXCL/0600 写入；
+- 2026-07-21 一次三里屯 synthetic 场景首轮接受：1 个 LLM call、53 input + 1411 output = 1464 provider-reported token，canonical execution 约 28.9 秒，quality hard gate 通过；实际 Key 在三份 linked artifact 中 exact-match count 为 0；
+- 独立 verifier 复用既有 observation/quality verifier，再自行重算 credential preflight、usage 加总、execution budget SHA/count、linked artifact、六项 acceptance checks 与 outer SHA。它不能证明签名 provider/external execution、成功率、发票金额、价格版本或服务端 credential lifecycle。
+- 首次完整门禁发现 OTLP artifact verifier 仍硬编码 v6.22；修复后 verifier 从 `pyproject.toml` 读取声明版本，并由 package/app/core 版本一致性测试约束。最终 557-file secret gate、903 collected / 900 passed / 3 skipped、ASGI/TCP 各 20/20，完整门禁退出码为 0。
+
 ## 3. 当前执行链
 
 ```text
@@ -532,6 +541,6 @@ job store 保存规范化 request JSON、SHA-256 和服务端认证上下文：
 
 ## 9. 主要限制与下一步
 
-最重要的证据缺口是：v6.10 已修复 live proxy 暴露的候选/忌口问题，v6.11 补 localhost socket acceptance，v6.12-v6.17 逐步收紧日志、拆分 owner 并增加禁止 legacy 回退的 readiness，v6.21 补了隐私最小化 OTLP 的本机协议验收，v6.22 补了带最小样本门的单快照告警决策；但真实 participant/report 仍为 0。32/32 个 fixed synthetic 必需检查、一次本机 socket 运行、日志、迁移与告警契约样本都不能替代真人采纳、完成、满意或生产容量。技术缺口包括 legacy rows 受控清理、托管 purge scheduler、外部备份删除证明，天气 live 模式尚无适用于作品集/宣传部署的商业授权或自托管 acceptance，POI/路线仍无合法 live provider；外部 IdP/动态 RBAC、credential 生命周期、数据库 RLS、入口 abuse protection、跨实例全局准入/调度、全局/tenant 金额预算、audit retention、在线 reprioritize 与多实例 job store。booking 只完成 sandbox approval/receipt/read-only reconciliation，还缺真实供应商授权与查询 acceptance、补偿 operation、客服 handoff 和签名回执；另外仍缺经授权的远程 collector/metrics backend、连续窗口/迟滞/告警 delivery、TLS/反向代理与多实例负载测试。
+最重要的证据缺口是：v6.10 修复 live proxy 暴露的候选/忌口问题，v6.21-v6.22 补 OTLP 与单快照告警，v6.23 又完成一次显式 0600 CSSwitch handoff 的 DeepSeek usage/质量验收；但真实 participant/report 仍为 0。单次 1464 provider-reported token、32/32 fixed synthetic 必需检查、socket/日志/迁移/告警样本都不能替代真人采纳、成功率、账单金额或生产容量。技术缺口包括 legacy rows 受控清理、托管 purge/备份删除，天气宣传用途授权或 self-hosted acceptance，POI/路线合法 live provider；服务端 credential 过期/轮换/撤销、外部 IdP/动态 RBAC、数据库 RLS、入口 abuse protection、价格/cache 计价、跨实例全局准入/调度与 cost controller、tenant 金额预算、billing reconciliation、audit retention、在线 reprioritize 与多实例 store。booking 仍缺真实供应商授权/查询/补偿/客服/签名回执；另外还缺远程 collector、连续告警、TLS/反向代理与多实例负载测试。
 
 正确顺序是：执行一个有界知情 cohort 并获得真实 badcase → 授权天气环境与 live acceptance → 真实 failure/freshness 样本 → 下一类 provider → 合法 booking 测试环境 + 真实状态查询/签名回执 acceptance → 独立重新审批的补偿 operation/客服 handoff → 外部 IdP/动态授权/存储层隔离/入口与跨实例 quota → OTLP/metrics + TLS/reverse-proxy + multi-instance store/load test。见 [ROADMAP.md](ROADMAP.md)。
