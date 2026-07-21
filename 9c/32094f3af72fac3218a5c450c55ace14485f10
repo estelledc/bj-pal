@@ -1,0 +1,43 @@
+.github/workflows/publish-container.yml
+  s_e91f7716f8b9b4::t_e19c0e3350560c 1-117
+Dockerfile
+  s_e91f7716f8b9b4::t_faa89091778c0c 3-13,26-27,31
+compose.public.yaml
+  s_e91f7716f8b9b4::t_67a1ec46c3e493 1-17
+evals/release_candidate/verify.py
+  s_e91f7716f8b9b4::t_d3a768bab6331a 20
+pyproject.toml
+  s_e91f7716f8b9b4::t_2d884aa8b44cda 3
+scripts/smoke_deployed_api.py
+  s_e91f7716f8b9b4::t_586b61c6cca63f 1-117
+scripts/verify_release_tag.py
+  s_e91f7716f8b9b4::t_3f1ed4cabefacb 1-69
+src/release_candidate.py
+  s_e91f7716f8b9b4::t_a4432caa377a62 28
+src/version.py
+  s_e91f7716f8b9b4::t_098cea2b3c33e5 3
+tests/test_container_release.py
+  s_e91f7716f8b9b4::t_351f8d6fd843ec 1-74
+tests/test_release_candidate.py
+  s_e91f7716f8b9b4::t_2b7c04359ea0ce 53-67
+tests/test_trace_export.py
+  s_e91f7716f8b9b4::t_f2f8399184a541 116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "9c32094f3af72fac3218a5c450c55ace14485f10",
+  "prompts": {},
+  "sessions": {
+    "s_e91f7716f8b9b4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_e91f7716f8b9b4",
+        "model": "unknown"
+      },
+      "human_author": "zhouxun <zhouxun.13@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
