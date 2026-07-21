@@ -56,7 +56,7 @@ jobs:
       - name: Bootstrap public demo data
         run: make bootstrap-demo PYTHON=python
 
-      - name: Verify PostgreSQL durable job store
+      - name: Verify PostgreSQL durable job store and cutover
         run: make test-postgres-job-store PYTHON=python
 
       - name: Run tests

@@ -80,7 +80,7 @@ test: python-check
 
 test-postgres-job-store: python-check
 	$(PYTHON) -c 'import os; assert os.environ.get("BJ_PAL_TEST_POSTGRES_DSN"), "BJ_PAL_TEST_POSTGRES_DSN is required"'
-	$(PYTHON) -m pytest -q tests/test_postgres_job_store.py tests/test_job_store_factory.py
+	$(PYTHON) -m pytest -q tests/test_postgres_job_store.py tests/test_job_store_factory.py tests/test_job_store_migration.py
 
 api: python-check
 	BJ_PAL_LLM=mock $(PYTHON) -m uvicorn http_api.app:app --app-dir src --host 0.0.0.0 --port 8000
