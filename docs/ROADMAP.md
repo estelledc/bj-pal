@@ -54,6 +54,7 @@
 | v6.24 OCI release gate | 已发布 | tag/version 双源核对、credential-free build、hardened container smoke、release/SHA/latest tag 与匿名 digest 验证 | 单架构 mock/synthetic 镜像，不是公网 API、生产部署或 SLA |
 | v6.25 Public demo isolation | 已发布 | mock/synthetic 启动前 gate、public 3-path OpenAPI、raw-attempt/concurrency/body guard、无 feedback/clarification state、不可变 OCI digest | 进程级 aggregate limiter；无可信 IP、WAF、长期 HTTPS、多实例或 SLA |
 | v6.26 HTTP composition root | 已通过 [PR #17](https://github.com/estelledc/bj-pal/pull/17) 发布 | 5 个 domain router + shared response/public-surface policy；`app.py` 3,099→303；32-path 去版本 OpenAPI SHA 不变；public 3-path；936 passed / 3 skipped；main Core/Pages/OCI 均通过 | 行为等价与结构证据，不是 API 永久兼容；jobs router 仍较大；无长期 HTTPS API |
+| v6.27 PostgreSQL durable-job store | 本地 release candidate | `PlanningJobStore` port + 显式 factory；SQLite 默认/PostgreSQL 可选；PostgreSQL 17 下 4 个独立 worker 进程无重复领取 12 job，8 路提交精确执行共享 active cap；lease reclaim/旧 owner fencing/replay/append-only trigger/readiness probe；954 collected / 951 passed / 3 skipped，完整门禁通过；CI Postgres service | 短 transaction advisory lock 优先正确性而非吞吐；无 SQLite 在线迁移、容量/故障恢复、RLS、broker 或生产多实例负载证据；尚未合并/发布 |
 | GitHub 发布 | 已公开发布 v6.26 | `main` 发布提交为 `fda3944`；Core、Pages、[v6.26 Release](https://github.com/estelledc/bj-pal/releases/tag/v6.26.0) 与 GHCR digest `a4242a…117051` 均已复核；description、homepage 与 topics 已设置 | 许可证仍未选择；Pages 是静态案例而非 API 部署；真实试用仍为 0 |
 
 ## 1.1 v6.18 GitHub 发布门
@@ -476,7 +477,7 @@
 - 已完成：单机 tenant active/accepted-submission 准入、append-only admission audit、同有效优先级最久未服务 tenant 轮转及独立 verifier；
 - 待完成：外部 IdP/动态 RBAC、token 过期/轮换/撤销、数据库 RLS 或等价存储隔离、跨实例全局配额/调度、audit retention/abuse protection、在线 reprioritize 与单次 provider/model 调用的主动中止；
 - 扩展现有 event log：细粒度业务进度；
-- 从 SQLite 迁移到支持多实例并发的 job store；
+- 为 SQLite→PostgreSQL 增加显式迁移/cutover/rollback，并补连接池、容量、故障恢复与多主机负载证据；
 - 已完成本地请求级 execution observation、request/job correlation、阶段 span、调用/业务计数和真实 token completeness；
 - 待完成经授权的远程 OTLP collector 与 metrics backend：持续汇聚 queue wait、run latency p50/p95/p99、error/retry、provider freshness 和真实成本。
 

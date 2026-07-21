@@ -42,15 +42,15 @@ BJ-Pal 没有复制三语言、A2A 或某个编排框架；只采纳能解决当
 | Replan 后路线不沿用旧值 | `tools/route_enricher.py`、`Plan.route_context`、`RerouteEvent.route_refresh` | `tests/test_route_enricher.py`、`test_replan_policy.py`、HTTP E2E | 本地缓存/估算；不是实时路况，缺数据时显式 partial |
 | 时间轴计入路程并尊重窗口 | `agents/schedule_reconciler.py`、`Plan.schedule_context`、`RerouteEvent.schedule_refresh` | `tests/test_schedule_reconciler.py`、Application/HTTP/Replan tests | 最小停留是版本化规则；不自动删站，未知路线 partial，放不下 overrun |
 | provider 部分失败不吞掉 | `ProviderIssue`、`Plan.data_warnings` | `test_provider_preserves_partial_failure...` | required/optional 分类仍较粗 |
-| durable job 可恢复 | `src/jobs/repository.py`、`service.py` | heartbeat/fencing/retry/dead-letter/deadline/concurrent claim tests、job smoke | 单机 SQLite；无多实例队列 |
-| durable claim 有优先级且同级轮转 tenant | `tenant_fair_priority_aging_v2`、`priority_aging_v1`、`PlanningJobRepository.claim_next` | priority/preemption/starvation/backoff/tenant-rotation tests、`make eval-scheduling` | 只保证单机选择顺序，不是严格公平或启动 SLA；新 tenant 有一次初始机会，无在线 reprioritize/多实例调度 |
+| durable job 可恢复 | `src/jobs/ports.py`、SQLite/PostgreSQL repositories、`service.py` | heartbeat/fencing/retry/dead-letter/deadline；PostgreSQL 17 下 4 个独立进程无重复 claim、job smoke | SQLite 默认；PostgreSQL 适配器不是 broker，也未做生产容量/故障恢复或 SQLite 在线迁移 |
+| durable claim 有优先级且同级轮转 tenant | `tenant_fair_priority_aging_v2`、`priority_aging_v1`、两类 store transaction | priority/preemption/starvation/backoff/tenant-rotation tests、`make eval-scheduling`、PostgreSQL cross-process test | PostgreSQL 用短 advisory-lock transaction 换确定性；不是严格公平、启动 SLA、高吞吐队列或在线 reprioritize |
 | 调度证据不信任生产排序自报 | `evals/scheduling/*` | `tests/test_scheduling_eval.py`、独立 verifier | 4 条 synthetic contract fixture；无多实例争用、队列吞吐或真实 workload 证据 |
-| job 事件与状态原子落库 | `planning_job_events`、repository transaction | retry/cancel/timeout/replay event 强制失败 rollback、append-only trigger tests | 无远端 broker 或签名日志 |
+| job 事件与状态原子落库 | `planning_job_events`、backend-neutral store transaction | retry/cancel/timeout/replay event 强制失败 rollback、SQLite/PostgreSQL append-only trigger tests | 无远端 broker、pub-sub fanout 或签名日志 |
 | event cursor 与 SSE 可恢复 | JSON `events` + SSE `events/stream` | `Last-Event-ID`、query precedence、bounded timeout、timed-out terminal tests、API smoke | 最长 30 秒连接；无多实例 fanout |
 | job 可查询和控制 | list/cancel/deadline/replay repository + HTTP routes | 轻量列表、queued/running/expired cancel、deadline 结算、竞态优先级、幂等 replay、lineage/rollback tests | 取消/deadline 不能强杀单次外部调用 |
 | 控制面默认失败关闭 | `src/http_api/auth.py`、job route dependencies | 503 unconfigured、401 missing/wrong、403 scope/cap、constant-time hash compare、token 不回显、API smoke | 静态本地 registry；无外部 IdP、动态 RBAC、过期/轮换/撤销 |
-| job 控制面按 tenant 隔离 | tenant-aware repository/service + HTTP dependencies | 同 key 跨 tenant、foreign list/cursor/get/event/SSE/cancel/replay/continuation/admission-audit tests、`make eval-access-control` | 应用层 SQLite 条件，不是数据库 RLS；无跨实例隔离 |
-| 新 job 创建受原子 tenant admission 约束 | `tenant_admission_v1`、`planning_job_admission_events` | active/rate/idempotent/concurrent submit、replay、continuation、append-only/tenant HTTP tests、API smoke | accepted-submission 不是 raw-attempt limiter；单 SQLite 文件；audit 无 retention/storage-DoS 防护 |
+| job 控制面按 tenant 隔离 | tenant-aware repository/service + HTTP dependencies | 同 key 跨 tenant、foreign list/cursor/get/event/SSE/cancel/replay/continuation/admission-audit tests、`make eval-access-control` | 应用层条件，不是 PostgreSQL RLS；静态 credential registry 仍非企业 IAM |
+| 新 job 创建受原子 tenant admission 约束 | `tenant_admission_v1`、`planning_job_admission_events` | active/rate/idempotent/concurrent submit、replay、continuation；PostgreSQL 8 路提交 3 admitted/5 rejected | accepted-submission 不是网关 raw-attempt limiter；audit 无 retention/storage-DoS 防护；无容量结论 |
 | 访问控制与准入证据可独立复算 | `evals/access_control/*` | `tests/test_access_control_eval.py`、artifact verifier | 6 条 synthetic contract case/10 metrics；不证明外部身份系统、入口 abuse protection 或多实例 quota |
 | 副作用 approval 与动作/报价绑定 | `src/operations/repository.py`、operation HTTP routes | self-approval、fingerprint tamper、expiry、HTTP scope/tenant tests | 只允许 sandbox；静态 principal 不是企业审批系统 |
 | 副作用幂等且 receipt 可校验 | `SideEffectOperationRepository`、`side_effect_receipt_v1` | operation repository/provider outcome tests、`make eval-side-effects` | receipt 绑定 envelope，但没有第三方签名或 raw provider response 复核 |
@@ -138,7 +138,7 @@ BJ-Pal 没有复制三语言、A2A 或某个编排框架；只采纳能解决当
 | cancel 与 deadline 竞争 | 比较两个持久时间，较早信号决定 cancelled/timed_out | 是 |
 | failed/dead-letter/timed-out 手动重放 | 原 job 不变；原子创建带 lineage 和新 deadline 的 queued job | 是 |
 | event 行被修改/删除 | SQLite trigger 拒绝操作 | 原事件保留 |
-| SSE 客户端断线 | 用 `Last-Event-ID` 从同一 SQLite event_id 继续读取 | 是 |
+| SSE 客户端断线 | 用 `Last-Event-ID` 从同一 store event_id 继续读取 | 是 |
 | scope 或 priority cap 越权 | 403；不提交 job，job continuation 不消费 pending session | 否 |
 | tenant active job cap 已满 | 429 `tenant_active_job_limit_exceeded`；幂等复用不误拒；continuation 释放 lease 后可重试 | rejected/idempotent/admitted decision 追加保存 |
 | tenant 60 秒 accepted-submission cap 已满 | 429 `tenant_submission_rate_exceeded` + `Retry-After`；窗口边界后可重试 | rejected decision 追加保存；raw HTTP attempt 不计数 |
@@ -173,9 +173,9 @@ BJ-Pal 没有复制三语言、A2A 或某个编排框架；只采纳能解决当
 这些是已知缺口，不应在面试时用“后面接一下 API 就行”带过：
 
 1. 真实 provider：天气 typed adapter 已实现，但缺宣传/商业用途授权或自托管 live acceptance；POI/路线仍缺合法 live provider。报价类还需 currency/bookable/receipt。
-2. Durable execution：已完成单机 heartbeat/retry/dead-letter/SSE/list/cancel/deadline/replay、priority aging、同有效优先级 tenant 轮转、active/accepted-submission admission 与 audit；仍缺入口 raw-attempt limiter、audit retention、在线 reprioritize、多实例全局配额/调度和跨实例 fencing。
+2. Durable execution：SQLite 默认与 PostgreSQL shared-store adapter 已共用 heartbeat/retry/dead-letter/SSE/list/cancel/deadline/replay、priority aging、同有效优先级 tenant 轮转、active/accepted-submission admission 与 audit；PostgreSQL 已有独立进程 claim、全局 cap 和旧 owner fencing 的本机证据。仍缺 SQLite 在线迁移、入口 raw-attempt limiter、audit retention、在线 reprioritize、容量/故障恢复与跨主机负载证据。
 3. 真实副作用：sandbox 已有双人审批、operation id、幂等执行、receipt、append-only audit、uncertain no-retry 与 provider-bound 只读 reconciliation；仍缺真实供应商授权和状态查询 acceptance、独立重新审批的补偿 operation、客服 handoff、第三方签名回执、PII/secret/retention 和多实例证据。
-4. 访问控制：已有静态哈希 principal registry、route scope、tenant namespace、priority cap 与 tenant admission policy；sync continuation 仍使用短期 capability ID，原请求明文落 SQLite；仍缺外部 IdP、动态 RBAC、数据库 RLS 或等价存储隔离、token 过期/轮换/撤销、跨实例 quota、加密、PII redaction、secret 管理、定时清理与备份删除证明。
+4. 访问控制：已有静态哈希 principal registry、route scope、tenant namespace、priority cap 与 tenant admission policy；sync continuation 仍使用短期 capability ID，原请求明文落 SQLite；PostgreSQL job adapter 也仍是应用层 tenant 条件。仍缺外部 IdP、动态 RBAC、数据库 RLS 或等价存储隔离、token 过期/轮换/撤销、网关级 quota、加密、PII redaction、secret 管理、定时清理与备份删除证明。
 5. 可观测性：已完成 request/job 关联的本地 span artifact、阶段耗时、调用/业务计数、真实 token completeness、隐私最小化的新工具日志链、OTLP/HTTP protobuf loopback/failure 协议验收、单实例闭合窗口的 queue/run/terminal 分位数与错误/重试比率，以及带最小样本门的 deterministic alert snapshot；仍缺 legacy 日志受控清理、数据库加密/访问审计、经授权的远程 collector、多实例聚合、连续窗口/迟滞/告警 delivery、provider freshness、处置 outcome 和真实成本看板。
 6. 真实评测：v6.6 已有 tenant-scoped 知情试用、精确 notice SHA、单次加入、退出排除、冻结 snapshot 和显式本地 retention purge，但当前 participant/report 仍为 0；检索、Requirement Gate、Constraint Ledger 与 Clarification Continuation golden set 也都是 synthetic。下一步需真正招募明确知情的试用者，积累真实失败/澄清/约束表达样本和 badcase 修复闭环；匿名参与凭证、自报完成不能直接叫不同真人、任务成功率或满意度。
 7. Memory 服务化：当前 control-plane principal 未接入 Memory；身份认证、加密、跨设备同步、retention policy 和备份删除证明尚未实现。
