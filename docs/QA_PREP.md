@@ -141,6 +141,7 @@ Dockerfile 使用 Python 3.11 slim，build 时生成 demo 数据，容器非 roo
 - [ ] 运行 `make demo-trial` 与 `make eval-trials`，说明 synthetic 0.8 不是用户指标、participant capability 不是身份、purge receipt 不是取证级擦除或备份删除证明。
 - [ ] 展示 `make trial-operator-help` 和 operator contract 测试，说明 0600 bundle 仍需人工安全分发/删除，purge 要冻结/到期/精确确认且 WAL fail closed，本地 CLI 不等于远程 IAM。
 - [ ] 展示 `execution_observation_v2` 的 request/job correlation、span tree、token completeness、`execution_budget_v1` 和双层 SHA；运行 `make eval-execution-budget`，说明 N+1 在 body 前拒绝、mock token 为 unavailable、checkpoint 不能强杀已阻塞调用、本地 capture 不等于 OTLP/生产监控或金额成本治理。
+- [ ] 运行 `make eval-otlp-export` 与 `make eval-operational-alerts`：先解释 loopback protobuf 只证明协议/隐私，再展示 20 样本门如何让小窗口保持 `insufficient_data`；主动说明 fixed threshold、单 snapshot、无 delivery/迟滞/处置 outcome，因此不是生产 SLO 告警。
 - [ ] 运行 `make eval-model-output`，展示 hallucinated ID、名称错配、补残 JSON、一次修复和预算阻止第二次正文；说明 prompt schema 不等于 runtime validation，1.000 也不等于幻觉率为 0。
 - [ ] 画出 queued → running → succeeded/failed/dead_lettered/cancelled/timed_out，以及 heartbeat、retry、cancel、deadline 和 lease recovery。
 - [ ] 用两个不同 priority、一个 backoff job 和两个同优先级 tenant 解释 aging/tenant rotation/FIFO/eligible boundary，并明确“选择公平不等于启动 SLA”。

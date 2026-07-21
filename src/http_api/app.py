@@ -54,6 +54,7 @@ from jobs import (
     TenantAdmissionRejected,
 )
 from jobs.workload_health import validate_closed_window
+from monitoring import OperationalAlertSnapshot
 from operations import (
     InvalidOperationTransition,
     OperationApprovalConflict,
@@ -121,6 +122,7 @@ from .schemas import (
     OperationEventsResponse,
     OperationReconciliationResponse,
     OperationReconciliationsResponse,
+    OperationalAlertSnapshotResponse,
     SideEffectOperationRequest,
     SideEffectOperationResponse,
     TrialCreateRequest,
@@ -160,7 +162,7 @@ from .sse import (
 )
 
 
-SERVICE_VERSION = "6.21.0"
+SERVICE_VERSION = "6.22.0"
 REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
 LOGGER = logging.getLogger(__name__)
 
@@ -944,6 +946,88 @@ def create_app(
         return TraceExportStatusResponse.model_validate(
             trace_export_status().to_dict()
         )
+
+    @application.get(
+        "/v1/operational-alerts",
+        response_model=OperationalAlertSnapshotResponse,
+        responses={
+            400: {"model": ErrorResponse, "description": "Invalid metrics window"},
+            409: {
+                "model": ErrorResponse,
+                "description": "Bounded evidence limit exceeded",
+            },
+            500: {
+                "model": ErrorResponse,
+                "description": "Invalid operational evidence",
+            },
+            503: {"model": ErrorResponse, "description": "Job store unavailable"},
+        },
+        tags=["operations"],
+        summary="Evaluate deterministic operational alert rules",
+    )
+    def get_operational_alerts(
+        request: Request,
+        principal: ControlPrincipal = Depends(require_read_auth),
+        window_start: str = Query(min_length=20, max_length=64),
+        window_end: str = Query(min_length=20, max_length=64),
+    ):
+        try:
+            validate_closed_window(window_start, window_end)
+        except ValueError as exc:
+            return _error_response(
+                request,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                code="invalid_operational_alert_window",
+                message=str(exc),
+            )
+        try:
+            workload = jobs().workload_health(
+                tenant_id=principal.tenant_id,
+                window_start=window_start,
+                window_end=window_end,
+            )
+            snapshot = OperationalAlertSnapshot.create(
+                workload=workload,
+                trace_status=trace_export_status().to_dict(),
+            )
+        except JobWorkloadEvidenceLimitExceeded:
+            return _error_response(
+                request,
+                status_code=status.HTTP_409_CONFLICT,
+                code="operational_alert_evidence_limit_exceeded",
+                message="The alert window exceeds the bounded evidence limit.",
+            )
+        except ValueError:
+            LOGGER.exception(
+                "operational alert evidence is invalid",
+                extra={"request_id": _request_id(request)},
+            )
+            return _error_response(
+                request,
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                code="invalid_operational_alert_evidence",
+                message="The operational alert evidence is invalid.",
+            )
+        except (OSError, RuntimeError, sqlite3.Error):
+            LOGGER.exception(
+                "operational alert evaluation failed",
+                extra={"request_id": _request_id(request)},
+            )
+            return _error_response(
+                request,
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                code="job_store_unavailable",
+                message="The durable job store is temporarily unavailable.",
+            )
+        payload = snapshot.to_dict()
+        payload["links"] = {
+            "workload": (
+                "/v1/planning-job-health"
+                f"?window_start={snapshot.window_start}&window_end={snapshot.window_end}"
+            ),
+            "trace_export": "/v1/trace-export-status",
+        }
+        return OperationalAlertSnapshotResponse.model_validate(payload)
 
     @application.post(
         "/v1/plans",

@@ -1,8 +1,8 @@
 # BJ-Pal 技术报告
 
-> 本文面向代码评审者，解释项目从黑客松 Demo 到 v6.21 offline-first、需求门控、自然语言约束账本、可续跑澄清、可验证执行观测与隐私最小化 OTLP 导出、请求级执行预算、模型输出失败关闭、编排选型对照、tenant-aware durable 调度、持久证据驱动的故障诊断与 workload health、原子准入、身份感知控制面、审批式沙箱副作用状态机、用户结果证据链、知情试用分母、安全 operator 工作流、证据型计划质量代理、localhost socket acceptance、隐私最小化工具调用账本、诊断隔离、非破坏业务状态迁移与可复核发布边界的演进。系统细节见 [DESIGN.md](DESIGN.md)，逐项证据见 [ARCHITECTURE_EVIDENCE.md](ARCHITECTURE_EVIDENCE.md)。
+> 本文面向代码评审者，解释项目从黑客松 Demo 到 v6.22 offline-first、需求门控、自然语言约束账本、可续跑澄清、可验证执行观测、隐私最小化 OTLP 导出与可复算运行告警、请求级执行预算、模型输出失败关闭、编排选型对照、tenant-aware durable 调度、持久证据驱动的故障诊断与 workload health、原子准入、身份感知控制面、审批式沙箱副作用状态机、用户结果证据链、知情试用分母、安全 operator 工作流、证据型计划质量代理、localhost socket acceptance、隐私最小化工具调用账本、诊断隔离、非破坏业务状态迁移与可复核发布边界的演进。系统细节见 [DESIGN.md](DESIGN.md)，逐项证据见 [ARCHITECTURE_EVIDENCE.md](ARCHITECTURE_EVIDENCE.md)。
 
-> 发布状态（2026-07-20）：v6.18 / v6.19 / v6.20 / v6.21 分别位于 Draft PR #5 / #6 / #7 / #8；v6.21 的本地完整门禁与分支 workflow 均已通过。本文的“已实现”按本机/远端分支证据分别标注，不能外推为 `main` 已发布能力。
+> 发布状态（2026-07-20）：v6.18 / v6.19 / v6.20 / v6.21 / v6.22 分别位于 Draft PR #5 / #6 / #7 / #8 / [#9](https://github.com/estelledc/bj-pal/pull/9)；v6.22 的本地完整门禁与 [Ubuntu branch workflow](https://github.com/estelledc/bj-pal/actions/runs/29734771068)（含 Docker build）均已通过。本文的“已实现”按本机/远端分支证据分别标注，不能外推为 `main` 已发布能力。
 
 ## 1. 问题定义
 
@@ -374,6 +374,14 @@ Delivery adapter 不再拥有 Planner/Probe 顺序。Planner、Prober、ProfileL
 - exporter exception/failure 只更新有界计数和 error code，不将 trace I/O 异常抛回业务；受 `jobs:read` 保护的健康端点不返回 collector URL/header，只返回 origin SHA、policy、processor、state 和计数；
 - 2-case artifact 实际走 loopback HTTP + protobuf，独立 decoder 复核 resource/span tree/GenAI attributes/privacy，再用注入失败证明 business isolation。这不是远程 vendor receipt、生产投递、告警/SLO、retention、多实例或真实用户证据。
 
+### v6.22：Operational Alert Contract
+
+- 新增 `portfolio_operational_alert_policy_v1`，只消费 v6.20 的 integrity-checked workload snapshot 和 v6.21 的 payload-free trace status，不建立另一套采集或指标定义；
+- terminal failure、queue wait p95、retry rate 分别要求 20 个 terminal、20 个 queue sample、20 个 job；样本不足是 `insufficient_data`，数值达到阈值才 firing，未配置 OTLP 只 disabled 对应规则；
+- 总状态固定按 `firing > insufficient_data > healthy > disabled` 归并；source/policy/snapshot 分层 SHA 阻止阈值、来源或判断被无痕替换；
+- tenant-scoped HTTP 复用 `jobs:read`；离线 CLI 显式读取两个已有 JSON source，以 O_EXCL 创建 mode-0600 结果，避免新进程把空 exporter monitor 伪装成服务状态；
+- 4-case artifact 覆盖健康、四规则 firing、小样本和 OTLP off，独立 verifier 重算来源 rate、规则、总状态和哈希。这是 fixed synthetic decision contract，不是生产 baseline、连续窗口、Alertmanager delivery、SLO 或事故处置效果。
+
 ## 3. 当前执行链
 
 ```text
@@ -524,6 +532,6 @@ job store 保存规范化 request JSON、SHA-256 和服务端认证上下文：
 
 ## 9. 主要限制与下一步
 
-最重要的证据缺口是：v6.10 已修复 live proxy 暴露的候选/忌口问题，v6.11 补 localhost socket acceptance，v6.12-v6.17 逐步收紧日志、拆分 owner 并增加禁止 legacy 回退的 readiness，v6.21 补了隐私最小化 OTLP 的本机协议验收；但真实 participant/report 仍为 0。32/32 个 fixed synthetic 必需检查、一次本机 socket 运行、日志与迁移契约样本都不能替代真人采纳、完成、满意或生产容量。技术缺口包括 legacy rows 受控清理、托管 purge scheduler、外部备份删除证明，天气 live 模式尚无适用于作品集/宣传部署的商业授权或自托管 acceptance，POI/路线仍无合法 live provider；外部 IdP/动态 RBAC、credential 生命周期、数据库 RLS、入口 abuse protection、跨实例全局准入/调度、全局/tenant 金额预算、audit retention、在线 reprioritize 与多实例 job store。booking 只完成 sandbox approval/receipt/read-only reconciliation，还缺真实供应商授权与查询 acceptance、补偿 operation、客服 handoff 和签名回执；另外仍缺经授权的远程 collector/metrics backend、TLS/反向代理与多实例负载测试。
+最重要的证据缺口是：v6.10 已修复 live proxy 暴露的候选/忌口问题，v6.11 补 localhost socket acceptance，v6.12-v6.17 逐步收紧日志、拆分 owner 并增加禁止 legacy 回退的 readiness，v6.21 补了隐私最小化 OTLP 的本机协议验收，v6.22 补了带最小样本门的单快照告警决策；但真实 participant/report 仍为 0。32/32 个 fixed synthetic 必需检查、一次本机 socket 运行、日志、迁移与告警契约样本都不能替代真人采纳、完成、满意或生产容量。技术缺口包括 legacy rows 受控清理、托管 purge scheduler、外部备份删除证明，天气 live 模式尚无适用于作品集/宣传部署的商业授权或自托管 acceptance，POI/路线仍无合法 live provider；外部 IdP/动态 RBAC、credential 生命周期、数据库 RLS、入口 abuse protection、跨实例全局准入/调度、全局/tenant 金额预算、audit retention、在线 reprioritize 与多实例 job store。booking 只完成 sandbox approval/receipt/read-only reconciliation，还缺真实供应商授权与查询 acceptance、补偿 operation、客服 handoff 和签名回执；另外仍缺经授权的远程 collector/metrics backend、连续窗口/迟滞/告警 delivery、TLS/反向代理与多实例负载测试。
 
 正确顺序是：执行一个有界知情 cohort 并获得真实 badcase → 授权天气环境与 live acceptance → 真实 failure/freshness 样本 → 下一类 provider → 合法 booking 测试环境 + 真实状态查询/签名回执 acceptance → 独立重新审批的补偿 operation/客服 handoff → 外部 IdP/动态授权/存储层隔离/入口与跨实例 quota → OTLP/metrics + TLS/reverse-proxy + multi-instance store/load test。见 [ROADMAP.md](ROADMAP.md)。

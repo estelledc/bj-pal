@@ -43,6 +43,8 @@
 | 小红书 | [为什么简历不要只写 Coding Agent 和 RAG](https://www.xiaohongshu.com/explore/6a3d5e5e000000000803e05d) | 项目目的、产品价值、持续使用和工程取舍比教程复刻/关键词堆叠更有区分度 | 2026-06-26 观点帖，C 级，仅用于校验简历叙事方向 |
 | 小红书 | [RAG 最怕一问评测](https://www.xiaohongshu.com/explore/6a008d220000000037035699) | 数据来源、问题分类、Recall@K、生成忠实度、同集对比；功能闭环不等于质量闭环 | 2026-05-10 观点帖，C 级；指标框架需由本项目 raw case 和 verifier 落实 |
 | 小红书 | [面试｜不要堆技术栈，专注 BadCase](https://www.xiaohongshu.com/explore/69e077c8000000002202a148) | 项目区分度来自具体场景、badcase、取舍和指标，而不是技术栈清单 | 2026-04-16 个人观点，C 级；只用于叙事优先级，不当作招聘方标准 |
+| 小红书 | [Agent 裸奔上线？可观测性了解一下](https://www.xiaohongshu.com/explore/6a599bdf0000000011007882)、[AI 项目全链路可观测](https://www.xiaohongshu.com/explore/69e2fa240000000023012e9e) | trace ID/span、结构化脱敏日志、成功率/错误率/成本/步骤指标与阈值告警；AI 链路还需区分检索、生成和工具信号 | 2026-07-17 与 2026-04-18 观点/题目转述，C 级；没有公司确认，也不据此声称某岗位必考或阈值适合生产 |
+| 小红书 | [LoopX：超长程 Agent 运行 200+ 小时，状态不漂移](https://www.xiaohongshu.com/explore/6a5cc086000000000f01ef85) | 长程 Agent 要把状态、监督和规划外置化，不依赖有限模型上下文维持执行 | 2026-07-19 项目作者自述，运行时长和效果未在本轮独立复核；只作 C 级架构信号 |
 | 牛客 | [携程 Agent 开发实习一面](https://www.nowcoder.com/feed/main/detail/30725ecc8ff04e11a27a7b803d537293) | 项目深挖、RAG 解释、向量与余弦相似度、检索多但答案差的诊断 | 自述原帖，信息较简短 |
 | 牛客 | [字节暑期 Agent 开发一面](https://www.nowcoder.com/feed/main/detail/688deb12b60646a7b1b3519c29cd2b3f) | RAG 全流程、Agent 链路、Memory 痛点、多轮对话、时效数据、滑动窗口 | 自述原帖，信息较简短 |
 | 牛客 | [快手 Data Agent 开发一面](https://www.nowcoder.com/discuss/904419777614049280) | ReAct、框架模块、MCP/Tool、三层记忆、输出质量、二分查找 | 自述原帖夹带作者总结 |
@@ -51,6 +53,7 @@
 | B 站 | [第一个 Agent 项目复盘：RAG + FunctionCall](https://www.bilibili.com/video/BV1ETvTzsEgP) | FastAPI AI 服务、FAQ/流程路由、手写 RAG、Tool registry、异步 HTTP、框架取舍 | 项目复盘，不是面试记录 |
 | 本地研究 | 多 Agent 旅行规划生态研究快照（不随本独立仓库发布） | 类型化工具、显式状态、有界执行、durable job、artifact、审批、协议边界 | 固定源码快照；多数项目未实际部署运行 |
 | GitHub / Microsoft Research | [AgentRx](https://github.com/microsoft/AgentRx) | 将 agent trajectory 规范化为 IR，用预声明/合成 invariant 做逐步检查、关键失败定位与错误分类 | 一手源码/论文实现，但本轮未安装或运行；仅借鉴诊断结构，不声称 BJ-Pal 已复现其结果 |
+| 官方招聘页 | [Dynatrace OpenIngest Generative AI](https://www.dynatrace.com/careers/jobs/1399228700/)、[Bloomberg AI App Enablement & Observability](https://bloomberg.avature.net/careers/JobDetail/Senior-Software-Engineer-AI-App-Enablement-Observability/18854) | OTel trace/metric/log ingest、GenAI semantic conventions、telemetry pipeline、sampling/redaction/cardinality/cost、回归检测与告警 | 2026-07-20 访问的具体高级岗位样本，不代表校招统一要求；用于验证“协议 + 隐私 + 从 telemetry 到 action”是实际平台方向 |
 
 ## 3. 交叉出现的能力主题
 
@@ -61,7 +64,7 @@
 | P0 | RAG/检索：切分、召回、混合、rerank、评测 | 高频追问集中在“为什么这样做、如何证明变好” | 已有 BM25；v4.4 新增 19-case golden set、baseline、Recall/MRR/多样性与 raw cases |
 | P0 | Tool/Workflow：Schema、错误、超时、幂等、兜底 | 这是 AI 应用与普通 API 调用的工程分界 | v6.9 将模型原始 JSON 视为不可信：strict schema + request candidate/sequence binding、最多一次 budget-bound repair、502/job terminal no-retry；另有 partial provider issue、durable job、artifact，天气 live 授权验收仍未完成 |
 | P0 | Query rewrite、slot/约束抽取与需求澄清 | 候选人自述直接追问多维 query rewrite 和缺信息补充；观点材料建议意图与 slot 一次结构化返回，但后者不是面试事实 | v5.6 已有 `requirement_gate_v1` + `constraint_ledger_v1`、typed 409 continuation/resolution、20-case gate、30-case constraint 与 16-case continuation artifact；只有 synthetic 多轮状态机，仍缺真实会话与用户满意度 |
-| P0 | 后端可靠性：异步任务、事件、缓存、限流、监控 | 面经并未降低传统后端要求 | 有 lease heartbeat/fencing、有限重试/dead letter、协作取消、durable deadline/timed_out、lineage replay、priority aging + 同级 tenant 轮转、静态哈希 principal/scope/tenant/cap、单机 active/accepted-submission 原子准入与 append-only audit、JSON/SSE replay、readiness audit、有界执行器、可复算 ASGI + localhost TCP benchmark、request/job execution observation，以及隐私最小化 OTLP/HTTP protobuf loopback 验收和带 session SHA chain 的新工具日志；无外部 IdP/动态 RBAC、raw-attempt limiter、跨实例 quota、legacy erase/数据库加密、audit retention、远程 collector/多实例或生产负载证据 |
+| P0 | 后端可靠性：异步任务、事件、缓存、限流、监控 | 面经并未降低传统后端要求 | 有 lease heartbeat/fencing、有限重试/dead letter、协作取消、durable deadline/timed_out、lineage replay、priority aging + 同级 tenant 轮转、静态哈希 principal/scope/tenant/cap、单机 active/accepted-submission 原子准入与 append-only audit、JSON/SSE replay、readiness audit、有界执行器、可复算 ASGI + localhost TCP benchmark、request/job execution observation、隐私最小化 OTLP/HTTP protobuf loopback，以及带 20 样本门和 source/policy SHA 的 4-rule deterministic alert snapshot；无外部 IdP/动态 RBAC、raw-attempt limiter、跨实例 quota、legacy erase/数据库加密、audit retention、远程 collector/告警投递/多实例或生产负载证据 |
 | P0 | 有界执行、重试与 token/延迟成本 | 最新候选人自述直接问 API timeout/error 和 token 消耗；本地生态研究要求所有循环有最大轮次、总 token/时间预算和失败状态 | v6.7 已有服务端 request-local budget：LLM/data/tool N+1 pre-call gate、单一 transport retry owner、provider-reported token post-call gate、安全检查点 wall-clock、429/job terminal no-retry 与 6-case verifier；仍无金额价格表、跨实例 quota、生产 billing，且不能强杀已阻塞调用 |
 | P1 | Memory：短期/长期/工作记忆、冲突和删除 | 近期样本明确追问城市变更等冲突 | v4.5 已有 source/confirmation/expiry/revision、冲突拒绝和 hard delete；缺服务端身份与跨设备同步 |
 | P1 | 模型基础、Prompt、结构化输出和上下文 | 用于解释模型边界与失败原因 | v6.9 用真实配置 Flash badcase 驱动 prompt 修正，同场景 Flash/Pro 对照支持后续优先 Pro；第一轮 3-case 暴露 798 仅 2 候选。v6.10 补齐数据覆盖和证据型忌口过滤后重跑三例，候选 26/16/21，结果为首轮/首轮/一次修复后接受，并以脱敏 projection 复算 32/32 个 fixed synthetic 必需检查；禁止报告成功率、真人质量、签名 provider 身份或金额成本 |
@@ -113,7 +116,7 @@
 
 1. 当前检索只有 BM25 + 规则扩展，没有 dense retrieval 或 reranker。是否加入必须先用当前 golden/bad-case 证明 BM25 的语义召回缺口，再做离线消融。
 2. Memory 仍是本地单用户 SQLite，没有服务端身份、加密、跨设备同步、备份删除证明或真实冲突样本。
-3. 天气已有进程级 TTL/stale cache，durable control plane 也有 accepted-submission cap，v6.7 另有单请求逻辑调用/retry/实报 token/checkpoint-time budget，v6.11 补了 localhost socket acceptance，v6.12-v6.17 收紧并隔离工具审计、迁出三类业务 owner，v6.21 补了标准 OTLP/HTTP protobuf、隐私 allowlist、导出健康与 loopback/failure acceptance；但旧 shared rows 仍未受控清理，也还没有公网 raw-attempt limiter、tenant 金额账户、跨实例 cost/quota controller、billing reconciliation、备份 erase/数据库加密、audit retention、远程 collector/metrics backend、TLS/反向代理、多实例或真实模型负载测试。当前本机 observation、synthetic contract 和 mock benchmark 不能支持“生产级监控/高并发/成本治理”。
+3. 天气已有进程级 TTL/stale cache，durable control plane 也有 accepted-submission cap，v6.7 另有单请求逻辑调用/retry/实报 token/checkpoint-time budget，v6.11 补了 localhost socket acceptance，v6.12-v6.17 收紧并隔离工具审计、迁出三类业务 owner，v6.21 补了标准 OTLP/HTTP protobuf、隐私 allowlist、导出健康与 loopback/failure acceptance，v6.22 再补单 snapshot 的最小样本告警决策；但旧 shared rows 仍未受控清理，也还没有公网 raw-attempt limiter、tenant 金额账户、跨实例 cost/quota controller、billing reconciliation、备份 erase/数据库加密、audit retention、远程 collector/metrics backend、连续窗口/告警 delivery、TLS/反向代理、多实例或真实模型负载测试。当前本机 observation、synthetic contract 和 mock benchmark 不能支持“生产级监控/高并发/成本治理”。
 4. 单机 heartbeat/retry/dead-letter/SSE/list/cancel/deadline/replay、priority aging、同级 tenant 轮转与静态 principal/scope/tenant/priority/admission 控制面已完成；下一步是外部 IdP/动态 RBAC、credential 生命周期、数据库 RLS、跨实例全局准入/调度、在线 reprioritize、多实例 job store 与跨实例 fencing。
 5. v6.7 已补请求级执行预算，v6.6 已具备有界知情 cohort、安全 operator 工作流和到期本地清除，但真实 participant/report 仍为 0。最优外部推进不是继续扩写架构，而是由用户确定 URL/渠道/时间窗后实际创建批次，招募 5-10 位明确知情的试用者；只报告不同匿名参与凭证的自报聚合与原因分布，不写已验证真人、满意度或因果贡献。offline contract 不能替代这一步。
 6. 副作用已完成 sandbox 安全状态机，但还不能写“接入真实预订”：缺供应商授权/测试环境、订单查询、补偿、客服 handoff、第三方签名回执和 PII/secret/retention。

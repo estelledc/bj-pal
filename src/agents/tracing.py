@@ -146,14 +146,14 @@ class _OtlpBackend(_Backend):
         resource = Resource.create(
             {
                 "service.name": "bj-pal",
-                "service.version": "6.21.0",
+                "service.version": "6.22.0",
             }
         )
         provider = TracerProvider(resource=resource)
         exporter = MonitoredSpanExporter(OTLPSpanExporter(), monitor)
         provider.add_span_processor(BatchSpanProcessor(exporter))
         self._provider = provider
-        self._tracer = provider.get_tracer("bj-pal", "6.21.0")
+        self._tracer = provider.get_tracer("bj-pal", "6.22.0")
         self._otel_trace = otel_trace
         self._monitor = monitor
         monitor.configure(

@@ -1152,6 +1152,68 @@ class TraceExportStatusResponse(StrictModel):
     last_error_code: Optional[str] = Field(default=None, min_length=1, max_length=64)
 
 
+class OperationalAlertPolicyResponse(StrictModel):
+    version: Literal["portfolio_operational_alert_policy_v1"]
+    minimum_terminal_jobs: int = Field(ge=1)
+    terminal_failure_rate_threshold: float = Field(ge=0, le=1)
+    minimum_queue_wait_samples: int = Field(ge=1)
+    queue_wait_p95_ms_threshold: float = Field(ge=0)
+    minimum_jobs: int = Field(ge=1)
+    retry_job_rate_threshold: float = Field(ge=0, le=1)
+    trace_backend: Literal["otlp"]
+
+
+class OperationalAlertRuleResponse(StrictModel):
+    rule_id: Literal[
+        "terminal_failure_rate",
+        "queue_wait_p95_ms",
+        "retry_job_rate",
+        "trace_export_health",
+    ]
+    signal: Literal[
+        "durable_job_terminal_failure_rate",
+        "durable_job_queue_wait_p95_ms",
+        "durable_job_retry_rate",
+        "otlp_trace_export_state",
+    ]
+    state: Literal["firing", "healthy", "insufficient_data", "disabled"]
+    severity: Literal["warning", "critical"]
+    observed_value: Optional[float | str]
+    threshold_value: Optional[float | str]
+    comparison: Literal["gte", "state"]
+    sample_count: int = Field(ge=0)
+    required_sample_count: int = Field(ge=1)
+    reason_code: Literal[
+        "minimum_sample_not_met",
+        "threshold_breached",
+        "within_threshold",
+        "otlp_export_not_configured",
+        "export_attempt_not_observed",
+        "trace_export_degraded",
+        "trace_export_invalid_configuration",
+        "trace_export_healthy",
+    ]
+
+
+class OperationalAlertSnapshotResponse(StrictModel):
+    version: Literal["operational_alert_snapshot_v1"]
+    observed_at: str
+    window_start: str
+    window_end: str
+    policy: OperationalAlertPolicyResponse
+    overall_state: Literal["firing", "healthy", "insufficient_data", "disabled"]
+    rules: list[OperationalAlertRuleResponse] = Field(min_length=4, max_length=4)
+    firing_rule_count: int = Field(ge=0, le=4)
+    evaluated_rule_count: int = Field(ge=0, le=4)
+    insufficient_data_rule_count: int = Field(ge=0, le=4)
+    disabled_rule_count: int = Field(ge=0, le=4)
+    workload_artifact_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    trace_status_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    policy_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    artifact_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    links: dict[str, str]
+
+
 class ReadinessResponse(StrictModel):
     status: Literal["ready", "not_ready"]
     data_profile: str
