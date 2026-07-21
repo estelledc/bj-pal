@@ -17,13 +17,13 @@
 
 BJ-Pal 把一句“周末下午带孩子在北京玩四小时”的自然语言需求，转换成带时间、路线、风险、替补方案和证据来源的结构化计划。项目源自黑客松原型，当前重构目标不是继续堆 Agent 数量，而是补齐一个简历项目应该具备的工程闭环：稳定契约、数据边界、持久任务、失败语义、公开评测和可部署入口。
 
-> 发布状态（2026-07-21）：v6.18-v6.23 已按 [PR #5](https://github.com/estelledc/bj-pal/pull/5) → [#6](https://github.com/estelledc/bj-pal/pull/6) → [#7](https://github.com/estelledc/bj-pal/pull/7) → [#8](https://github.com/estelledc/bj-pal/pull/8) → [#9](https://github.com/estelledc/bj-pal/pull/9) → [#10](https://github.com/estelledc/bj-pal/pull/10) 的依赖顺序进入公开 `main`；v6.24 的 OCI 发布链经 [PR #13](https://github.com/estelledc/bj-pal/pull/13) 合并。merge commit `a981f71` 的 [Core workflow](https://github.com/estelledc/bj-pal/actions/runs/29798787886)、[Pages 部署](https://github.com/estelledc/bj-pal/actions/runs/29798787881) 与 [OCI publish workflow](https://github.com/estelledc/bj-pal/actions/runs/29798918826) 均已通过。
+> 发布状态（2026-07-21）：v6.18-v6.24 的增量改造与 OCI 发布证据均保留在公开 PR/Release；v6.25 的公网入口隔离经 [PR #15](https://github.com/estelledc/bj-pal/pull/15) 合并。merge commit `d8bba81` 的 [Core workflow](https://github.com/estelledc/bj-pal/actions/runs/29801106239)、[Pages 部署](https://github.com/estelledc/bj-pal/actions/runs/29801106271) 与 [OCI publish workflow](https://github.com/estelledc/bj-pal/actions/runs/29801249729) 均已通过。
 
 本地 v6.23 follow-up 在 v6.22 的 durable-job/OTLP/告警链路之上，增加显式 CSSwitch DeepSeek 凭证交接和一次真实 provider acceptance：配置必须是当前用户持有的 regular 0600 文件、active DeepSeek/Anthropic profile、credential-free HTTPS endpoint，并且调用前显式确认费用和固定模型/预算。产物只保留 provider-reported token、耗时、契约/质量 gate 与哈希，不保留 Key、配置路径、prompt、raw output 或 plan。它仍不能证明 provider 签名身份、账单金额、线上成功率、实时 POI/路线、真实预订或用户满意度。
 
 v6.24 把“CI 能 build Dockerfile”收敛为可验证的 OCI 发布契约：正式 tag 必须与两处代码版本一致；镜像以固定非 root UID 在只读根文件系统中通过 health、readiness、OpenAPI 和固定 synthetic plan 冒烟后，才允许推送 release/SHA/latest 三类 tag。`v6.24.0` workflow 全部通过，GHCR 返回 digest `sha256:b40f592eed1ea2407ebaecdb51f828dafc0d74679b5be68ab54564a308e4d235`，未登录的 registry manifest 请求也以 HTTP 200 返回同一 digest。该证据证明公开镜像可拉取、可启动，不等于公网 API、生产部署或 SLA。
 
-v6.25 候选把公开容器与完整控制面拆开：镜像默认只启动 mock/synthetic public app，OpenAPI 精确保留 health、readiness 和同步 planning；provider/control credential、非 synthetic 数据或非 mock backend 任一出现即拒绝启动。原始 plan attempt 在 schema validation 前受进程级窗口、并发和 8 KiB body gate 约束，公开请求不签发 feedback capability，也不持久化 clarification continuation。真实 Uvicorn/localhost smoke 已通过；当前没有托管平台身份或长期 HTTPS URL，Cloudflare Quick Tunnel 又被本机终端策略以 SIGKILL 阻止，因此不能写成“已正式上线”。
+v6.25 把公开容器与完整控制面拆开：镜像默认只启动 mock/synthetic public app，OpenAPI 精确保留 health、readiness 和同步 planning；provider/control credential、非 synthetic 数据或非 mock backend 任一出现即拒绝启动。原始 plan attempt 在 schema validation 前受进程级窗口、并发和 8 KiB body gate 约束，公开请求不签发 feedback capability，也不持久化 clarification continuation。`v6.25.0` 已发布为 `ghcr.io/estelledc/bj-pal:v6.25.0`，release/SHA/latest 与匿名 manifest 共同绑定 digest `sha256:7ee708a056d1a9797af4739ec876c346a17f282d902b386c171efe2e7235861d`。当前仍没有长期 HTTPS URL；Cloudflare Quick Tunnel 被本机终端策略以 SIGKILL 阻止，因此不能写成“API 已正式上线”。
 
 ## 一句话简历描述
 
@@ -74,8 +74,8 @@ v6.25 候选把公开容器与完整控制面拆开：镜像默认只启动 mock
 | 真实配置模型坏例、修复与小型 live 质量代理可复核 | 历史 5 份 DeepSeek observation 保留 Flash 坏例、同场景 Flash/Pro 选型与第一轮 3-case acceptance；v6.10 在修复 798 候选覆盖和证据型忌口过滤后重新运行 3 个 Pro 场景，并分别保存脱敏 observation 与 plan projection。独立 verifier 从 POI facts、路线、时间轴和固定 policy 复算三里屯 9/9、五道营家庭 12/12、798 单人 11/11 个必需检查，0 项不可评估 | 新三例仍各只运行 1 次；798 经一次模型修复后才通过。检查使用 synthetic POI/UGC/路线与确定性代理，不评判 rationale、真实 freshness 或用户偏好；provider 不是 signed receipt，不能外推成功率、满意度、生产质量或金额成本 |
 | 真实 provider 凭证交接与 usage/质量证据绑定 | `run_live_provider_acceptance.py` 仅在显式费用确认下读取 active CSSwitch DeepSeek profile；拒绝 symlink、非 owner、group/other 可读、非 HTTPS、隐式模型和覆盖已有目录。2026-07-21 固定三里屯场景一次调用首轮通过，1 个 LLM call 实报 53 input + 1411 output = 1464 token，执行约 28.9 秒；三份 0600 工件 Key 精确命中为 0，独立 verifier 重算 observation/quality/budget/acceptance 多层 SHA 和六项 gate | 单次 operator observation，不是成功率或延迟分布；configured model/provider 不是签名回执；token 是 provider 经配置 client 回报，不是发票或币种成本；CSSwitch 本地交接不等于服务端轮换/过期/撤销、KMS 或多租户金额预算 |
 | 编排选型有对照证据 | 旧 ToT 被收紧为最多 3 个同构 planner 分支并显式继承请求 budget/trace；3-case synthetic 对照从 raw plan、规则分解和 budget snapshot 复算单分支与多分支的质量、调用、数据批次、耗时与故障注入 | deterministic mock 忽略 branch hint：当前质量提升率和输出变化率均为 0，LLM/data 调用均为 3 倍，因此主链保持单分支；这不是对真实模型或全部多 Agent 架构的普遍结论 |
-| OCI 发布失败关闭 | `vMAJOR.MINOR.PATCH` tag 必须匹配 package/service version；固定 UID 10001 镜像在只读 rootfs、临时 runtime/tmp、cap-drop 与 no-new-privileges 下通过 health/readiness/OpenAPI/fixed synthetic plan 后才登录 GHCR；发布 release/SHA/latest tag 并记录 digest | `v6.24.0` 已在 GitHub runner 全链通过，匿名 manifest HTTP 200 且 digest 与 workflow 一致；单次 amd64/mock/synthetic container acceptance 仍不代表公网 API、TLS、多实例或 SLA |
-| 公网 demo 与内部控制面隔离 | `http_api.public_app` 启动时强制 mock + public synthetic data 且拒绝 provider/control credential；OpenAPI 只注册 health/readiness/sync plan；raw attempt、并发和 body 在 planner 前限流，计划不写 feedback/clarification state | 新增定向测试与真实 localhost Uvicorn smoke 已通过；aggregate limiter 只在单进程生效，不信任 proxy identity；当前无长期 HTTPS URL、TLS 平台回执、多实例或 SLA |
+| OCI 发布失败关闭 | `vMAJOR.MINOR.PATCH` tag 必须匹配 package/service version；固定 UID 10001 镜像在只读 rootfs、临时 runtime/tmp、cap-drop 与 no-new-privileges 下通过 health/readiness/精确 public OpenAPI/fixed synthetic plan/headers 后才登录 GHCR；发布 release/SHA/latest tag 并记录 digest | `v6.25.0` 已在 GitHub runner 全链通过，匿名 manifest HTTP 200 且 digest `7ee708…5861d` 与 workflow 一致；单次 amd64/mock/synthetic container acceptance 仍不代表公网 API、TLS、多实例或 SLA |
+| 公网 demo 与内部控制面隔离 | `http_api.public_app` 启动时强制 mock + public synthetic data 且拒绝 provider/control credential；OpenAPI 只注册 health/readiness/sync plan；raw attempt、并发和 body 在 planner 前限流，计划不写 feedback/clarification state | 17 条定向测试、本机 Uvicorn smoke、远端 Core Docker build 与 hardened release smoke 已通过；aggregate limiter 只在单进程生效，不信任 proxy identity；当前无长期 HTTPS URL、TLS 平台回执、多实例或 SLA |
 
 更细的“主张 → 代码 → 测试 → 限制”映射见 [工程证据地图](docs/ARCHITECTURE_EVIDENCE.md)。
 
@@ -214,9 +214,9 @@ make audit-release-candidate PYTHON=.venv/bin/python
 
 v6.24 本机完整门禁另收集 913 条 pytest：910 passed、3 条 `real-cache` 专用用例 skipped；凭证扫描覆盖 563 个当前树文件；API/job/operation、全部离线 verifier、showcase 29/29 与两条 20/20 HTTP 性能回归均通过。发布候选审计为 17 个文件、0 违规；远端 `main` Core、Pages 与 OCI publish 也全部成功。
 
-v6.25 候选的完整 `make check` 通过时收集 927 条 pytest：924 passed、3 条 `real-cache` 专用用例 skipped；之后补齐并发占满、直接配置越界、v6.24 smoke 兼容和动态 container healthcheck 测试，最终全量 pytest 为 931 passed、3 skipped，17 条 public-demo 定向测试与 v6.25 独立 Uvicorn/localhost smoke 也通过。凭证扫描覆盖 568 个当前树文件，19 个发布候选文件（13 实现、6 文档）为 0 违规；本机 Docker daemon 不可用，容器 build 仍需远端 Core CI 验证。
+v6.25 的完整 `make check` 通过时收集 927 条 pytest：924 passed、3 条 `real-cache` 专用用例 skipped；之后补齐并发占满、直接配置越界、v6.24 smoke 兼容和动态 container healthcheck 测试，最终全量 pytest 为 931 passed、3 skipped，17 条 public-demo 定向测试与 v6.25 独立 Uvicorn/localhost smoke 也通过。凭证扫描最终覆盖 569 个候选树文件，19 个发布候选文件（13 实现、6 文档）为 0 违规；PR/main Core、Pages、远端 Docker build、hardened OCI smoke 和匿名 manifest 均已通过。
 
-这些结果仍不代表 Git 历史无泄露、真实模型幻觉分布/修复率、真实用户结果、真人身份、真实供应商、外部 IdP、动态 RBAC、数据库 RLS、跨实例配额/金额预算、主动强杀阻塞调用、取证级擦除或生产容量。v6.24 公开镜像已可匿名读取 manifest，但可拉取镜像不等于公网 API 或生产部署。Open-Meteo live smoke 未执行。
+这些结果仍不代表 Git 历史无泄露、真实模型幻觉分布/修复率、真实用户结果、真人身份、真实供应商、外部 IdP、动态 RBAC、数据库 RLS、跨实例配额/金额预算、主动强杀阻塞调用、取证级擦除或生产容量。v6.25 公开镜像已可匿名读取 manifest，但可拉取镜像不等于公网 API 或生产部署。Open-Meteo live smoke 未执行。
 
 ### 启动 Streamlit
 

@@ -463,6 +463,8 @@ v6.24 把容器从“构建成功的文件”提升为 tag-bound release artifac
 
 v6.25 将镜像默认入口改成独立 `public_app`，不再把完整 control plane 当作公网 demo。启动顺序先检查 `BJ_PAL_LLM=mock` 且环境不含 provider/control credential，再要求 manifest/SQLite 精确为 ready、public-reproducible synthetic demo；随后从 FastAPI router 移除 job、operation、trial、feedback 和 clarification continuation，只保留 health/readiness/sync plan 及可读文档。`POST /v1/plans` 外层 ASGI guard 不信任 `X-Forwarded-For`，在 schema validation 前按进程聚合原始 attempt，并限制并发与 body；公开 plan 不签发 feedback capability，模糊输入只返回结构化 requirements 而不持久化 continuation。这个设计避免单实例 mock 作品集为了“看起来生产”引入 Redis 或伪 IP 身份，但也意味着多实例时配额各自独立；正式开放流量仍需可信网关、共享配额与真实 TLS/托管证据。
 
+`v6.25.0` tag workflow 已在登录 registry 前完成 credential-free Linux build 与 hardened public-contract smoke，release/SHA/latest 和匿名 manifest 都绑定 digest `sha256:7ee708a056d1a9797af4739ec876c346a17f282d902b386c171efe2e7235861d`。这是镜像发布证据，不是长期 HTTPS endpoint、WAF、跨实例配额或 SLA。
+
 2026-07-21 的一次固定三里屯调用首轮通过：1 次 LLM 调用、53 input + 1411 output = 1464 provider-reported token，canonical execution 约 28.9 秒，六项 acceptance check 全通过。该数字只是单次 operator observation；配置的 provider/model 与 external execution 没有签名回执，token 也不是发票或币种成本。CSSwitch 0600 交接只解决本机测试入口，不等于 KMS、服务端凭证过期/轮换/撤销、多租户金额账户或 billing reconciliation。
 
 `Step.confidence` 为兼容历史保留字段名，当前语义是 `evidence_support_v1`：

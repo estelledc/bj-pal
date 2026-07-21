@@ -668,7 +668,7 @@
       <section class="hero" id="top" aria-labelledby="hero-title">
         <div class="shell">
           <div class="hero-topline">
-            <span class="status">Public release · v6.24.0</span>
+            <span class="status">Public release · v6.25.0</span>
             <span class="hero-index">CASE 02 / PRODUCT SYSTEMS</span>
           </div>
 
@@ -680,13 +680,13 @@
           <div class="cta-row">
             <a class="button button--primary" href="#decision-trace">回放一次决策 <span aria-hidden="true">↓</span></a>
             <a class="button button--ghost" href="https://github.com/estelledc/bj-pal" target="_blank" rel="noreferrer">阅读源码 <span aria-hidden="true">↗</span></a>
-            <a class="button button--ghost" href="https://github.com/estelledc/bj-pal/releases/tag/v6.24.0" target="_blank" rel="noreferrer">查看 Release <span aria-hidden="true">↗</span></a>
+            <a class="button button--ghost" href="https://github.com/estelledc/bj-pal/releases/tag/v6.25.0" target="_blank" rel="noreferrer">查看 Release <span aria-hidden="true">↗</span></a>
           </div>
 
           <div class="role-strip" aria-label="项目状态、归因与证据边界">
             <div class="role-cell">
               <div class="role-label">Status / 状态</div>
-              <div class="role-value">v6.24.0 · Public<small>GHCR 可匿名拉取 · Pages 不是 API</small><a class="source-tag" href="https://github.com/estelledc/bj-pal/releases/tag/v6.24.0" target="_blank" rel="noreferrer">Release ↗</a></div>
+              <div class="role-value">v6.25.0 · Public<small>GHCR 可匿名拉取 · Pages 不是 API</small><a class="source-tag" href="https://github.com/estelledc/bj-pal/releases/tag/v6.25.0" target="_blank" rel="noreferrer">Release ↗</a></div>
             </div>
             <div class="role-cell">
               <div class="role-label">Ownership / 归因</div>
@@ -694,7 +694,7 @@
             </div>
             <div class="role-cell">
               <div class="role-label">Core evidence</div>
-              <div class="role-value">910 passed<small>913 collected · 3 real-cache skipped</small><a class="source-tag" href="https://github.com/estelledc/bj-pal/actions/runs/29798787886" target="_blank" rel="noreferrer">Main workflow ↗</a></div>
+              <div class="role-value">931 passed<small>934 collected · 3 real-cache skipped</small><a class="source-tag" href="https://github.com/estelledc/bj-pal/actions/runs/29801106239" target="_blank" rel="noreferrer">Main workflow ↗</a></div>
             </div>
             <div class="role-cell">
               <div class="role-label">Evidence boundary</div>
@@ -837,20 +837,20 @@ STATUS · historical showcase run</p>
         <div class="shell">
           <p class="eyebrow">04 / Reproducible engineering evidence</p>
           <h2 class="section-title" id="outcomes-title">不只展示一次好结果，<br />还展示它如何失败、恢复与被复核。</h2>
-          <p class="section-lede">以下数字绑定 2026-07-21 的 v6.24.0 公开主线。它们证明代码、契约、镜像和证据链可复现；不外推为线上业务效果、生产容量或真实用户满意度。</p>
+          <p class="section-lede">以下数字绑定 2026-07-21 的 v6.25.0 公开主线。它们证明代码、契约、镜像和证据链可复现；不外推为线上业务效果、生产容量或真实用户满意度。</p>
 
           <div class="metrics">
             <article class="metric">
               <div class="metric-label">Core regression</div>
-              <div class="metric-value">910/913</div>
-              <p>910 passed；3 条 real-cache 专用用例 skipped。CI 同时执行 Docker build、smoke 与离线 verifier。</p>
-              <a href="https://github.com/estelledc/bj-pal/actions/runs/29798787886" target="_blank" rel="noreferrer">MAIN WORKFLOW ↗</a>
+              <div class="metric-value">931/934</div>
+              <p>931 passed；3 条 real-cache 专用用例 skipped。CI 同时执行 Docker build、smoke 与离线 verifier。</p>
+              <a href="https://github.com/estelledc/bj-pal/actions/runs/29801106239" target="_blank" rel="noreferrer">MAIN WORKFLOW ↗</a>
             </article>
             <article class="metric">
               <div class="metric-label">OCI reproducibility</div>
-              <div class="metric-value">b40f…d235</div>
-              <p>只读 rootfs 容器在发布前完成四层冒烟；release/SHA/latest 与匿名 manifest 绑定同一 digest。</p>
-              <a href="https://github.com/estelledc/bj-pal/actions/runs/29798918826" target="_blank" rel="noreferrer">OCI WORKFLOW ↗</a>
+              <div class="metric-value">7ee7…861d</div>
+              <p>只读 rootfs 容器在发布前核对精确 public allowlist、plan 与安全头；release/SHA/latest 和匿名 manifest 绑定同一 digest。</p>
+              <a href="https://github.com/estelledc/bj-pal/actions/runs/29801249729" target="_blank" rel="noreferrer">OCI WORKFLOW ↗</a>
             </article>
             <article class="metric">
               <div class="metric-label">HTTP acceptance</div>
@@ -880,7 +880,7 @@ STATUS · historical showcase run</p>
             <div class="rubric-foot">
               <p><strong>不混写：</strong>synthetic contract 通过不等于真实模型成功；真实 API 返回不等于真实用户采纳。</p>
               <p><strong>失败关闭：</strong>缺少 usage、样本门、候选绑定或完整证据时，系统返回 unavailable / insufficient_data / error，而不是补一个好看的数字。</p>
-              <p><strong>历史基线：</strong>早期 v1-v3 LongCat 指标仍保留在公开评测报告中，但不再代表当前 v6.24 主线的完整工程证据。</p>
+              <p><strong>历史基线：</strong>早期 v1-v3 LongCat 指标仍保留在公开评测报告中，但不再代表当前 v6.25 主线的完整工程证据。</p>
             </div>
           </section>
         </div>
@@ -900,7 +900,7 @@ STATUS · historical showcase run</p>
               <span class="evidence-type">Evaluation</span><h3>当前分层评测框架</h3><p>离线 contract、独立 verifier、真实 provider observation 与用户结果如何分轨。</p><span class="evidence-arrow">查看框架 ↗</span>
             </a>
             <a class="evidence-card" href="https://github.com/estelledc/bj-pal/blob/main/docs/DESIGN.md" target="_blank" rel="noreferrer">
-              <span class="evidence-type">Architecture</span><h3>v6.24 系统设计</h3><p>统一主链、durable jobs、执行预算、状态迁移、OTLP 与 OCI 发布边界。</p><span class="evidence-arrow">查看设计 ↗</span>
+              <span class="evidence-type">Architecture</span><h3>v6.25 系统设计</h3><p>完整控制面、mock-only public app、匿名请求门禁与 OCI 发布边界。</p><span class="evidence-arrow">查看设计 ↗</span>
             </a>
             <a class="evidence-card" href="https://github.com/estelledc/bj-pal/blob/main/docs/TECHNICAL_REPORT.md" target="_blank" rel="noreferrer">
               <span class="evidence-type">Engineering report</span><h3>从 Demo 到可靠 Agent</h3><p>每个版本解决的问题、失败样本、验证方式与仍未覆盖的生产缺口。</p><span class="evidence-arrow">查看报告 ↗</span>
@@ -908,8 +908,8 @@ STATUS · historical showcase run</p>
             <a class="evidence-card" href="https://github.com/estelledc/bj-pal/blob/main/docs/INTERVIEW_GUIDE.md" target="_blank" rel="noreferrer">
               <span class="evidence-type">Interview map</span><h3>从代码证据到面试讲法</h3><p>按可靠性、成本、评测、安全与数据边界组织追问和回答。</p><span class="evidence-arrow">查看指南 ↗</span>
             </a>
-            <a class="evidence-card" href="https://github.com/estelledc/bj-pal/releases/tag/v6.24.0" target="_blank" rel="noreferrer">
-              <span class="evidence-type">Release + OCI</span><h3>v6.24.0 不可变镜像</h3><p>固定 main、release/SHA tag、registry digest、运行方式与不外推边界。</p><span class="evidence-arrow">打开 Release ↗</span>
+            <a class="evidence-card" href="https://github.com/estelledc/bj-pal/releases/tag/v6.25.0" target="_blank" rel="noreferrer">
+              <span class="evidence-type">Release + OCI</span><h3>v6.25.0 不可变镜像</h3><p>固定 public surface、release/SHA tag、registry digest、运行方式与不外推边界。</p><span class="evidence-arrow">打开 Release ↗</span>
             </a>
           </div>
         </div>
@@ -965,7 +965,7 @@ STATUS · historical showcase run</p>
 
       <div class="site-footer">
         <span>BJ-Pal · Jason Xun · KeepL · 2026</span>
-        <span>v6.24.0 · Public source + OCI · Evidence-bounded</span>
+        <span>v6.25.0 · Public source + OCI · Evidence-bounded</span>
       </div>
     </div>
   </footer>
