@@ -22,6 +22,7 @@ PROVIDER_OR_CONTROL_SECRETS = (
     "ANTHROPIC_API_KEY",
     "BJ_PAL_CONTROL_PRINCIPALS_JSON",
     "BJ_PAL_CONTROL_TOKEN",
+    "BJ_PAL_JOB_POSTGRES_DSN",
     "DEEPSEEK_API_KEY",
     "DPSK_API_KEY",
     "LONGCAT_API_KEY",
@@ -103,6 +104,9 @@ def validate_public_demo_environment(environ: Mapping[str, str] | None = None) -
     backend = values.get("BJ_PAL_LLM", "mock").strip().lower()
     if backend != "mock":
         raise RuntimeError("public demo requires BJ_PAL_LLM=mock")
+    job_store = values.get("BJ_PAL_JOB_STORE", "sqlite").strip().lower()
+    if job_store != "sqlite":
+        raise RuntimeError("public demo requires BJ_PAL_JOB_STORE=sqlite")
     configured = sorted(name for name in PROVIDER_OR_CONTROL_SECRETS if values.get(name))
     if configured:
         raise RuntimeError(

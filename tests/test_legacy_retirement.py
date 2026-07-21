@@ -248,3 +248,29 @@ def test_default_readiness_fails_closed_when_dedicated_policy_is_not_ready(
     assert result.status == "not_ready"
     assert result.checks["state_layout_policy"] == "failed"
     assert result.checks["state_layout_user_memory_dedicated"] == "legacy_fallback"
+
+
+def _raise_job_store_unavailable() -> bool:
+    raise RuntimeError("database offline")
+
+
+@pytest.mark.parametrize("job_store_probe", [lambda: False, _raise_job_store_unavailable])
+def test_default_readiness_fails_closed_when_job_store_is_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+    job_store_probe,
+) -> None:
+    monkeypatch.setattr(
+        app_module,
+        "inspect_runtime_data",
+        lambda: SimpleNamespace(
+            ready=True,
+            profile=SimpleNamespace(name="demo", classification="synthetic"),
+            checks={"dataset_manifest": "ok"},
+        ),
+    )
+    monkeypatch.setattr(app_module, "state_layout_policy", lambda: COMPATIBILITY_POLICY)
+
+    result = app_module.default_readiness_probe(job_store_probe=job_store_probe)
+
+    assert result.status == "not_ready"
+    assert result.checks["durable_job_store"] == "failed"

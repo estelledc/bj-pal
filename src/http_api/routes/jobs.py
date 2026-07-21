@@ -76,6 +76,8 @@ JobServiceProvider = Callable[[], "PlanningJobExecutor"]
 
 
 class PlanningJobExecutor(Protocol):
+    def probe(self) -> bool: ...
+
     def submit(
         self,
         *,

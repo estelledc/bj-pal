@@ -1,3 +1,3 @@
 """Single runtime service-version source."""
 
-SERVICE_VERSION = "6.26.0"
+SERVICE_VERSION = "6.27.0"

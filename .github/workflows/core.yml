@@ -19,6 +19,21 @@ concurrency:
 jobs:
   offline-core:
     runs-on: ubuntu-latest
+    env:
+      BJ_PAL_TEST_POSTGRES_DSN: postgresql://postgres@127.0.0.1:5432/bj_pal_test
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: bj_pal_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d bj_pal_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - name: Check out repository
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -40,6 +55,9 @@ jobs:
 
       - name: Bootstrap public demo data
         run: make bootstrap-demo PYTHON=python
+
+      - name: Verify PostgreSQL durable job store
+        run: make test-postgres-job-store PYTHON=python
 
       - name: Run tests
         run: make test PYTHON=python

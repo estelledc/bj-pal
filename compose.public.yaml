@@ -4,6 +4,7 @@ services:
     environment:
       BJ_PAL_LLM: mock
       BJ_PAL_TRACE: off
+      BJ_PAL_JOB_STORE: sqlite
       BJ_PAL_PUBLIC_DEMO_REQUESTS_PER_WINDOW: "20"
       BJ_PAL_PUBLIC_DEMO_WINDOW_SECONDS: "60"
       BJ_PAL_PUBLIC_DEMO_MAX_CONCURRENT_PLANS: "2"

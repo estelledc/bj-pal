@@ -189,7 +189,7 @@ Delivery adapter 不再拥有 Planner/Probe 顺序。Planner、Prober、ProfileL
 - job、列表、event/SSE、cancel、replay、continuation 与 idempotency key 全部 tenant-scoped；跨 tenant 返回 404，失败的外租户或越 cap continuation 不改变 pending session；
 - v5.8 schema 保留式迁移补齐 `tenant_id/submitted_by`，旧行映射 `default/legacy-migration`，同时把全局 idempotency 唯一约束改成 tenant-local partial unique，保留 event ID/history；
 - 新增真实 FastAPI + SQLite 的 4-case access-control artifact；独立 verifier 从 raw HTTP outcome 和 principal policy 复算 scope/cap/tenant/continuation 结果、校验 SHA，并排除凭证泄露；
-- 这不是 OAuth/OIDC、动态 RBAC、数据库 RLS 或企业 IAM；v6.23 只补本机 live-provider handoff，仍无服务端 credential 过期/轮换/撤销、tenant quota/公平调度、请求加密和多实例 job store。
+- 这不是 OAuth/OIDC、动态 RBAC、数据库 RLS 或企业 IAM；v6.27 候选虽补 PostgreSQL shared job/admission/scheduler store，仍无服务端 credential 过期/轮换/撤销、请求加密、在线迁移、容量或故障恢复证据。
 
 ### v6.0：Tenant Admission 与同优先级公平调度
 
@@ -463,9 +463,11 @@ job store 保存规范化 request JSON、SHA-256 和服务端认证上下文：
 - queued/running job 可请求取消；绝对 deadline 到期进入 timed out；failed/dead-letter/timed-out 终态可创建带 lineage 的幂等 replay job；
 - 成功结果生成 artifact ID/SHA-256；失败只保存稳定错误码和脱敏信息。
 
-这提供单机 at-least-once 恢复、持久 deadline、priority aging、tenant admission/fairness 和静态 principal/scope/tenant/cap 控制语义，但不等于生产队列或企业 IAM：没有外部 IdP、动态 RBAC、credential 过期/轮换/撤销、数据库 RLS、raw-attempt abuse protection、audit retention、跨实例全局配额、多实例 job store 或跨实例 fencing token。取消和 deadline 都不能强杀已进入的单次模型/provider 调用。真实 side effect 不能直接复用这套自动恢复语义；v6.2 使用独立 operation/receipt/reconciliation 状态机，目前只允许 sandbox。
+v6.27 候选把这套 transition policy 收敛为 `PlanningJobStore` Protocol：SQLite 仍是默认，PostgreSQL adapter 通过同一 schema 共享 job/event/admission/scheduler state。PostgreSQL 17 本机验收让 4 个独立 OS worker 进程领取 12 个 job 且无重复 claim，并在 8 路并发提交、active limit=3 时精确得到 3 admitted / 5 rejected；另验证过期 lease reclaim、旧 owner fencing、replay、append-only trigger 和 readiness probe。短 claim/admission transaction 使用 advisory lock，Planning 执行在锁外，因此优先确定性语义而非高吞吐。
 
-每次状态迁移还会在同一 SQLite transaction 中追加 `planning_job_events`。事件表由 trigger 保证 append-only，失败事件只存稳定错误码。HTTP 客户端既可用 JSON cursor 回放，也可连接 bounded SSE；两者读取同一张持久表，SSE `Last-Event-ID` 映射到 SQLite `event_id`，断线不会改变 job 生命周期。
+这提供 SQLite 单机或 PostgreSQL cross-process 的 at-least-once 恢复、持久 deadline、priority aging、tenant admission/fairness 和静态 principal/scope/tenant/cap 控制语义，但不等于生产队列或企业 IAM：没有外部 IdP、动态 RBAC、credential 过期/轮换/撤销、数据库 RLS、网关 raw-attempt abuse protection、audit retention、SQLite 在线迁移、连接池/故障恢复/容量证据或 exactly-once fencing token。取消和 deadline 都不能强杀已进入的单次模型/provider 调用。真实 side effect 不能直接复用这套自动恢复语义；v6.2 使用独立 operation/receipt/reconciliation 状态机，目前只允许 sandbox。
+
+每次状态迁移还会在同一 store transaction 中追加 `planning_job_events`。SQLite/PostgreSQL 事件表都由 trigger 保证 append-only，失败事件只存稳定错误码。HTTP 客户端既可用 JSON cursor 回放，也可连接 bounded SSE；两者读取同一张持久表，SSE `Last-Event-ID` 映射到 store `event_id`，断线不会改变 job 生命周期。
 
 用户记忆与 job 状态分开存储，但使用同样的原则：状态转移由程序拥有，写入和事件在一个 `BEGIN IMMEDIATE` 事务内完成。Memory event 不复制原值，只保存 SHA-256；Planner 不把未确认候选当事实。hard delete 同时清除状态和事件，因此它不是不可删除的合规审计系统。
 
@@ -529,7 +531,7 @@ job store 保存规范化 request JSON、SHA-256 和服务端认证上下文：
 - Docker context 排除本机数据、环境变量和测试产物；
 - 容器非 root；
 - 公开 demo `bookable=false`；
-- 当前只有静态哈希 principal registry 和短期 sync continuation capability；job/operation 控制面已按 scope/tenant 隔离，但仍无外部 IdP、动态 RBAC、数据库 RLS、token 生命周期、入口 raw-attempt limiter、跨实例 quota、audit retention、原请求加密、PII policy、secret manager 或公网部署证据；
+- 当前只有静态哈希 principal registry 和短期 sync continuation capability；job/operation 控制面已按 scope/tenant 隔离，PostgreSQL job store 也仍是应用层 tenant 条件。系统仍无外部 IdP、动态 RBAC、数据库 RLS、token 生命周期、入口 raw-attempt limiter、网关 quota、audit retention、原请求加密、PII policy、secret manager 或公网部署证据；
 - legacy mock helper 与 v6.2 sandbox operation/status lookup 都不触发真实外部状态；默认 CLI/UI 预订路径已不再直调 `mock_book`；
 - v6.7 请求级预算可以在 N+1 前阻止新的逻辑调用并约束 retry，但不能强杀已经阻塞的网络调用；reported-token gate 依赖 provider usage，且不是金额预算或生产 billing；
 - v6.8 编排对照只证明 deterministic mock 下 3 个同构分支没有质量增益却增加调用；不能据此断言真实模型、多 Agent 或并行执行普遍无效；
@@ -542,6 +544,6 @@ job store 保存规范化 request JSON、SHA-256 和服务端认证上下文：
 
 ## 9. 主要限制与下一步
 
-最重要的证据缺口是：v6.10 修复 live proxy 暴露的候选/忌口问题，v6.21-v6.22 补 OTLP 与单快照告警，v6.23 又完成一次显式 0600 CSSwitch handoff 的 DeepSeek usage/质量验收；但真实 participant/report 仍为 0。单次 1464 provider-reported token、32/32 fixed synthetic 必需检查、socket/日志/迁移/告警样本都不能替代真人采纳、成功率、账单金额或生产容量。技术缺口包括 legacy rows 受控清理、托管 purge/备份删除，天气宣传用途授权或 self-hosted acceptance，POI/路线合法 live provider；服务端 credential 过期/轮换/撤销、外部 IdP/动态 RBAC、数据库 RLS、入口 abuse protection、价格/cache 计价、跨实例全局准入/调度与 cost controller、tenant 金额预算、billing reconciliation、audit retention、在线 reprioritize 与多实例 store。booking 仍缺真实供应商授权/查询/补偿/客服/签名回执；另外还缺远程 collector、连续告警、TLS/反向代理与多实例负载测试。
+最重要的证据缺口是：v6.10 修复 live proxy 暴露的候选/忌口问题，v6.21-v6.22 补 OTLP 与单快照告警，v6.23 完成一次显式 0600 CSSwitch handoff 的 DeepSeek usage/质量验收，v6.27 候选补 PostgreSQL shared job store 的本机独立进程验收；但真实 participant/report 仍为 0。单次 1464 provider-reported token、32/32 fixed synthetic 必需检查、cross-process job test、socket/日志/迁移/告警样本都不能替代真人采纳、成功率、账单金额或生产容量。技术缺口包括 legacy rows 受控清理、托管 purge/备份删除，天气宣传用途授权或 self-hosted acceptance，POI/路线合法 live provider；PostgreSQL 在线迁移/容量/故障恢复，服务端 credential 过期/轮换/撤销、外部 IdP/动态 RBAC、数据库 RLS、入口 abuse protection、价格/cache 计价、跨实例 cost controller、tenant 金额预算、billing reconciliation、audit retention 与在线 reprioritize。booking 仍缺真实供应商授权/查询/补偿/客服/签名回执；另外还缺远程 collector、连续告警、TLS/反向代理与跨主机真实模型负载测试。
 
 正确顺序是：执行一个有界知情 cohort 并获得真实 badcase → 授权天气环境与 live acceptance → 真实 failure/freshness 样本 → 下一类 provider → 合法 booking 测试环境 + 真实状态查询/签名回执 acceptance → 独立重新审批的补偿 operation/客服 handoff → 外部 IdP/动态授权/存储层隔离/入口与跨实例 quota → OTLP/metrics + TLS/reverse-proxy + multi-instance store/load test。见 [ROADMAP.md](ROADMAP.md)。
