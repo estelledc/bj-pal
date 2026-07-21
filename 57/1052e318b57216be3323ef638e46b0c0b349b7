@@ -1,0 +1,25 @@
+evals/release_candidate/verify.py
+  s_a5f64cb45ba4da::t_a1edcdbb6c4377 25-27
+src/release_candidate.py
+  s_a5f64cb45ba4da::t_d0c7794d7cc5e9 35
+tests/test_release_candidate.py
+  s_a5f64cb45ba4da::t_736c36448c55ee 68-83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "571052e318b57216be3323ef638e46b0c0b349b7",
+  "prompts": {},
+  "sessions": {
+    "s_a5f64cb45ba4da": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_a5f64cb45ba4da",
+        "model": "unknown"
+      },
+      "human_author": "zhouxun <zhouxun.13@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
