@@ -125,6 +125,8 @@ v6.5 的 `manage_trial.py` 不在 stdout 输出原始码；批量码只允许写
 
 当前最大的证据风险仍是没有真实 participant/report：v6.9 完成模型输出失败关闭，v6.7 完成请求级调用/retry/实报 token/checkpoint-time budget；v6.23 又用 owner-only 0600 CSSwitch handoff 跑通一次固定 DeepSeek 场景，记录 1 call、1464 provider-reported token、约 28.9 秒与 quality gate，Key 在三份 linked artifact 中精确命中 0；v6.27 补了 PostgreSQL shared job store 的本机独立进程验收和公开 CI/OCI 发布证据。但单次 configured-client observation 不是成功率、签名 provider、账单金额或真实用户结果，cross-process test 也不是生产容量。技术侧还缺托管 purge/备份删除证明、天气商业授权或自托管 live acceptance、POI/路线 live provider；控制面仍缺 PostgreSQL 在线迁移/故障恢复、服务端 credential 过期/轮换/撤销、外部 IdP/动态 RBAC、存储层隔离、入口 raw-attempt abuse protection、tenant 金额预算和 audit retention；副作用没有真实 provider 查询 acceptance、补偿、客服 handoff 或签名回执。继续堆 UI 或 Agent 数量不会消除这些缺口。
 
+v6.28 候选把“怎么从 SQLite 切到 PostgreSQL”收敛为可执行 runbook：dry-run、显式停写、running/WAL/污染 target gate、四表同事务 copy + count/digest + append-only receipt、故障回滚、重复 apply 和 post-cutover rollback denial 都在 PostgreSQL 17 验证。准确表述是“可审计的 offline cutover”，不能写“零停机迁移”；source quiescence 仍是 operator attestation，PostgreSQL 产生新写入后也没有自动双向 merge。
+
 ## Q15. Docker 和 CI 到什么程度？
 
 Dockerfile 使用 Python 3.11 slim，build 时生成 demo 数据，容器非 root 运行并配置 health check；CI 会运行测试、API/job smoke、公开 eval 并构建镜像。本机 Docker daemon 未运行时不能声称本地镜像 build 已通过。

@@ -139,6 +139,20 @@ POSTGRES_SCHEMA_STATEMENTS = (
     )
     """,
     """
+    CREATE TABLE IF NOT EXISTS planning_job_store_migrations (
+        migration_id TEXT PRIMARY KEY,
+        layout_version TEXT NOT NULL,
+        source_name TEXT NOT NULL,
+        source_file_sha256 TEXT NOT NULL,
+        source_counts_json TEXT NOT NULL,
+        source_digests_json TEXT NOT NULL,
+        destination_counts_json TEXT NOT NULL,
+        destination_digests_json TEXT NOT NULL,
+        recorded_at TEXT NOT NULL,
+        receipt_sha256 TEXT NOT NULL
+    )
+    """,
+    """
     CREATE OR REPLACE FUNCTION bj_pal_effective_priority(
         base_priority INTEGER,
         eligible_at TEXT,
@@ -193,6 +207,18 @@ POSTGRES_SCHEMA_STATEMENTS = (
     """
     CREATE TRIGGER planning_job_admission_events_no_delete
     BEFORE DELETE ON planning_job_admission_events
+    FOR EACH ROW EXECUTE FUNCTION bj_pal_reject_event_mutation()
+    """,
+    "DROP TRIGGER IF EXISTS planning_job_store_migrations_no_update ON planning_job_store_migrations",
+    """
+    CREATE TRIGGER planning_job_store_migrations_no_update
+    BEFORE UPDATE ON planning_job_store_migrations
+    FOR EACH ROW EXECUTE FUNCTION bj_pal_reject_event_mutation()
+    """,
+    "DROP TRIGGER IF EXISTS planning_job_store_migrations_no_delete ON planning_job_store_migrations",
+    """
+    CREATE TRIGGER planning_job_store_migrations_no_delete
+    BEFORE DELETE ON planning_job_store_migrations
     FOR EACH ROW EXECUTE FUNCTION bj_pal_reject_event_mutation()
     """,
 )
