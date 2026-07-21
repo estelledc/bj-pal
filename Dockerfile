@@ -13,7 +13,9 @@ LABEL org.opencontainers.image.title="BJ-Pal" \
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    BJ_PAL_LLM=mock
+    PYTHONPATH=/app/src \
+    BJ_PAL_LLM=mock \
+    BJ_PAL_TRACE=off
 
 WORKDIR /app
 
@@ -33,6 +35,6 @@ USER 10001:10001
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-    CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2).read()"]
+    CMD ["python", "-m", "http_api.public_healthcheck"]
 
-CMD ["python", "-m", "uvicorn", "http_api.app:app", "--app-dir", "src", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "http_api.public_server"]

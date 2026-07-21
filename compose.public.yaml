@@ -4,6 +4,10 @@ services:
     environment:
       BJ_PAL_LLM: mock
       BJ_PAL_TRACE: off
+      BJ_PAL_PUBLIC_DEMO_REQUESTS_PER_WINDOW: "20"
+      BJ_PAL_PUBLIC_DEMO_WINDOW_SECONDS: "60"
+      BJ_PAL_PUBLIC_DEMO_MAX_CONCURRENT_PLANS: "2"
+      BJ_PAL_PUBLIC_DEMO_MAX_BODY_BYTES: "8192"
     ports:
       - "127.0.0.1:${BJ_PAL_PORT:-8000}:8000"
     read_only: true

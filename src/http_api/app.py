@@ -372,6 +372,7 @@ def create_app(
     clarification_service: ClarificationContinuationService | None = None,
     control_token: str | None = None,
     control_credentials: tuple[ControlPlaneCredential, ...] | None = None,
+    public_demo: bool = False,
 ) -> FastAPI:
     planning_service = service or PlanningService()
     probe = readiness_probe or default_readiness_probe
@@ -497,6 +498,8 @@ def create_app(
     ) -> PlanCreateResponse:
         """Add an ephemeral feedback capability without changing the plan artifact."""
         canonical = PlanCreateResponse.model_validate(payload)
+        if public_demo:
+            return canonical
         execution = canonical.execution
         if execution is None:
             return canonical
@@ -1034,7 +1037,11 @@ def create_app(
         response_model=PlanCreateResponse,
         responses={
             409: {"model": ErrorResponse, "description": "Clarification required"},
-            429: {"model": ErrorResponse, "description": "Execution budget exhausted"},
+            413: {"model": ErrorResponse, "description": "Public demo body limit exceeded"},
+            429: {
+                "model": ErrorResponse,
+                "description": "Execution or public demo attempt budget exhausted",
+            },
             422: {"model": ErrorResponse, "description": "Invalid planning request"},
             500: {"model": ErrorResponse, "description": "Invalid internal planning result"},
             503: {"model": ErrorResponse, "description": "Planning backend unavailable"},
@@ -1050,6 +1057,20 @@ def create_app(
             alias="X-Trial-Participant-Capability",
         ),
     ):
+        if public_demo and payload.user_id is not None:
+            return _error_response(
+                request,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                code="public_demo_user_id_unsupported",
+                message="The public demo does not accept user identifiers.",
+            )
+        if public_demo and trial_participant_capability is not None:
+            return _error_response(
+                request,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                code="public_demo_capability_unsupported",
+                message="The public demo does not accept trial or feedback capabilities.",
+            )
         if trial_participant_capability is not None:
             try:
                 feedback().authorize_trial_participant(
@@ -1078,6 +1099,23 @@ def create_app(
                 callbacks=PlanningCallbacks(correlation_id=_request_id(request)),
             )
         except PlanningClarificationRequired as exc:
+            if public_demo:
+                details = {
+                    "requirements": exc.decision.to_dict(),
+                    "continuation_available": False,
+                }
+                if exc.constraints is not None:
+                    details["constraints"] = exc.constraints.to_dict()
+                return _error_response(
+                    request,
+                    status_code=status.HTTP_409_CONFLICT,
+                    code="clarification_required",
+                    message=(
+                        "The public demo needs a complete request and does not persist "
+                        "clarification continuations."
+                    ),
+                    details=details,
+                )
             try:
                 details = issue_clarification(
                     application_request=application_request,
@@ -3032,6 +3070,28 @@ def create_app(
                 "X-Accel-Buffering": "no",
             },
         )
+
+    if public_demo:
+        public_paths = {
+            "/docs",
+            "/docs/oauth2-redirect",
+            "/healthz",
+            "/openapi.json",
+            "/readyz",
+            "/v1/plans",
+        }
+        application.router.routes = [
+            route
+            for route in application.router.routes
+            if getattr(route, "path", None) in public_paths
+        ]
+        application.title = "BJ-Pal Synthetic Public Demo API"
+        application.description = (
+            "A bounded, mock-only portfolio demo backed exclusively by the public "
+            "synthetic dataset. It exposes no durable jobs, side effects, trials, "
+            "feedback collection, or clarification continuations."
+        )
+        application.openapi_schema = None
 
     return application
 
