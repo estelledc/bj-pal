@@ -122,7 +122,7 @@
 1. 当前检索只有 BM25 + 规则扩展，没有 dense retrieval 或 reranker。是否加入必须先用当前 golden/bad-case 证明 BM25 的语义召回缺口，再做离线消融。
 2. Memory 仍是本地单用户 SQLite，没有服务端身份、加密、跨设备同步、备份删除证明或真实冲突样本。
 3. 天气已有进程级 TTL/stale cache，durable control plane 也有 accepted-submission cap，v6.7 有单请求调用/retry/实报 token/checkpoint-time budget，v6.21-v6.22 补 OTLP 与单快照告警，v6.23 再补一次真实 DeepSeek 的本地凭证交接、usage/质量绑定；但仍没有公网 raw-attempt limiter、价格版本/cache 计价、tenant 金额账户、跨实例 cost/quota controller、billing reconciliation、远程 collector/连续告警、TLS/反向代理、多实例或真实模型负载测试。单次 1464 token observation 不能支持“生产级成本治理”。
-4. heartbeat/retry/dead-letter/SSE/list/cancel/deadline/replay、priority aging、同级 tenant 轮转与静态 principal/scope/tenant/priority/admission 控制面已完成；v6.27 新增 PostgreSQL shared store，v6.28 增加 offline cutover，v6.29 增加单进程有界连接池与本机坏连接替换。下一步仍是在线双写/forward reconciliation、托管容量/HA/跨主机故障、服务端 credential 过期/轮换/撤销、外部 IdP/动态 RBAC、数据库 RLS、入口 raw-attempt protection 与在线 reprioritize。
+4. heartbeat/retry/dead-letter/SSE/list/cancel/deadline/replay、priority aging、同级 tenant 轮转与静态 principal/scope/tenant/priority/admission 控制面已完成；v6.27 新增 PostgreSQL shared store，v6.28 增加 offline cutover，v6.29 增加单进程有界连接池与本机坏连接替换，并已通过 PR #23/main Core/Pages/OCI 公开发布。下一步仍是在线双写/forward reconciliation、托管容量/HA/跨主机故障、服务端 credential 过期/轮换/撤销、外部 IdP/动态 RBAC、数据库 RLS、入口 raw-attempt protection 与在线 reprioritize。
 5. v6.7 已补请求级执行预算，v6.6 已具备有界知情 cohort、安全 operator 工作流和到期本地清除，但真实 participant/report 仍为 0。最优外部推进不是继续扩写架构，而是由用户确定 URL/渠道/时间窗后实际创建批次，招募 5-10 位明确知情的试用者；只报告不同匿名参与凭证的自报聚合与原因分布，不写已验证真人、满意度或因果贡献。offline contract 不能替代这一步。
 6. 副作用已完成 sandbox 安全状态机，但还不能写“接入真实预订”：缺供应商授权/测试环境、订单查询、补偿、客服 handoff、第三方签名回执和 PII/secret/retention。
 

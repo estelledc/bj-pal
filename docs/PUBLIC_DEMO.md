@@ -51,13 +51,13 @@ BJ-Pal 的 hosted demo 是一个面向面试官和代码审阅者的有界、moc
 ```bash
 .venv/bin/python scripts/smoke_deployed_api.py \
   --base-url https://你的域名 \
-  --expected-version 6.28.0
+  --expected-version 6.29.0
 ```
 
 smoke 会核对 health、readiness、精确 OpenAPI allowlist、synthetic plan、无 feedback capability、request ID 与 demo/security headers。它不证明长期 availability、SLA、跨实例限流、真实 provider 或真实用户结果。
 
 ## 当前证据状态
 
-截至 2026-07-21，`v6.28.0` 的 [PR #21](https://github.com/estelledc/bj-pal/pull/21)、[main Core](https://github.com/estelledc/bj-pal/actions/runs/29810717686)、[Pages](https://github.com/estelledc/bj-pal/actions/runs/29810717693) 与 [OCI workflow](https://github.com/estelledc/bj-pal/actions/runs/29810950348) 全部成功；hardened container 在 registry 登录前通过精确 public contract smoke。release/SHA/latest 与公开 manifest 共同绑定 digest `sha256:5767a1e2cfe6b8ad0121ecb654720eefd02257added57d8e21d8b373d56550e9`。
+截至 2026-07-21，`v6.29.0` 的 [PR #23](https://github.com/estelledc/bj-pal/pull/23)、[main Core](https://github.com/estelledc/bj-pal/actions/runs/29814189389)、[Pages](https://github.com/estelledc/bj-pal/actions/runs/29814189487) 与 [OCI workflow](https://github.com/estelledc/bj-pal/actions/runs/29814435853) 全部成功；hardened container 在 registry 登录前通过精确 public contract smoke。release/SHA/latest 与公开 manifest 共同绑定 digest `sha256:1e3d07cdb4a77e36ec1c29096f8e32ba73bafc9ae31a19d6bbff970e42c432d6`。
 
 仓库仍没有可用托管平台 CLI、平台环境变量或 GitHub deployment secrets。公开镜像可以独立验收，但在产生长期 HTTPS URL 与外部 smoke receipt 前，不能声称已经正式 hosted。短期 tunnel 只能证明某次外部可达，不能替代长期托管身份；本轮 Cloudflare Quick Tunnel 在生成 URL 前被本机终端策略以 SIGKILL 终止。
