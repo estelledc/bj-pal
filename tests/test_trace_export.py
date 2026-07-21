@@ -113,7 +113,7 @@ def test_otlp_http_exports_real_protobuf_with_privacy_projection(
     assert handler.bodies
     assert all(value == "application/x-protobuf" for value in handler.content_types)
     assert any(resource.get("service.name") == "bj-pal" for resource in resources)
-    assert any(resource.get("service.version") == "6.23.0" for resource in resources)
+    assert any(resource.get("service.version") == "6.24.0" for resource in resources)
     assert {span.name for span in spans} == {
         "planning.execute",
         "llm.dpsk.complete",

@@ -25,6 +25,7 @@ ALLOWED_TOP_LEVEL_FILES = frozenset(
         "Dockerfile",
         "Makefile",
         "README.md",
+        "compose.public.yaml",
         "pyproject.toml",
         "requirements.txt",
         "requirements-dev.txt",
