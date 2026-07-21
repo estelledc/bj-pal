@@ -1,0 +1,31 @@
+README.md
+  s_b9af7b1cf0b11c::t_1222d71ad7b920 26-27,78,217-218
+docs/ARCHITECTURE_EVIDENCE.md
+  s_b9af7b1cf0b11c::t_39ae4ed816c501 106
+docs/CONTAINER_RELEASE.md
+  s_b9af7b1cf0b11c::t_f7da900b2baaae 8,35-36
+docs/DESIGN.md
+  s_b9af7b1cf0b11c::t_17354510867268 464-465,510-512
+docs/INTERVIEW_GUIDE.md
+  s_b9af7b1cf0b11c::t_0eee56d40e4078 203-204
+docs/PUBLIC_DEMO.md
+  s_b9af7b1cf0b11c::t_7722130d026fbd 1-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "2cec8ebc4983767bd47cbebce093fc54da8596d4",
+  "prompts": {},
+  "sessions": {
+    "s_b9af7b1cf0b11c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_b9af7b1cf0b11c",
+        "model": "unknown"
+      },
+      "human_author": "zhouxun <zhouxun.13@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
