@@ -29,16 +29,21 @@ def render_calibration_timeline_panel(
 
     数据少（< 1 个窗口）时显示提示，不画图。
     """
-    summary = get_plan_count_summary()
+    evidence_classification = "human_verified_step"
+    summary = get_plan_count_summary(
+        evidence_classification=evidence_classification
+    )
     n_paired = summary["n_paired"]
     title = (
-        f"📈 校准时序 · {n_paired} 配对样本"
+        f"校准时序 · {n_paired} 份真人逐步核验样本"
         + (f" · 全局 ECE {summary['global_ece']:.3f}" if summary["global_ece"] else "")
     )
 
     with st.expander(title, expanded=expanded):
         st.caption(
-            f"v3.1 D7 校准时序 · plans={summary['n_plans']} · "
+            "仅使用 human_verified_step；synthetic_test 与 legacy_unclassified "
+            "不会进入这张图。"
+            f" plans={summary['n_plans']} · "
             f"traces={summary['n_traces']} · outcomes={summary['n_outcomes']} · "
             f"paired={n_paired} · 目标 ECE ≤ 0.15"
         )
@@ -46,12 +51,16 @@ def render_calibration_timeline_panel(
         if n_paired < window_size:
             st.info(
                 f"配对样本 {n_paired} < {window_size}，无法画时序。"
-                f"跑 `python3 -m etl.seed_calibration_data --n 30` seed 一些数据。"
+                "需要逐步核验的真人履约结果；合成 seed 只用于测试，不计入此处。"
             )
             _render_distribution_only()
             return
 
-        timeline = get_calibration_timeline(window_size=window_size, n_bins=n_bins)
+        timeline = get_calibration_timeline(
+            window_size=window_size,
+            n_bins=n_bins,
+            evidence_classification=evidence_classification,
+        )
         if not timeline:
             st.warning("时序计算失败")
             return

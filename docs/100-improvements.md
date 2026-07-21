@@ -9,7 +9,7 @@
 ### 工程鲁棒性（5/20）
 - ✅ **[73]** Outlines / partial parse → `llm_robust.repair_json` + Step dataclass 字段全默认，4/4 截断 smoke 通过
 - ✅ **[75]** RPM 令牌桶 + 指数退避 → `RateLimiter(rpm=10)` + `retry_with_backoff(max_attempts=4)`
-- ✅ **[15简]** Plan post-process dedup + prompt 强化 → `_dedup_and_renumber` + 硬约束 7/8
+- ✅ **[15简]** Plan 重复地点边界 → 历史版本曾 post-process dedup；v6.9 改为 strict contract 拒绝重复并最多修复一次，不再静默删站
 - ✅ **[83]** TravelPlanner 风格 evaluator → `evals/eval_plans.py`，4 项指标
 - ✅ **[55]** 责任盾牌叙事 → IM 卡片群发追加"AI 综合大家偏好生成"
 - ✅ **[88]** OpenTelemetry trace → `agents/tracing.py`，三档 backend（off / jsonl / otel），span 嵌套 + ContextVar 跨线程，planner.plan / planner.plan_tot / llm.* / tot.branch 均插桩；6/6 测试通过；OTel SDK 可选依赖（未装自动降级 jsonl）
@@ -124,7 +124,7 @@
 #### v2.4 三件套（5/22 - 5/25）⭐
 - ✅ **D3** 分层行为评测落地：`evals/behavioral/L1_anchor / L2_integration / L3_full` 三层，5 强信号通过率基线 ≥ 60% → S4 加 `detect_weekday_context` 后推到 100%
 - ✅ **D5** 群偏好收敛器：`agents/group_convergence.py` + `group_dynamics.py` + 接入 broadcast 主路径；4 成员模式（反复横跳 / 沉默 / 隐性领导 / 正常）；4 人群 reroute 收敛中位数 ≤ 2 轮
-- ✅ **D1** 履约 trace 内核：`agents/plan_tracer.py` + `ui/trust_panel.py`；plan trace 完整覆盖率 100%，置信度 ECE ≤ 0.15；不做空头 SLA 外壳
+- ✅ **D1** 履约 trace 内核：`agents/plan_tracer.py` + `ui/trust_panel.py`；plan trace 完整覆盖率 100%；历史 ECE 使用 synthetic seed，只保留为计算演示，不作真人门槛
 
 #### v2.5 多模态首屏（5/22 后）⭐
 - ✅ **text_intake** 自然语言意图抽取：`agents/text_intake.py` + 槽位补全
@@ -166,7 +166,7 @@
 #### 累计 5/22 - 5/29
 - 已落地改进编号兑现新增：**[11] + [31] + [47] + [48] + [55] + [83] + [88]** 全数到位（部分早在 5/21 已落，v2.4-v3.0 期间扩展集成）
 - 行为评测三层架构 + 5 信号检查全部 deterministic（不依赖 LLM judge）
-- v3 final_pass 0.470 → v3.0 L3 全量 280 检查 100% pass → v3.1 ECE 进一步收敛（详见 `docs/eval-100-results.md`）
+- v3 final_pass 0.470 → v3.0 L3 全量检查 100% pass；v3.1 ECE 是 synthetic seed 演示，不写成真人收敛（详见 `docs/eval-100-results.md`）
 
 ---
 

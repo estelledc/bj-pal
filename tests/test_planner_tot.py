@@ -13,15 +13,23 @@ import os
 import sys
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
+from agents.execution_budget import (  # noqa: E402
+    ExecutionBudgetExceeded,
+    ExecutionBudgetPolicy,
+    enforce_execution_budget,
+)
 from agents.planner_tot import (  # noqa: E402
     BranchScore,
     DEFAULT_BRANCHES,
     plan_tot,
     score_plan,
 )
+from agents.tracing import capture_execution  # noqa: E402
 from agents.types import UserPreferences  # noqa: E402
 
 
@@ -102,11 +110,9 @@ def test_score_plan_components():
 
 
 def test_plan_tot_handles_branch_failure():
-    """构造一个肯定失败的 branch（hint 不影响 mock，所以这里只测兜底）。
+    """一个普通分支失败时必须显式记录，其他分支仍可参与选优。"""
+    from agents.planner import plan as make_plan
 
-    通过传一个 branches list 包含一个不存在的 'temperature' 类型，
-    最终所有分支都成功（mock 鲁棒）。改成测：所有 branch 都成功时也有合理输出。
-    """
     prefs = UserPreferences(persona="friends", party_size=3,
                              walk_radius_km=2.0, budget_per_person=200,
                              target_start="14:00", duration_hours=4.0)
@@ -114,6 +120,13 @@ def test_plan_tot_handles_branch_failure():
         {"label": "alpha", "hint": "", "temperature": 0.3},
         {"label": "beta", "hint": "试试别的", "temperature": 0.7},
     ]
+
+    def branch_planner(**kwargs):
+        plan = make_plan(**kwargs)
+        if kwargs["branch_hint"] == "试试别的":
+            raise RuntimeError("injected branch failure")
+        return plan
+
     best, branches = plan_tot(
         user_input="朋友下午出去玩",
         persona="friends",
@@ -121,11 +134,83 @@ def test_plan_tot_handles_branch_failure():
         area_anchor="五道营-雍和宫片区",
         branches=custom_branches,
         max_workers=1,
+        branch_planner=branch_planner,
     )
     assert len(branches) == 2
     assert best is not None
-    assert any(b.label == "alpha" for b in branches)
-    assert any(b.label == "beta" for b in branches)
+    alpha = next(b for b in branches if b.label == "alpha")
+    beta = next(b for b in branches if b.label == "beta")
+    assert alpha.plan is best
+    assert beta.plan is None
+    assert beta.error == "RuntimeError: injected branch failure"
+    assert "beta=ERR" in (best.summary or "")
+
+
+def test_plan_tot_rejects_unbounded_or_ambiguous_fan_out():
+    prefs = UserPreferences(persona="solo")
+    with pytest.raises(ValueError, match="between 1 and 3"):
+        plan_tot("下午出去玩", prefs=prefs, branches=[], max_workers=1)
+    with pytest.raises(ValueError, match="duplicate branch label"):
+        plan_tot(
+            "下午出去玩",
+            prefs=prefs,
+            branches=[
+                {"label": "same", "hint": "", "temperature": 0.3},
+                {"label": "same", "hint": "", "temperature": 0.5},
+            ],
+            max_workers=1,
+        )
+    with pytest.raises(ValueError, match="max_workers"):
+        plan_tot("下午出去玩", prefs=prefs, max_workers=4)
+
+
+def test_parallel_branches_inherit_request_budget_and_capture():
+    prefs = UserPreferences(persona="family", party_size=3, has_child=True,
+                             walk_radius_km=1.5, budget_per_person=120,
+                             target_start="14:00", duration_hours=4.5)
+    policy = ExecutionBudgetPolicy(
+        max_llm_calls=3,
+        max_data_provider_batches=3,
+        max_tool_calls=64,
+    )
+    with enforce_execution_budget(policy) as tracker:
+        with capture_execution("parallel-tot-budget") as capture:
+            best, branches = plan_tot(
+                user_input="带娃下午出去玩",
+                persona="family",
+                prefs=prefs,
+                max_workers=3,
+            )
+        snapshot = tracker.complete()
+
+    assert best is not None
+    assert len(branches) == 3
+    assert snapshot.usage.llm_call_count == 3
+    assert snapshot.usage.data_provider_batch_count == 3
+    spans = capture.snapshot()["spans"]
+    root = next(span for span in spans if span["name"] == "planner.plan_tot")
+    branch_spans = [span for span in spans if span["name"] == "tot.branch"]
+    assert len(branch_spans) == 3
+    assert all(span["parent_span_id"] == root["span_id"] for span in branch_spans)
+
+
+def test_parallel_branches_cannot_bypass_default_provider_budget():
+    prefs = UserPreferences(persona="family", party_size=3,
+                             target_start="14:00", duration_hours=4.5)
+    with pytest.raises(ExecutionBudgetExceeded) as raised:
+        with enforce_execution_budget(ExecutionBudgetPolicy()):
+            plan_tot(
+                user_input="带娃下午出去玩",
+                persona="family",
+                prefs=prefs,
+                max_workers=3,
+            )
+
+    snapshot = raised.value.snapshot
+    assert snapshot.status == "terminated"
+    assert snapshot.termination_reason == "data_provider_batch_limit"
+    assert snapshot.usage.data_provider_batch_count == 2
+    assert snapshot.verify_integrity() is True
 
 
 if __name__ == "__main__":
@@ -135,4 +220,7 @@ if __name__ == "__main__":
     test_plan_tot_serial_mode()
     test_score_plan_components()
     test_plan_tot_handles_branch_failure()
-    print("OK test_planner_tot 5/5")
+    test_plan_tot_rejects_unbounded_or_ambiguous_fan_out()
+    test_parallel_branches_inherit_request_budget_and_capture()
+    test_parallel_branches_cannot_bypass_default_provider_budget()
+    print("OK test_planner_tot 8/8")

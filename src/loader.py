@@ -12,7 +12,7 @@ W1 D1 交付物。一次性跑，~5s 完成。
     query_routes(scene_id: str, mode: str | None) -> list[dict]
 """
 
-from __future__ import annotations  # 兼容 Python 3.9 的 PEP 604 语法
+from __future__ import annotations
 
 import argparse
 import gzip
@@ -22,6 +22,8 @@ import sys
 import time
 from pathlib import Path
 
+from data_profile import load_data_profile
+
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"
 DB = ROOT / "bj_pal.db"
@@ -29,7 +31,7 @@ DB = ROOT / "bj_pal.db"
 POI_FILE = DATA / "amap" / "merged" / "amap_beijing_pois_with_food_merged_20260503.jsonl"
 UGC_FILE = DATA / "ugc" / "aspects.jsonl"  # 三套合并后的全量 UGC（manual_seed + v2 + v3）
 ROUTES_FILE = DATA / "amap" / "routes" / "amap_beijing_route_planning_ugc_eval_v3_20260503.jsonl"
-ROUTES_EXPANDED_FILE = DATA / "amap" / "routes" / "expanded_v2.jsonl"  # Task 1.4
+ROUTES_EXPANDED_FILE = DATA / "amap" / "routes" / "demo_expanded_v2.jsonl"
 
 
 SCHEMA = """
@@ -86,6 +88,11 @@ CREATE TABLE IF NOT EXISTS routes (
 );
 CREATE INDEX IF NOT EXISTS idx_routes_scene ON routes(scene_id);
 CREATE INDEX IF NOT EXISTS idx_routes_leg ON routes(leg_id);
+
+CREATE TABLE IF NOT EXISTS dataset_metadata (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
 """
 
 
@@ -232,6 +239,22 @@ def load_routes(conn: sqlite3.Connection) -> int:
         rows,
     )
     return len(rows)
+
+
+def load_dataset_metadata(conn: sqlite3.Connection) -> None:
+    """Persist the bootstrap profile so runtime output cannot lose provenance."""
+    profile = load_data_profile()
+    values = {
+        "profile": profile.name,
+        "classification": profile.classification,
+        "public_reproducible": json.dumps(profile.public_reproducible),
+        "sources": json.dumps(dict(profile.sources), ensure_ascii=False, sort_keys=True),
+        "limitations": json.dumps(profile.limitations, ensure_ascii=False),
+    }
+    conn.executemany(
+        "INSERT OR REPLACE INTO dataset_metadata(key, value) VALUES (?, ?)",
+        values.items(),
+    )
 
 
 def _route_row(r: dict) -> tuple:
@@ -389,16 +412,20 @@ def rebuild():
     n_poi = load_pois(conn)
     n_ugc = load_ugc(conn)
     n_route = load_routes(conn)
+    load_dataset_metadata(conn)
     conn.commit()
     conn.close()
     dt = time.time() - t0
     print(f"[ok] 建库完成 {dt:.2f}s")
     print(f"     pois={n_poi}  ugc_aspects={n_ugc}  routes={n_route}")
+    print(f"     data_profile={load_data_profile().name}")
     print(f"     db={DB} ({DB.stat().st_size / 1024 / 1024:.1f} MB)")
 
 
 def check():
     conn = get_conn()
+    metadata = dict(conn.execute("SELECT key, value FROM dataset_metadata").fetchall())
+    print(f"  {'data_profile':15} {metadata.get('profile', 'unknown')}")
     for table in ("pois", "ugc_aspects", "routes"):
         n = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
         print(f"  {table:15} {n}")

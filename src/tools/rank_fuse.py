@@ -70,7 +70,7 @@ def fuse_and_rank(
             _apply_heritage_brand_adjustment(scored)
         # [05] 季节限定：当前月份是 POI 网红期 → boost；劣势期 → demote
         if seasonal_aware:
-            _apply_seasonal_adjustment(scored)
+            _apply_seasonal_adjustment(scored, target_dt)
         # [01] 设施约束：has_child / wheelchair / driving 时，按 facility flag 加减分
         if facility_aware:
             _apply_facility_adjustment(scored, constraints)
@@ -219,11 +219,12 @@ def _apply_facility_adjustment(ranked: RankedPOI, constraints: SearchConstraints
         ))
 
 
-def _apply_seasonal_adjustment(ranked: RankedPOI) -> None:
-    """[05] 当前月份与 POI 季节峰值匹配 → 加分 / 减分 + reason。"""
+def _apply_seasonal_adjustment(ranked: RankedPOI, target_dt=None) -> None:
+    """[05] 计划日期与 POI 季节峰值匹配 → 加分 / 减分 + reason。"""
     from .seasonal import get_season_match
 
-    match = get_season_match(ranked.poi.name)
+    target_date = target_dt.date() if target_dt is not None else None
+    match = get_season_match(ranked.poi.name, today=target_date)
     adjust = match["score_adjust"]
     if adjust == 0.0:
         return

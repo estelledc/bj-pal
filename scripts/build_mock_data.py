@@ -1,16 +1,20 @@
-"""Build a compact mock dataset for BJ-Pal when the original data is missing.
+"""Build an explicit BJ-Pal data profile for local development.
 
-The real project data is intentionally gitignored and can disappear from a
-local checkout. This script recreates enough POI / UGC / route data for the
-main demo paths and the data-dependent smoke tests.
+The public repository does not contain the original AMap cache. The default
+``demo`` profile therefore creates deterministic synthetic POI / UGC / route
+fixtures and writes a machine-readable provenance manifest. A local real POI
+cache can be selected explicitly, but derived UGC and route fixtures remain
+synthetic and the manifest says so.
 
 Usage:
-    python3 scripts/build_mock_data.py
+    python3 scripts/build_mock_data.py --profile demo
+    python3 scripts/build_mock_data.py --profile real-cache
     python3 src/loader.py
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import math
 from pathlib import Path
@@ -23,10 +27,12 @@ POI_FILE = DATA / "amap" / "merged" / "amap_beijing_pois_with_food_merged_202605
 REAL_POI_FILE = DATA / "amap" / "real" / "amap_beijing_real_pois.jsonl"
 UGC_FILE = DATA / "ugc" / "aspects.jsonl"
 ROUTES_FILE = DATA / "amap" / "routes" / "amap_beijing_route_planning_ugc_eval_v3_20260503.jsonl"
-ROUTES_EXPANDED_FILE = DATA / "amap" / "routes" / "expanded_v2.jsonl"
+ROUTES_EXPANDED_FILE = DATA / "amap" / "routes" / "demo_expanded_v2.jsonl"
 AREA_CENTERS_FILE = DATA / "area_centers_inferred.json"
 HOLIDAY_FILE = DATA / "holiday_calendar_2026.json"
 HERITAGE_RESERVATIONS_FILE = DATA / "heritage_reservations.json"
+HERITAGE_BRANDS_FILE = DATA / "heritage_brands.json"
+MANIFEST_FILE = DATA / "manifest.json"
 INACTIVE_POI_NAME_MARKERS = ("暂停营业", "装修中", "已关闭", "歇业")
 
 
@@ -59,15 +65,20 @@ SUPPLEMENT_CENTERS: dict[str, tuple[float, float]] = {
 }
 
 
-def main() -> None:
+def main(profile: str = "demo") -> None:
+    resolved_profile = _resolve_profile(profile)
     _ensure_dirs()
-    pois = _build_pois()
+    pois = _build_pois(resolved_profile)
     _write_jsonl(POI_FILE, pois)
-    _write_jsonl(UGC_FILE, _build_ugc(pois))
-    _write_jsonl(ROUTES_FILE, _build_routes(pois, estimated=False, pair_limit=14))
-    _write_jsonl(ROUTES_EXPANDED_FILE, _build_routes(pois, estimated=True, pair_limit=300))
+    ugc = _build_ugc(pois)
+    routes = _build_routes(pois, estimated=False, pair_limit=14)
+    expanded_routes = _build_routes(pois, estimated=True, pair_limit=300)
+    _write_jsonl(UGC_FILE, ugc)
+    _write_jsonl(ROUTES_FILE, routes)
+    _write_jsonl(ROUTES_EXPANDED_FILE, expanded_routes)
     _write_holiday_calendar()
     _write_heritage_reservations()
+    _write_heritage_brands()
     AREA_CENTERS_FILE.write_text(
         json.dumps(
             {k: {"center": [lng, lat], "source": "mock_data"} for k, (lng, lat) in AREA_CENTERS.items()},
@@ -76,11 +87,63 @@ def main() -> None:
         ),
         encoding="utf-8",
     )
+    _write_manifest(
+        resolved_profile,
+        poi_count=len(pois),
+        ugc_count=len(ugc),
+        route_count=len(routes) + len(expanded_routes),
+    )
+    print(f"[profile] {resolved_profile} (see {MANIFEST_FILE})")
     print(f"[ok] wrote {len(pois)} POIs -> {POI_FILE}")
-    print(f"[ok] wrote mock UGC -> {UGC_FILE}")
+    print(f"[ok] wrote synthetic UGC -> {UGC_FILE}")
     print(f"[ok] wrote routes -> {ROUTES_FILE} + {ROUTES_EXPANDED_FILE}")
     print(f"[ok] wrote holiday calendar -> {HOLIDAY_FILE}")
     print(f"[ok] wrote reservation rules -> {HERITAGE_RESERVATIONS_FILE}")
+    print(f"[ok] wrote heritage brand rules -> {HERITAGE_BRANDS_FILE}")
+
+
+def _resolve_profile(requested: str) -> str:
+    if requested == "auto":
+        return "real-cache" if REAL_POI_FILE.exists() else "demo"
+    if requested == "real-cache" and not REAL_POI_FILE.exists():
+        raise FileNotFoundError(
+            "real-cache profile requires "
+            f"{REAL_POI_FILE}; use --profile demo for the public reproducible path"
+        )
+    if requested not in {"demo", "real-cache"}:
+        raise ValueError(f"unsupported data profile: {requested}")
+    return requested
+
+
+def _write_manifest(profile: str, *, poi_count: int, ugc_count: int, route_count: int) -> None:
+    uses_real_poi_cache = profile == "real-cache"
+    payload = {
+        "schema_version": 1,
+        "profile": profile,
+        "public_reproducible": not uses_real_poi_cache,
+        "classification": "mixed" if uses_real_poi_cache else "synthetic",
+        "sources": {
+            "pois": "local-amap-cache" if uses_real_poi_cache else "deterministic-synthetic-fixtures",
+            "ugc": "deterministic-synthetic-fixtures",
+            "routes": "deterministic-haversine-estimates",
+            "reservation_rules": "deterministic-synthetic-fixtures",
+            "heritage_brand_rules": "deterministic-synthetic-fixtures",
+        },
+        "counts": {
+            "pois": poi_count,
+            "ugc_aspects": ugc_count,
+            "routes": route_count,
+        },
+        "limitations": [
+            "demo fixtures do not prove real-world availability, popularity, or booking success",
+            "route durations are estimates and are not live navigation results",
+            "historical evaluation results require their original run artifacts for independent reproduction",
+        ],
+    }
+    MANIFEST_FILE.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
 
 
 def _ensure_dirs() -> None:
@@ -101,10 +164,10 @@ def _write_holiday_calendar() -> None:
             {"name": "元旦", "start": "2026-01-01", "end": "2026-01-03", "tier": "tier_3_normal"},
             {"name": "春节", "start": "2026-02-15", "end": "2026-02-21", "tier": "tier_1_extreme"},
             {"name": "清明", "start": "2026-04-04", "end": "2026-04-06", "tier": "tier_2_high"},
-            {"name": "五一", "start": "2026-05-01", "end": "2026-05-05", "tier": "tier_2_high"},
+            {"name": "劳动节", "start": "2026-05-01", "end": "2026-05-05", "tier": "tier_1_extreme"},
             {"name": "端午", "start": "2026-06-19", "end": "2026-06-21", "tier": "tier_2_high"},
             {"name": "中秋", "start": "2026-09-25", "end": "2026-09-27", "tier": "tier_2_high"},
-            {"name": "国庆", "start": "2026-10-01", "end": "2026-10-07", "tier": "tier_1_extreme"},
+            {"name": "国庆节", "start": "2026-10-01", "end": "2026-10-07", "tier": "tier_1_extreme"},
         ],
         "famous_outdoor_pois_extreme_crowd_on_holiday": [
             "故宫",
@@ -116,11 +179,54 @@ def _write_holiday_calendar() -> None:
             "景山",
             "北海",
             "奥林匹克",
+            "玉渊潭",
             "长城",
             "前门",
         ],
     }
     HOLIDAY_FILE.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _write_heritage_brands() -> None:
+    """Write the compact rule catalog required by the public demo profile."""
+    canonical = {
+        "全聚德": (["前门", "和平门"], ["总店", "老店"], 4.2),
+        "东来顺": (["前门", "王府井"], ["总店", "老店"], 4.1),
+        "稻香村": (["鼓楼"], ["总店", "老店"], 4.0),
+        "张一元": (["大栅栏"], ["总店", "老店"], 4.0),
+        "吴裕泰": (["王府井"], ["总店", "老店"], 4.0),
+        "便宜坊": (["鲜鱼口"], ["总店", "老店"], 4.0),
+        "六必居": (["前门"], ["总店", "老店"], 4.0),
+        "护国寺小吃": (["护国寺"], ["总店", "老店"], 4.0),
+        "聚宝源": (["牛街"], ["总店", "老店"], 4.1),
+        "砂锅居": (["西四"], ["总店", "老店"], 4.0),
+        "同和居": (["月坛"], ["总店", "老店"], 4.0),
+        "都一处": (["前门"], ["总店", "老店"], 4.0),
+        "天兴居": (["鲜鱼口"], ["总店", "老店"], 4.0),
+        "爆肚冯": (["门框胡同"], ["总店", "老店"], 4.0),
+        "茶汤李": (["鼓楼"], ["总店", "老店"], 4.0),
+        "月盛斋": (["前门"], ["总店", "老店"], 4.0),
+        "内联升": (["大栅栏"], ["总店", "老店"], 4.0),
+        "瑞蚨祥": (["大栅栏"], ["总店", "老店"], 4.0),
+        "一条龙": (["前门"], ["总店", "老店"], 4.0),
+        "柳泉居": (["新街口"], ["总店", "老店"], 4.0),
+    }
+    brands = {}
+    for index, (name, (locations, keywords, min_rating)) in enumerate(canonical.items()):
+        brands[name] = {
+            "founded_year": 1864 + index,
+            "type": "restaurant" if index < 16 else "retail",
+            "category": "demo heritage rule",
+            "flagship_locations": locations,
+            "flagship_keywords": keywords,
+            "branch_min_acceptable_rating": min_rating,
+            "notes": "synthetic demo rule; verify against current official information before real use",
+            "warning": "not live merchant data",
+        }
+    HERITAGE_BRANDS_FILE.write_text(
+        json.dumps({"brands": brands}, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
 
 
 def _write_heritage_reservations() -> None:
@@ -230,10 +336,10 @@ def _offset(area: str, i: int, scale: float = 0.004) -> tuple[float, float]:
     return lng + ring * scale / 4, lat + band * scale / 4
 
 
-def _build_pois() -> list[dict]:
-    real_pois = _load_real_pois()
-    if real_pois:
-        return real_pois
+def _build_pois(profile: str = "auto") -> list[dict]:
+    resolved_profile = _resolve_profile(profile)
+    if resolved_profile == "real-cache":
+        return _load_real_pois()
 
     core: list[dict] = []
 
@@ -252,6 +358,30 @@ def _build_pois() -> list[dict]:
     add("P_MSYN", "蜜思酸奶(雍和宫店)", "餐饮服务", "五道营-雍和宫片区", -0.0018, 0.0002, category_lv2="甜品店", rating=4.8, avg_price=28)
     add("P_JZY", "京兆尹(雍和宫店)", "餐饮服务", "五道营-雍和宫片区", 0.0006, -0.0004, rating=4.9, avg_price=966)
     add("P_DDKY", "大董烤鸭(雍和宫店)", "餐饮服务", "五道营-雍和宫片区", 0.0016, -0.0014, rating=4.6, avg_price=180)
+    add(
+        "P_DEMO_NIGHT_GRILL",
+        "槐序炭火烤肉（示例）",
+        "餐饮服务",
+        "五道营-雍和宫片区",
+        0.0012,
+        0.0009,
+        category_lv2="烤肉",
+        rating=4.9,
+        avg_price=138,
+        open_time="17:00-01:00",
+    )
+    add(
+        "P_DEMO_NIGHT_BAR",
+        "北新桥精酿酒馆（示例）",
+        "餐饮服务",
+        "五道营-雍和宫片区",
+        0.0019,
+        0.0013,
+        category_lv2="酒吧",
+        rating=4.8,
+        avg_price=128,
+        open_time="17:00-02:00",
+    )
 
     add("P_WFJ", "王府井步行街", "风景名胜", "王府井-东单片区", -0.0010, 0.0000, rating=4.6, avg_price=0)
     add("P_WFJBH", "王府井百货", "购物服务", "王府井-东单片区", -0.0004, 0.0005, rating=4.5, avg_price=120)
@@ -346,6 +476,7 @@ def _add_weekend_replacement_pois(add) -> None:
     area_prefix = {
         "五道营-雍和宫片区": "雍和",
         "三里屯片区": "三里屯",
+        "798艺术区片区": "798",
         "王府井-东单片区": "王府井",
         "什刹海-鼓楼片区": "鼓楼",
         "天安门-故宫片区": "前门",
@@ -544,6 +675,11 @@ def _build_ugc(pois: list[dict]) -> list[dict]:
     add("ugc_core_010", "五道营-雍和宫片区", "国子监", "scenario_fit", "positive", 0.79,
         "国子监和雍和宫距离近，文化感强，下午 60 分钟可完成不赶路。",
         {"fit_scores": {"culture": 0.85, "classic_beijing": 0.8}, "scene_tags": ["culture"]})
+    add("ugc_core_010_diet", "五道营-雍和宫片区", "雍和轻食小馆", "food", "positive", 0.90,
+        "雍和轻食小馆是可复现示例点位，提供明确标注的不辣低油选项和儿童餐。",
+        {"taste_tags": ["light_diet", "no_spicy"],
+         "scene_tags": ["family_meal"], "facility_tags": ["child_friendly"]},
+        dataset_version="synthetic_from_scenario_theme_v2")
 
     add("ugc_core_011", "天安门-故宫片区", "故宫博物院", "queue", "negative", 0.90,
         "故宫博物院周末和国庆游客密度高，午门入场排队 60 分钟，预约是硬约束。",
@@ -569,6 +705,41 @@ def _build_ugc(pois: list[dict]) -> list[dict]:
     add("ugc_core_018", "奥林匹克公园片区", "奥林匹克森林公园", "comfort", "negative", 0.72,
         "奥林匹克森林公园夏季暴晒，下午带娃要避开烈日，建议傍晚或树荫路线。",
         {"risk_tags": ["summer_heat"], "scene_tags": ["outdoor"]}, time_bucket="general", intensity=0.45)
+
+    # Explicit signals for deterministic ranking modules. They are synthetic
+    # demo fixtures and are never presented as live user or merchant data.
+    for i, evidence in enumerate([
+        "雍和宫是第一次来北京常见的必去地标，游客打卡拍照集中。",
+        "外地游客把雍和宫列为经典打卡路线，周末排队明显。",
+        "雍和宫地标辨识度高，旅游人群常与国子监一起打卡。",
+    ], 1):
+        add(f"ugc_audience_yhg_{i}", "五道营-雍和宫片区", "雍和宫", "audience", "mixed", 0.82,
+            evidence, {"audience": "tourist"})
+    for poi_name, area in (("故宫博物院", "天安门-故宫片区"), ("南锣鼓巷", "什刹海-鼓楼片区")):
+        for i in range(3):
+            add(f"ugc_audience_{poi_name}_{i}", area, poi_name, "audience", "mixed", 0.80,
+                f"{poi_name} 是外地游客第一次来北京的必去地标和拍照打卡点。",
+                {"audience": "tourist"})
+    for i in range(3):
+        add(f"ugc_audience_local_{i}", "东四-本地餐饮片区", "东四胡同", "audience", "positive", 0.80,
+            "东四胡同是本地居民和老北京街坊常去的散步路线。",
+            {"audience": "local"})
+
+    add("ugc_facility_dyc_1", "朝阳公园片区", "朝阳大悦城", "facility", "positive", 0.90,
+        "朝阳大悦城母婴室和卫生间齐全，推车动线友好。",
+        {"facility_tags": ["baby", "toilet"]})
+    add("ugc_facility_dyc_2", "朝阳公园片区", "朝阳大悦城", "facility", "positive", 0.88,
+        "朝阳大悦城地下停车场车位充足，带娃自驾方便。",
+        {"facility_tags": ["parking"]})
+
+    for i, evidence in enumerate([
+        "玉渊潭公园春季樱花进入花期，适合踏青赏樱。",
+        "玉渊潭公园春樱和海棠盛开，春季赏花体验集中。",
+        "玉渊潭公园秋季银杏金黄，适合赏叶和拍照。",
+        "玉渊潭公园深秋银杏进入观赏期，秋景层次丰富。",
+    ], 1):
+        add(f"ugc_season_yyt_{i}", "玉渊潭片区", "玉渊潭公园", "seasonal", "positive", 0.86,
+            evidence, {"seasonal_fixture": True}, time_bucket="general", intensity=0.55)
 
     # Repeated wait samples for histogram-driven tools.
     for i, mins in enumerate([120, 150, 180, 210, 240], 1):
@@ -752,4 +923,12 @@ def _distance_km(a: dict, b: dict) -> float:
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--profile",
+        choices=("demo", "real-cache", "auto"),
+        default="demo",
+        help="demo is public and deterministic; real-cache requires a local AMap cache",
+    )
+    args = parser.parse_args()
+    main(args.profile)

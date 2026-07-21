@@ -1,0 +1,235 @@
+{
+  "schema_version": 1,
+  "name": "bj-pal-clarification-continuation-synthetic-v1",
+  "classification": "synthetic",
+  "label_basis": "Hand-authored execution-critical ambiguities spanning typed constraint conflicts, area conflicts, relative locations, and missing conversation context. Labels cover deterministic preflight continuation only.",
+  "cases": [
+    {
+      "case_id": "party-use-text",
+      "delivery": "sync",
+      "request": {
+        "user_input": "下午三点，两个人在三里屯玩三小时",
+        "preferences": {"party_size": 4, "target_start": "15:00", "duration_hours": 3},
+        "provided_fields": ["user_input", "preferences.party_size", "preferences.target_start", "preferences.duration_hours"]
+      },
+      "expected_code": "constraint_conflict",
+      "expected_field": "preferences.party_size",
+      "expected_option_ids": ["use_text_value", "use_structured_value"],
+      "selected_option_id": "use_text_value",
+      "expected_effective_value": 2
+    },
+    {
+      "case_id": "party-use-structured",
+      "delivery": "job",
+      "job_policy": {"deadline_seconds": 45},
+      "request": {
+        "user_input": "下午三点，两个人在三里屯玩三小时",
+        "preferences": {"party_size": 4, "target_start": "15:00", "duration_hours": 3},
+        "provided_fields": ["user_input", "preferences.party_size", "preferences.target_start", "preferences.duration_hours"]
+      },
+      "expected_code": "constraint_conflict",
+      "expected_field": "preferences.party_size",
+      "expected_option_ids": ["use_text_value", "use_structured_value"],
+      "selected_option_id": "use_structured_value",
+      "expected_effective_value": 4
+    },
+    {
+      "case_id": "budget-use-text",
+      "delivery": "sync",
+      "request": {
+        "user_input": "两个人去三里屯，人均预算100元",
+        "preferences": {"party_size": 2, "budget_per_person": 180},
+        "provided_fields": ["user_input", "preferences.party_size", "preferences.budget_per_person"]
+      },
+      "expected_code": "constraint_conflict",
+      "expected_field": "preferences.budget_per_person",
+      "expected_option_ids": ["use_text_value", "use_structured_value"],
+      "selected_option_id": "use_text_value",
+      "expected_effective_value": 100
+    },
+    {
+      "case_id": "budget-use-structured",
+      "delivery": "job",
+      "job_policy": {"deadline_seconds": 90},
+      "request": {
+        "user_input": "两个人去三里屯，人均预算100元",
+        "preferences": {"party_size": 2, "budget_per_person": 180},
+        "provided_fields": ["user_input", "preferences.party_size", "preferences.budget_per_person"]
+      },
+      "expected_code": "constraint_conflict",
+      "expected_field": "preferences.budget_per_person",
+      "expected_option_ids": ["use_text_value", "use_structured_value"],
+      "selected_option_id": "use_structured_value",
+      "expected_effective_value": 180
+    },
+    {
+      "case_id": "start-time-use-text",
+      "delivery": "sync",
+      "request": {
+        "user_input": "下午三点去三里屯玩三小时",
+        "preferences": {"target_start": "16:00", "duration_hours": 3},
+        "provided_fields": ["user_input", "preferences.target_start", "preferences.duration_hours"]
+      },
+      "expected_code": "constraint_conflict",
+      "expected_field": "preferences.target_start",
+      "expected_option_ids": ["use_text_value", "use_structured_value"],
+      "selected_option_id": "use_text_value",
+      "expected_effective_value": "15:00"
+    },
+    {
+      "case_id": "duration-use-structured",
+      "delivery": "sync",
+      "request": {
+        "user_input": "下午三点去三里屯玩三小时",
+        "preferences": {"target_start": "15:00", "duration_hours": 5},
+        "provided_fields": ["user_input", "preferences.target_start", "preferences.duration_hours"]
+      },
+      "expected_code": "constraint_conflict",
+      "expected_field": "preferences.duration_hours",
+      "expected_option_ids": ["use_text_value", "use_structured_value"],
+      "selected_option_id": "use_structured_value",
+      "expected_effective_value": 5
+    },
+    {
+      "case_id": "persona-use-text",
+      "delivery": "job",
+      "job_policy": {"deadline_seconds": 120},
+      "request": {
+        "user_input": "跟朋友去三里屯玩三小时",
+        "persona": "family",
+        "preferences": {"duration_hours": 3},
+        "provided_fields": ["user_input", "persona", "preferences.duration_hours"]
+      },
+      "expected_code": "constraint_conflict",
+      "expected_field": "persona",
+      "expected_option_ids": ["use_text_value", "use_structured_value"],
+      "selected_option_id": "use_text_value",
+      "expected_effective_value": "friends"
+    },
+    {
+      "case_id": "child-age-use-text",
+      "delivery": "sync",
+      "request": {
+        "user_input": "带5岁孩子去王府井玩三小时",
+        "preferences": {"has_child": true, "child_age": 7, "duration_hours": 3},
+        "provided_fields": ["user_input", "preferences.has_child", "preferences.child_age", "preferences.duration_hours"]
+      },
+      "expected_code": "constraint_conflict",
+      "expected_field": "preferences.child_age",
+      "expected_option_ids": ["use_text_value", "use_structured_value"],
+      "selected_option_id": "use_text_value",
+      "expected_effective_value": 5
+    },
+    {
+      "case_id": "walk-radius-use-text",
+      "delivery": "sync",
+      "request": {
+        "user_input": "去三里屯，步行不超过1公里",
+        "preferences": {"walk_radius_km": 2},
+        "provided_fields": ["user_input", "preferences.walk_radius_km"]
+      },
+      "expected_code": "constraint_conflict",
+      "expected_field": "preferences.walk_radius_km",
+      "expected_option_ids": ["use_text_value", "use_structured_value"],
+      "selected_option_id": "use_text_value",
+      "expected_effective_value": 1
+    },
+    {
+      "case_id": "area-conflict-use-text",
+      "delivery": "sync",
+      "request": {
+        "user_input": "周六下午去三里屯逛逛",
+        "area_anchor": "五道营-雍和宫片区",
+        "provided_fields": ["user_input", "area_anchor"]
+      },
+      "expected_code": "conflicting_area_anchor",
+      "expected_field": "area_anchor",
+      "expected_option_ids": ["use_area_1", "use_area_2", "provide_area"],
+      "selected_option_id": "use_area_1",
+      "expected_effective_value": "三里屯片区"
+    },
+    {
+      "case_id": "area-conflict-use-structured",
+      "delivery": "job",
+      "job_policy": {"deadline_seconds": 60},
+      "request": {
+        "user_input": "周六下午去三里屯逛逛",
+        "area_anchor": "五道营-雍和宫片区",
+        "provided_fields": ["user_input", "area_anchor"]
+      },
+      "expected_code": "conflicting_area_anchor",
+      "expected_field": "area_anchor",
+      "expected_option_ids": ["use_area_1", "use_area_2", "provide_area"],
+      "selected_option_id": "use_area_2",
+      "expected_effective_value": "五道营-雍和宫片区"
+    },
+    {
+      "case_id": "multiple-area-use-second",
+      "delivery": "sync",
+      "request": {
+        "user_input": "三里屯还是国贸，选一个安排下午行程",
+        "provided_fields": ["user_input"]
+      },
+      "expected_code": "multiple_area_candidates",
+      "expected_field": "area_anchor",
+      "expected_option_ids": ["use_area_1", "use_area_2", "use_area_3"],
+      "selected_option_id": "use_area_2",
+      "expected_effective_value": "国贸-CBD片区"
+    },
+    {
+      "case_id": "relative-home-provide-area",
+      "delivery": "sync",
+      "request": {
+        "user_input": "别离家太远，带娃玩四小时",
+        "provided_fields": ["user_input"]
+      },
+      "expected_code": "missing_location_reference",
+      "expected_field": "area_anchor",
+      "expected_option_ids": ["use_area_1", "provide_area"],
+      "selected_option_id": "provide_area",
+      "answer": "望京片区",
+      "expected_effective_value": "望京片区"
+    },
+    {
+      "case_id": "previous-plan-revise-request",
+      "delivery": "sync",
+      "request": {
+        "user_input": "按之前的方案继续安排",
+        "provided_fields": ["user_input"]
+      },
+      "expected_code": "unresolved_plan_reference",
+      "expected_field": "user_input",
+      "expected_option_ids": ["provide_revised_request", "restart_with_area"],
+      "selected_option_id": "provide_revised_request",
+      "answer": "周六下午去望京逛商场并吃晚饭",
+      "expected_effective_value": "周六下午去望京逛商场并吃晚饭"
+    },
+    {
+      "case_id": "ordinal-selection-restart",
+      "delivery": "sync",
+      "request": {
+        "user_input": "第二个方案吧",
+        "provided_fields": ["user_input"]
+      },
+      "expected_code": "unresolved_selection_reference",
+      "expected_field": "user_input",
+      "expected_option_ids": ["provide_revised_request", "restart_with_area"],
+      "selected_option_id": "restart_with_area",
+      "expected_effective_value": "在五道营-雍和宫片区重新生成本次短时活动方案"
+    },
+    {
+      "case_id": "unknown-landmark-provide-area",
+      "delivery": "sync",
+      "request": {
+        "user_input": "清河地铁站附近吃饭再散步",
+        "provided_fields": ["user_input"]
+      },
+      "expected_code": "missing_location_reference",
+      "expected_field": "area_anchor",
+      "expected_option_ids": ["use_area_1", "provide_area"],
+      "selected_option_id": "provide_area",
+      "answer": "五道口片区",
+      "expected_effective_value": "五道口片区"
+    }
+  ]
+}

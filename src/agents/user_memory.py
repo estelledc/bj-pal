@@ -1,23 +1,14 @@
-"""v2.7 D6 stateful agent — 跨 session 用户偏好沉淀。
+"""User-owned long-term memory with explicit lifecycle and conflict semantics.
 
-之前 BJ-Pal 是 stateless：每次 plan 都从零开始，用户得每次重说"我减脂""不吃辣"。
-v2.7 加 user_memory 层：
-
-- record_preference(user_id, key, value)  写入 / 累计 mention_count
-- get_preferences(user_id)                 读全部活跃偏好
-- forget(user_id, key)                     用户明确"AI 别记这个"
-- infer_from_user_input(user_id, raw)      仅在显式记忆入口中用 LLM 抽取并沉淀偏好
-- merge_into_prompt(base, user_id)         给 planner 注入"用户长期偏好"段落
-
-设计原则：
-- 用户拥有所有数据（forget 必须有效）
-- 偏好分级：confidence 表示抽取可靠度；mention_count 仅作内部累计，不直接展示
-- 偏好衰减：30 天没复现的 confidence × 0.5
-- 复用现有 SQLite（tool_calls.db），新增 user_memory 表
+Memory writes are never part of normal planning. The UI's dedicated memory
+intake is the only current write path; the planner only reads confirmed,
+non-expired entries. Existing v2.7 callers keep using ``record_preference`` and
+``get_preferences`` while v4.5 exposes the richer state machine underneath.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import sqlite3
@@ -25,190 +16,506 @@ import sys
 import threading
 import time
 from contextlib import closing
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Literal, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-ROOT = Path(__file__).resolve().parent.parent.parent
-_DB_PATH = ROOT / "tool_calls.db"
+from storage.user_memory import (
+    LEGACY_SHARED_DB,
+    USER_MEMORY_DB_ENV,
+    USER_MEMORY_SCHEMA,
+    ensure_user_memory_metadata,
+    resolve_user_memory_path,
+)
+
+_DB_PATH: Path | None = None
 _LOCK = threading.Lock()
 
 DECAY_DAYS = 30
 DECAY_FACTOR = 0.5
 DEFAULT_CONFIDENCE = 0.7
 
+MemoryKind = Literal["preference", "dislike", "fact", "identity"]
+MemorySource = Literal[
+    "manual_entry",
+    "explicit_user_input",
+    "inferred",
+    "imported",
+    "legacy",
+]
+MemoryAction = Literal["created", "reinforced", "replaced", "conflict_rejected"]
 
-# ============================================================
-# Schema
-# ============================================================
+VALID_KINDS = frozenset({"preference", "dislike", "fact", "identity"})
+VALID_SOURCES = frozenset(
+    {"manual_entry", "explicit_user_input", "inferred", "imported", "legacy"}
+)
 
-_SCHEMA = """
-CREATE TABLE IF NOT EXISTS user_memory (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id         TEXT NOT NULL,
-    kind            TEXT NOT NULL,          -- preference | fact | dislike | identity
-    mem_key         TEXT NOT NULL,          -- e.g. "diet", "favorite_area"
-    mem_value       TEXT NOT NULL,          -- JSON-encoded value
-    confidence      REAL NOT NULL DEFAULT 0.7,
-    mention_count   INTEGER NOT NULL DEFAULT 1,
-    first_seen_at   REAL NOT NULL,
-    last_seen_at    REAL NOT NULL,
-    forgotten       INTEGER NOT NULL DEFAULT 0,
-    UNIQUE(user_id, kind, mem_key)
-);
-CREATE INDEX IF NOT EXISTS idx_user_memory_user ON user_memory(user_id, forgotten);
-"""
+
+_SCHEMA = USER_MEMORY_SCHEMA
+
+_COLUMN_MIGRATIONS = {
+    "source": "TEXT NOT NULL DEFAULT 'legacy'",
+    "confirmed_at": "REAL",
+    "expires_at": "REAL",
+    "revision": "INTEGER NOT NULL DEFAULT 1",
+}
+
+
+def database_path() -> Path:
+    """Resolve explicit override, verified dedicated store, or legacy compatibility."""
+    return resolve_user_memory_path(_DB_PATH)
 
 
 def _conn() -> sqlite3.Connection:
-    conn = sqlite3.connect(_DB_PATH)
+    path = database_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(path, timeout=5)
     conn.row_factory = sqlite3.Row
     return conn
 
 
-def _ensure_schema():
-    with _LOCK, closing(_conn()) as conn:
-        conn.executescript(_SCHEMA)
-        conn.commit()
+def _ensure_schema() -> None:
+    """Create the v4.5 schema and add columns to existing v2.7 databases."""
+    path = database_path()
+    with _LOCK:
+        with closing(_conn()) as conn:
+            conn.executescript(_SCHEMA)
+            existing_columns = {
+                row["name"]
+                for row in conn.execute("PRAGMA table_info(user_memory)").fetchall()
+            }
+            for name, definition in _COLUMN_MIGRATIONS.items():
+                if name not in existing_columns:
+                    conn.execute(
+                        f"ALTER TABLE user_memory ADD COLUMN {name} {definition}"
+                    )
+            conn.commit()
+        ensure_user_memory_metadata(path)
 
 
 _ensure_schema()
 
 
-# ============================================================
-# 数据结构
-# ============================================================
-
-@dataclass
+@dataclass(frozen=True)
 class MemoryEntry:
     user_id: str
     kind: str
     mem_key: str
-    mem_value: object   # JSON 可序列化
+    mem_value: object
     confidence: float
     mention_count: int
     first_seen_at: float
     last_seen_at: float
+    source: str = "legacy"
+    confirmed_at: Optional[float] = None
+    expires_at: Optional[float] = None
+    revision: int = 1
+    forgotten: bool = False
+    expired: bool = False
+
+    @property
+    def confirmed(self) -> bool:
+        return self.confirmed_at is not None
+
+    @property
+    def active(self) -> bool:
+        return not self.forgotten and not self.expired
 
     def to_dict(self) -> dict:
         return asdict(self)
 
 
-# ============================================================
-# 核心 API
-# ============================================================
+@dataclass(frozen=True)
+class MemoryWriteResult:
+    action: MemoryAction
+    entry: MemoryEntry
+    incoming_value_sha256: str
+    previous_value_sha256: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class MemoryEvent:
+    event_id: int
+    user_id: str
+    kind: str
+    mem_key: str
+    event_type: str
+    revision: int
+    source: str
+    value_sha256: Optional[str]
+    previous_value_sha256: Optional[str]
+    reason: str
+    created_at: float
+
+
+def upsert_memory(
+    user_id: str,
+    key: str,
+    value: object,
+    *,
+    kind: MemoryKind | str = "preference",
+    confidence: Optional[float] = None,
+    source: MemorySource | str = "manual_entry",
+    confirmed: bool = True,
+    expires_at: Optional[float] = None,
+) -> MemoryWriteResult:
+    """Apply deterministic create/reinforce/replace/conflict semantics.
+
+    * Same value reinforces mention count and keeps the strongest confidence.
+    * A confirmed different value starts a new revision and resets mentions.
+    * An unconfirmed different value never overwrites an active memory; it is
+      recorded as a hash-only conflict for later user resolution.
+    * Forgotten or expired state may be replaced without confirmation because
+      it is no longer eligible for planning.
+    """
+    normalized_user = str(user_id or "").strip()
+    normalized_key = str(key or "").strip()
+    if not normalized_user or not normalized_key:
+        raise ValueError("user_id and key must be non-empty")
+    if kind not in VALID_KINDS:
+        raise ValueError(f"unsupported memory kind: {kind}")
+    if source not in VALID_SOURCES:
+        raise ValueError(f"unsupported memory source: {source}")
+
+    conf = DEFAULT_CONFIDENCE if confidence is None else float(confidence)
+    if not 0.0 <= conf <= 1.0:
+        raise ValueError("confidence must be between 0 and 1")
+    if expires_at is not None:
+        expires_at = float(expires_at)
+
+    value_json = _canonical_value(value)
+    value_hash = _value_sha256(value_json)
+    now = time.time()
+
+    with _LOCK, closing(_conn()) as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        existing = conn.execute(
+            "SELECT * FROM user_memory WHERE user_id=? AND kind=? AND mem_key=?",
+            (normalized_user, kind, normalized_key),
+        ).fetchone()
+
+        previous_hash: Optional[str] = None
+        if existing is None:
+            action: MemoryAction = "created"
+            confirmed_at = now if confirmed else None
+            conn.execute(
+                """
+                INSERT INTO user_memory(
+                    user_id, kind, mem_key, mem_value, confidence, mention_count,
+                    first_seen_at, last_seen_at, forgotten, source, confirmed_at,
+                    expires_at, revision
+                ) VALUES (?, ?, ?, ?, ?, 1, ?, ?, 0, ?, ?, ?, 1)
+                """,
+                (
+                    normalized_user,
+                    kind,
+                    normalized_key,
+                    value_json,
+                    conf,
+                    now,
+                    now,
+                    source,
+                    confirmed_at,
+                    expires_at,
+                ),
+            )
+            revision = 1
+            reason = "new_memory"
+        else:
+            previous_hash = _value_sha256(existing["mem_value"])
+            existing_expired = (
+                existing["expires_at"] is not None and float(existing["expires_at"]) <= now
+            )
+            same_value = existing["mem_value"] == value_json
+            if same_value and not existing_expired:
+                action = "reinforced"
+                revision = int(existing["revision"] or 1)
+                confirmed_at = existing["confirmed_at"] or (now if confirmed else None)
+                chosen_source = source if confirmed else existing["source"]
+                conn.execute(
+                    """
+                    UPDATE user_memory
+                    SET confidence=?, mention_count=?, last_seen_at=?, forgotten=0,
+                        source=?, confirmed_at=?, expires_at=?
+                    WHERE id=?
+                    """,
+                    (
+                        max(float(existing["confidence"]), conf),
+                        int(existing["mention_count"] or 0) + 1,
+                        now,
+                        chosen_source,
+                        confirmed_at,
+                        expires_at if expires_at is not None else existing["expires_at"],
+                        existing["id"],
+                    ),
+                )
+                reason = "same_value"
+            elif confirmed or bool(existing["forgotten"]) or existing_expired:
+                action = "replaced"
+                revision = int(existing["revision"] or 1) + 1
+                confirmed_at = now if confirmed else None
+                conn.execute(
+                    """
+                    UPDATE user_memory
+                    SET mem_value=?, confidence=?, mention_count=1, first_seen_at=?,
+                        last_seen_at=?, forgotten=0, source=?, confirmed_at=?,
+                        expires_at=?, revision=?
+                    WHERE id=?
+                    """,
+                    (
+                        value_json,
+                        conf,
+                        now,
+                        now,
+                        source,
+                        confirmed_at,
+                        expires_at,
+                        revision,
+                        existing["id"],
+                    ),
+                )
+                reason = "explicit_replacement" if confirmed else "inactive_replacement"
+            else:
+                action = "conflict_rejected"
+                revision = int(existing["revision"] or 1)
+                reason = "unconfirmed_value_conflicts_with_active_memory"
+
+        _append_event(
+            conn,
+            user_id=normalized_user,
+            kind=str(kind),
+            key=normalized_key,
+            event_type=action,
+            revision=revision,
+            source=str(source),
+            value_sha256=value_hash,
+            previous_value_sha256=previous_hash,
+            reason=reason,
+            created_at=now,
+        )
+        row = conn.execute(
+            "SELECT * FROM user_memory WHERE user_id=? AND kind=? AND mem_key=?",
+            (normalized_user, kind, normalized_key),
+        ).fetchone()
+        conn.commit()
+
+    return MemoryWriteResult(
+        action=action,
+        entry=_entry_from_row(row, now=now, apply_decay=False),
+        incoming_value_sha256=value_hash,
+        previous_value_sha256=previous_hash,
+    )
+
 
 def record_preference(
     user_id: str,
     key: str,
     value: object,
     *,
-    kind: str = "preference",
+    kind: MemoryKind | str = "preference",
     confidence: Optional[float] = None,
+    source: MemorySource | str = "manual_entry",
+    confirmed: bool = True,
+    expires_at: Optional[float] = None,
 ) -> MemoryEntry:
-    """写入 / 累计偏好。
-
-    已存在 (user_id, kind, key) 时：mention_count += 1，confidence 取 max，
-    last_seen_at 刷新；value 用最新值（用户偏好可能演化）。
-
-    Args:
-        kind: preference | dislike | fact | identity
-    """
-    if not user_id or not key:
-        raise ValueError("user_id 和 key 不能为空")
-    val_json = json.dumps(value, ensure_ascii=False)
-    now = time.time()
-    conf = confidence if confidence is not None else DEFAULT_CONFIDENCE
-
-    with _LOCK, closing(_conn()) as conn:
-        existing = conn.execute(
-            "SELECT * FROM user_memory WHERE user_id=? AND kind=? AND mem_key=?",
-            (user_id, kind, key),
-        ).fetchone()
-
-        if existing is None:
-            conn.execute(
-                "INSERT INTO user_memory(user_id, kind, mem_key, mem_value, confidence, "
-                "mention_count, first_seen_at, last_seen_at, forgotten) "
-                "VALUES (?,?,?,?,?,?,?,?,0)",
-                (user_id, kind, key, val_json, conf, 1, now, now),
-            )
-        else:
-            new_mc = (existing["mention_count"] or 0) + 1
-            new_conf = max(existing["confidence"] or 0.0, conf)
-            # 复活已被 forgotten 的条目（用户重新提到了）
-            conn.execute(
-                "UPDATE user_memory SET mem_value=?, confidence=?, mention_count=?, "
-                "last_seen_at=?, forgotten=0 "
-                "WHERE id=?",
-                (val_json, new_conf, new_mc, now, existing["id"]),
-            )
-        conn.commit()
-
-    return MemoryEntry(
-        user_id=user_id, kind=kind, mem_key=key, mem_value=value,
-        confidence=conf, mention_count=1,
-        first_seen_at=now, last_seen_at=now,
-    )
+    """Backward-compatible wrapper returning the current persisted entry."""
+    return upsert_memory(
+        user_id,
+        key,
+        value,
+        kind=kind,
+        confidence=confidence,
+        source=source,
+        confirmed=confirmed,
+        expires_at=expires_at,
+    ).entry
 
 
 def get_preferences(
     user_id: str,
     *,
     include_forgotten: bool = False,
+    include_expired: bool = False,
+    confirmed_only: bool = False,
     apply_decay: bool = True,
 ) -> list[MemoryEntry]:
-    """读某用户全部活跃偏好（按 last_seen_at 倒序）。"""
+    """Read memory state ordered by recency with lifecycle filters."""
     if not user_id:
         return []
     where = "WHERE user_id=?"
     if not include_forgotten:
         where += " AND forgotten=0"
+    if confirmed_only:
+        where += " AND confirmed_at IS NOT NULL"
     with _LOCK, closing(_conn()) as conn:
         rows = conn.execute(
             f"SELECT * FROM user_memory {where} ORDER BY last_seen_at DESC",
             (user_id,),
         ).fetchall()
 
-    out: list[MemoryEntry] = []
     now = time.time()
-    for r in rows:
-        conf = r["confidence"]
-        if apply_decay:
-            age_days = (now - r["last_seen_at"]) / 86400
-            if age_days > DECAY_DAYS:
-                conf = round(conf * DECAY_FACTOR, 3)
-        out.append(MemoryEntry(
-            user_id=r["user_id"], kind=r["kind"], mem_key=r["mem_key"],
-            mem_value=json.loads(r["mem_value"]),
-            confidence=conf, mention_count=r["mention_count"],
-            first_seen_at=r["first_seen_at"], last_seen_at=r["last_seen_at"],
-        ))
-    return out
+    entries = [_entry_from_row(row, now=now, apply_decay=apply_decay) for row in rows]
+    if not include_expired:
+        entries = [entry for entry in entries if not entry.expired]
+    return entries
+
+
+def confirm_memory(user_id: str, key: str, kind: str = "preference") -> bool:
+    """Confirm an existing active candidate so it becomes planner-eligible."""
+    now = time.time()
+    with _LOCK, closing(_conn()) as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        row = conn.execute(
+            "SELECT * FROM user_memory WHERE user_id=? AND kind=? AND mem_key=?",
+            (user_id, kind, key),
+        ).fetchone()
+        if row is None or row["forgotten"]:
+            return False
+        if row["expires_at"] is not None and float(row["expires_at"]) <= now:
+            return False
+        conn.execute(
+            "UPDATE user_memory SET confirmed_at=?, last_seen_at=? WHERE id=?",
+            (now, now, row["id"]),
+        )
+        _append_event(
+            conn,
+            user_id=user_id,
+            kind=kind,
+            key=key,
+            event_type="confirmed",
+            revision=int(row["revision"] or 1),
+            source=row["source"],
+            value_sha256=_value_sha256(row["mem_value"]),
+            previous_value_sha256=None,
+            reason="user_confirmation",
+            created_at=now,
+        )
+        conn.commit()
+        return True
 
 
 def forget(user_id: str, key: str, kind: str = "preference") -> bool:
-    """用户明确"AI 别记这个" → 标记 forgotten=1。返回是否找到记录。"""
+    """Soft-forget one memory while retaining a reversible local tombstone."""
+    now = time.time()
     with _LOCK, closing(_conn()) as conn:
-        cur = conn.execute(
-            "UPDATE user_memory SET forgotten=1 WHERE user_id=? AND kind=? AND mem_key=?",
+        conn.execute("BEGIN IMMEDIATE")
+        row = conn.execute(
+            "SELECT * FROM user_memory WHERE user_id=? AND kind=? AND mem_key=?",
             (user_id, kind, key),
-        )
-        conn.commit()
-        return cur.rowcount > 0
+        ).fetchone()
+        if row is None:
+            return False
+        if not row["forgotten"]:
+            conn.execute("UPDATE user_memory SET forgotten=1 WHERE id=?", (row["id"],))
+            _append_event(
+                conn,
+                user_id=user_id,
+                kind=kind,
+                key=key,
+                event_type="forgotten",
+                revision=int(row["revision"] or 1),
+                source=row["source"],
+                value_sha256=_value_sha256(row["mem_value"]),
+                previous_value_sha256=None,
+                reason="user_soft_forget",
+                created_at=now,
+            )
+            conn.commit()
+        return True
 
 
 def forget_all(user_id: str) -> int:
-    """清空某用户所有 memory。返回影响行数。"""
+    """Soft-forget all active memories for compatibility with historical UI/tests."""
+    now = time.time()
     with _LOCK, closing(_conn()) as conn:
-        cur = conn.execute(
-            "UPDATE user_memory SET forgotten=1 WHERE user_id=? AND forgotten=0",
+        conn.execute("BEGIN IMMEDIATE")
+        rows = conn.execute(
+            "SELECT * FROM user_memory WHERE user_id=? AND forgotten=0",
             (user_id,),
-        )
+        ).fetchall()
+        for row in rows:
+            conn.execute("UPDATE user_memory SET forgotten=1 WHERE id=?", (row["id"],))
+            _append_event(
+                conn,
+                user_id=user_id,
+                kind=row["kind"],
+                key=row["mem_key"],
+                event_type="forgotten",
+                revision=int(row["revision"] or 1),
+                source=row["source"],
+                value_sha256=_value_sha256(row["mem_value"]),
+                previous_value_sha256=None,
+                reason="user_soft_forget_all",
+                created_at=now,
+            )
         conn.commit()
-        return cur.rowcount
+        return len(rows)
+
+
+def delete_memory(user_id: str, key: str, kind: str = "preference") -> bool:
+    """Hard-delete state and its audit hashes for a single memory key."""
+    with _LOCK, closing(_conn()) as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        row = conn.execute(
+            "SELECT id FROM user_memory WHERE user_id=? AND kind=? AND mem_key=?",
+            (user_id, kind, key),
+        ).fetchone()
+        if row is None:
+            return False
+        conn.execute(
+            "DELETE FROM user_memory_events WHERE user_id=? AND kind=? AND mem_key=?",
+            (user_id, kind, key),
+        )
+        conn.execute("DELETE FROM user_memory WHERE id=?", (row["id"],))
+        conn.commit()
+        return True
+
+
+def delete_all(user_id: str) -> int:
+    """Hard-delete all state and audit hashes for a user."""
+    with _LOCK, closing(_conn()) as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        count = int(
+            conn.execute(
+                "SELECT COUNT(*) FROM user_memory WHERE user_id=?", (user_id,)
+            ).fetchone()[0]
+        )
+        conn.execute("DELETE FROM user_memory_events WHERE user_id=?", (user_id,))
+        conn.execute("DELETE FROM user_memory WHERE user_id=?", (user_id,))
+        conn.commit()
+        return count
+
+
+def list_memory_events(
+    user_id: str,
+    *,
+    after_event_id: int = 0,
+    limit: int = 100,
+    kind: Optional[str] = None,
+    key: Optional[str] = None,
+) -> tuple[MemoryEvent, ...]:
+    if after_event_id < 0:
+        raise ValueError("after_event_id must be non-negative")
+    if not 1 <= limit <= 1000:
+        raise ValueError("limit must be between 1 and 1000")
+    where = ["user_id=?", "event_id>?"]
+    params: list[object] = [user_id, after_event_id]
+    if kind is not None:
+        where.append("kind=?")
+        params.append(kind)
+    if key is not None:
+        where.append("mem_key=?")
+        params.append(key)
+    params.append(limit)
+    with _LOCK, closing(_conn()) as conn:
+        rows = conn.execute(
+            f"SELECT * FROM user_memory_events WHERE {' AND '.join(where)} "
+            "ORDER BY event_id LIMIT ?",
+            params,
+        ).fetchall()
+    return tuple(_event_from_row(row) for row in rows)
 
 
 def _normalize_memory_tag(tag: object) -> str:
@@ -228,33 +535,53 @@ def _diet_memory_kind(tag: str) -> str:
     return "preference"
 
 
-def _record_intake_memory(user_id: str, intake) -> list[MemoryEntry]:
+def _record_intake_memory(
+    user_id: str,
+    intake,
+    *,
+    source: MemorySource | str,
+    confirmed: bool,
+) -> list[MemoryEntry]:
     written: list[MemoryEntry] = []
 
-    def _record(kind: str, key_prefix: str, tag: object,
-                *, confidence: float = 0.72, value: object = True) -> None:
+    def _record(
+        kind: str,
+        key_prefix: str,
+        tag: object,
+        *,
+        confidence: float = 0.72,
+        value: object = True,
+    ) -> None:
         normalized = _normalize_memory_tag(tag)
         if not normalized:
             return
-        written.append(record_preference(
-            user_id,
-            key=f"{key_prefix}:{normalized}",
-            value=value,
-            kind=kind,
-            confidence=confidence,
-        ))
+        written.append(
+            record_preference(
+                user_id,
+                key=f"{key_prefix}:{normalized}",
+                value=value,
+                kind=kind,
+                confidence=confidence,
+                source=source,
+                confirmed=confirmed,
+            )
+        )
 
     for tag in getattr(intake, "diet_flags", []) or []:
         normalized = _normalize_memory_tag(tag)
         if not normalized:
             continue
-        written.append(record_preference(
-            user_id,
-            key=f"diet:{normalized}",
-            value=True,
-            kind=_diet_memory_kind(normalized),
-            confidence=0.82,
-        ))
+        written.append(
+            record_preference(
+                user_id,
+                key=f"diet:{normalized}",
+                value=True,
+                kind=_diet_memory_kind(normalized),
+                confidence=0.82,
+                source=source,
+                confirmed=confirmed,
+            )
+        )
     for tag in getattr(intake, "taste_tags", []) or []:
         _record("preference", "taste", tag, confidence=0.68)
     for tag in getattr(intake, "preference_tags", []) or []:
@@ -265,7 +592,6 @@ def _record_intake_memory(user_id: str, intake) -> list[MemoryEntry]:
         _record("dislike", "avoid", tag, confidence=0.78)
     for tag in getattr(intake, "risk_tags", []) or []:
         _record("dislike", "risk", tag, confidence=0.68)
-
     return written
 
 
@@ -275,36 +601,30 @@ def infer_from_user_input(
     *,
     client=None,
     use_llm: bool = True,
+    source: MemorySource | str = "explicit_user_input",
+    confirmed: bool = True,
 ) -> list[MemoryEntry]:
-    """从 query 用 LLM 抽取并沉淀偏好。返回新写入的条目。
-
-    记忆沉淀不做关键词规则兜底：LLM 没抽到就不写，避免把上下文词误当长期偏好。
-    """
-    if not raw or not user_id:
-        return []
-
-    written: list[MemoryEntry] = []
-
-    if not use_llm:
+    """Extract memory only from the explicit memory-intake path."""
+    if not raw or not user_id or not use_llm:
         return []
     try:
         from agents.text_intake import extract_from_text
+
         intake = extract_from_text(
             raw,
             client=client,
             use_llm=True,
             fallback_to_rules=False,
         )
-        written.extend(_record_intake_memory(user_id, intake))
+        return _record_intake_memory(
+            user_id,
+            intake,
+            source=source,
+            confirmed=confirmed,
+        )
     except Exception:
         return []
 
-    return written
-
-
-# ============================================================
-# 给 planner 注入 prompt
-# ============================================================
 
 def merge_into_prompt(
     base_input: str,
@@ -313,126 +633,134 @@ def merge_into_prompt(
     confidence_threshold: float = 0.4,
     max_lines: int = 8,
 ) -> str:
-    """读 user_memory → 拼"用户长期偏好"段落 → 接到 base_input 后。
-
-    confidence_threshold: 衰减后置信度低于此值的不注入（避免噪声）
-    max_lines: 最多列几条偏好（防 token 膨胀）
-    """
+    """Inject only confirmed, active memory into the planner prompt."""
     if not user_id:
         return base_input
-
-    prefs = get_preferences(user_id, apply_decay=True)
-    relevant = [p for p in prefs if p.confidence >= confidence_threshold]
+    prefs = get_preferences(
+        user_id,
+        apply_decay=True,
+        confirmed_only=True,
+        include_expired=False,
+    )
+    relevant = [entry for entry in prefs if entry.confidence >= confidence_threshold]
     if not relevant:
         return base_input
+    relevant.sort(key=lambda entry: (entry.confidence, entry.mention_count), reverse=True)
 
-    # 按 confidence 降序，取前 N
-    relevant.sort(key=lambda p: (p.confidence, p.mention_count), reverse=True)
-    relevant = relevant[:max_lines]
-
-    lines = ["", "[用户长期偏好（来自 AI 记忆）]"]
-    for p in relevant:
-        marker = "✓" if p.kind == "preference" else "✗" if p.kind == "dislike" else "·"
+    lines = ["", "[用户长期偏好（由用户确认，可随时删除）]"]
+    for entry in relevant[:max_lines]:
+        marker = "✓" if entry.kind == "preference" else "✗" if entry.kind == "dislike" else "·"
+        display_value = _prompt_value(entry.mem_value)
+        memory_fact = (
+            entry.mem_key
+            if not display_value
+            else f"{entry.mem_key} = {display_value}"
+        )
         lines.append(
-            f"- {marker} {p.mem_key} (提及 {p.mention_count}次, 置信 {p.confidence:.2f})"
+            f"- {marker} {memory_fact} "
+            f"(revision {entry.revision}, 提及 {entry.mention_count}次, 置信 {entry.confidence:.2f})"
         )
     return base_input + "\n".join(lines) if base_input else "\n".join(lines[1:])
 
 
-# ============================================================
-# 自测
-# ============================================================
+def _canonical_value(value: object) -> str:
+    try:
+        return json.dumps(
+            value,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+    except (TypeError, ValueError) as exc:
+        raise ValueError("memory value must be JSON serializable") from exc
 
-if __name__ == "__main__":
-    import uuid
-    from agents.llm_client import LLMResponse
 
-    class _SelfTestMemoryClient:
-        @property
-        def name(self):
-            return "user-memory-self-test"
+def _prompt_value(value: object) -> str:
+    if value is True or value is None:
+        return ""
+    if value is False:
+        return "false"
+    if isinstance(value, (str, int, float)):
+        rendered = str(value)
+    else:
+        rendered = _canonical_value(value)
+    return rendered[:80]
 
-        def complete(self, *args, **kwargs):
-            parsed = {
-                "area_anchor": "",
-                "poi_name": "",
-                "taste_tags": ["coffee"],
-                "scene_tags": ["kid_friendly"],
-                "risk_tags": [],
-                "diet_flags": ["light_diet", "no_spicy"],
-                "preference_tags": [],
-                "avoid_tags": [],
-                "aspects": [],
-            }
-            return LLMResponse(text="{}", parsed=parsed)
 
-    uid = f"u-{uuid.uuid4().hex[:8]}"
+def _value_sha256(value_json: str) -> str:
+    return hashlib.sha256(value_json.encode("utf-8")).hexdigest()
 
-    # Case 1: record + get
-    e = record_preference(uid, "diet:light_diet", True)
-    prefs = get_preferences(uid)
-    assert len(prefs) == 1
-    assert prefs[0].mem_key == "diet:light_diet"
-    print(f"✓ Case 1 record+get: 1 条偏好")
 
-    # Case 2: 重复 record → mention_count 累计
-    record_preference(uid, "diet:light_diet", True)
-    record_preference(uid, "diet:light_diet", True)
-    prefs = get_preferences(uid)
-    assert prefs[0].mention_count == 3
-    print(f"✓ Case 2 累计: mention_count={prefs[0].mention_count}")
-
-    # Case 3: 不同 key
-    record_preference(uid, "party:with_child", True)
-    record_preference(uid, "taste:coffee", True)
-    prefs = get_preferences(uid)
-    assert len(prefs) == 3
-    print(f"✓ Case 3 多 key: {[p.mem_key for p in prefs]}")
-
-    # Case 4: forget
-    ok = forget(uid, "taste:coffee")
-    assert ok
-    prefs = get_preferences(uid)
-    assert len(prefs) == 2
-    assert all(p.mem_key != "taste:coffee" for p in prefs)
-    print(f"✓ Case 4 forget: {[p.mem_key for p in prefs]}")
-
-    # Case 5: 复活 forgotten
-    record_preference(uid, "taste:coffee", True)
-    prefs = get_preferences(uid)
-    assert len(prefs) == 3
-    print(f"✓ Case 5 复活 forgotten: 重新加回 taste:coffee")
-
-    # Case 6: infer_from_user_input
-    uid2 = f"u-{uuid.uuid4().hex[:8]}"
-    written = infer_from_user_input(
-        uid2,
-        "今天下午带 5 岁娃出去玩，老婆减脂不吃辣，想找个咖啡店",
-        client=_SelfTestMemoryClient(),
+def _append_event(
+    conn: sqlite3.Connection,
+    *,
+    user_id: str,
+    kind: str,
+    key: str,
+    event_type: str,
+    revision: int,
+    source: str,
+    value_sha256: Optional[str],
+    previous_value_sha256: Optional[str],
+    reason: str,
+    created_at: float,
+) -> None:
+    conn.execute(
+        """
+        INSERT INTO user_memory_events(
+            user_id, kind, mem_key, event_type, revision, source,
+            value_sha256, previous_value_sha256, reason, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            user_id,
+            kind,
+            key,
+            event_type,
+            revision,
+            source,
+            value_sha256,
+            previous_value_sha256,
+            reason,
+            created_at,
+        ),
     )
-    print(f"✓ Case 6 infer: {len(written)} 条")
-    keys = [w.mem_key for w in written]
-    kinds = {w.mem_key: w.kind for w in written}
-    assert any("light_diet" in k for k in keys)
-    assert any("no_spicy" in k for k in keys)
-    assert any("kid_friendly" in k for k in keys)
-    assert any("coffee" in k for k in keys)
-    # taste:spicy 应被否定上下文识别为 dislike，不应是 preference
-    if "taste:spicy" in kinds:
-        assert kinds["taste:spicy"] == "dislike", \
-            f"'不吃辣' 应抽到 dislike，实际 {kinds['taste:spicy']}"
 
-    # Case 7: merge_into_prompt
-    merged = merge_into_prompt("4 人下午", uid2)
-    print(f"\n✓ Case 7 merged:\n{merged}")
-    assert "long term" not in merged.lower()  # 中文段落
-    assert "用户长期偏好" in merged
 
-    # Case 8: forget_all
-    n = forget_all(uid2)
-    assert n > 0
-    prefs = get_preferences(uid2)
-    assert len(prefs) == 0
-    print(f"✓ Case 8 forget_all: 清空 {n} 条")
+def _entry_from_row(row: sqlite3.Row, *, now: float, apply_decay: bool) -> MemoryEntry:
+    confidence = float(row["confidence"])
+    if apply_decay and (now - float(row["last_seen_at"])) / 86400 > DECAY_DAYS:
+        confidence = round(confidence * DECAY_FACTOR, 3)
+    expires_at = float(row["expires_at"]) if row["expires_at"] is not None else None
+    return MemoryEntry(
+        user_id=row["user_id"],
+        kind=row["kind"],
+        mem_key=row["mem_key"],
+        mem_value=json.loads(row["mem_value"]),
+        confidence=confidence,
+        mention_count=int(row["mention_count"]),
+        first_seen_at=float(row["first_seen_at"]),
+        last_seen_at=float(row["last_seen_at"]),
+        source=row["source"],
+        confirmed_at=(float(row["confirmed_at"]) if row["confirmed_at"] is not None else None),
+        expires_at=expires_at,
+        revision=int(row["revision"] or 1),
+        forgotten=bool(row["forgotten"]),
+        expired=expires_at is not None and expires_at <= now,
+    )
 
-    print("\n所有 user_memory 自测通过！")
+
+def _event_from_row(row: sqlite3.Row) -> MemoryEvent:
+    return MemoryEvent(
+        event_id=int(row["event_id"]),
+        user_id=row["user_id"],
+        kind=row["kind"],
+        mem_key=row["mem_key"],
+        event_type=row["event_type"],
+        revision=int(row["revision"]),
+        source=row["source"],
+        value_sha256=row["value_sha256"],
+        previous_value_sha256=row["previous_value_sha256"],
+        reason=row["reason"],
+        created_at=float(row["created_at"]),
+    )

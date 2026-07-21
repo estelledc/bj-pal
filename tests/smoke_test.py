@@ -22,7 +22,6 @@ def test_pois_keyword_search():
         print(f"    - {r['name']}  [{r['category_lv1']}/{r['category_lv2']}]  "
               f"rating={r['rating']}  {r['address']}")
     assert len(rows) >= 1, "五道营关键词应至少匹配 1 条 POI"
-    return len(rows)
 
 
 def test_pois_food_category():
@@ -32,7 +31,6 @@ def test_pois_food_category():
     for r in rows[:3]:
         print(f"    - {r['name']}  rating={r['rating']}  ¥{r['avg_price']}  {r['business_area']}")
     assert len(rows) >= 500, f"真实高德餐饮类目应有 ≥500 条，实际 {len(rows)}"
-    return len(rows)
 
 
 def test_pois_yonghegong_food():
@@ -41,7 +39,7 @@ def test_pois_yonghegong_food():
     print(f"\n[3] query_pois('雍和宫', '餐饮', min_rating=4.0) → {len(rows)} 条")
     for r in rows:
         print(f"    - {r['name']}  rating={r['rating']}  ¥{r['avg_price']}")
-    return len(rows)
+    assert len(rows) >= 1, "雍和宫片区应至少有 1 条餐饮候选"
 
 
 def test_ugc_anchor():
@@ -52,7 +50,6 @@ def test_ugc_anchor():
         print(f"    - [{r['aspect_type']:15}] {r['poi_name']:20} "
               f"conf={r['confidence']:.2f}  {r['evidence_summary'][:40]}...")
     assert len(rows) >= 5, f"五道营片区 UGC 应有 ≥5 条，实际 {len(rows)}"
-    return len(rows)
 
 
 def test_ugc_risk_signals():
@@ -63,7 +60,6 @@ def test_ugc_risk_signals():
         print(f"    - {r['poi_name']:20} [{r['aspect_type']:12}] "
               f"sentiment={r['sentiment']:8} {r['evidence_summary'][:50]}...")
     assert len(rows) >= 1, "至少要有 1 条排队/拥堵风险信号"
-    return len(rows)
 
 
 def test_routes_modes():
@@ -75,7 +71,6 @@ def test_routes_modes():
     for mode, n in modes.most_common():
         print(f"    {mode:12} {n}")
     assert len(rows) >= 50, "应有 50+ 条路线缓存"
-    return len(rows)
 
 
 if __name__ == "__main__":
@@ -93,7 +88,8 @@ if __name__ == "__main__":
         ("routes", test_routes_modes),
     ]:
         try:
-            results[name] = fn()
+            fn()
+            results[name] = "PASS"
         except AssertionError as e:
             failed.append((name, str(e)))
             print(f"    ✗ {e}")

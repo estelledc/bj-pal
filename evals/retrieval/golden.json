@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "name": "ugc-retrieval-core-v1",
+  "profile": "demo",
+  "classification": "synthetic",
+  "label_basis": "Manually reviewed against the deterministic ugc_core fixture records; relevance is evaluated at POI level to avoid rewarding duplicate evidence rows.",
+  "top_k": 5,
+  "cases": [
+    {
+      "case_id": "queue-stroller-landmark",
+      "query": "周末带娃推车去雍和宫会不会拥挤",
+      "area_anchor": "五道营-雍和宫片区",
+      "relevant_poi_names": ["雍和宫"]
+    },
+    {
+      "case_id": "hutong-parking",
+      "query": "五道营胡同自驾停车方便吗",
+      "area_anchor": "五道营-雍和宫片区",
+      "relevant_poi_names": ["五道营胡同"]
+    },
+    {
+      "case_id": "family-low-oil-meal",
+      "query": "家庭聚餐想吃低油清淡的",
+      "area_anchor": "五道营-雍和宫片区",
+      "relevant_poi_names": ["悦真雅院(雍和宫店)"]
+    },
+    {
+      "case_id": "quiet-cafe-facilities",
+      "query": "想找安静有插座和卫生间的咖啡馆",
+      "area_anchor": "五道营-雍和宫片区",
+      "relevant_poi_names": ["胡同咖啡(五道营店)"]
+    },
+    {
+      "case_id": "child-low-sugar-snack",
+      "query": "五岁孩子想吃低糖加餐",
+      "area_anchor": "五道营-雍和宫片区",
+      "relevant_poi_names": ["蜜思酸奶(雍和宫店)"]
+    },
+    {
+      "case_id": "unhurried-culture-route",
+      "query": "下午安排一段文化路线不要太赶",
+      "area_anchor": "五道营-雍和宫片区",
+      "relevant_poi_names": ["国子监"]
+    },
+    {
+      "case_id": "forbidden-city-reservation",
+      "query": "故宫预约和排队有什么风险",
+      "area_anchor": "天安门-故宫片区",
+      "relevant_poi_names": ["故宫博物院"]
+    },
+    {
+      "case_id": "heritage-flagship-wait",
+      "query": "老字号总店周末等位多久",
+      "area_anchor": "天安门-故宫片区",
+      "relevant_poi_names": ["全聚德前门店"]
+    },
+    {
+      "case_id": "friday-friends-long-queue",
+      "query": "朋友周五晚吃饭不想排两小时",
+      "area_anchor": "什刹海-鼓楼片区",
+      "relevant_poi_names": ["胡大饭馆(簋街总店)"]
+    },
+    {
+      "case_id": "rainy-indoor-exhibition",
+      "query": "雨天想在798室内看展",
+      "area_anchor": "798艺术区片区",
+      "relevant_poi_names": ["UCCA尤伦斯当代艺术中心"]
+    },
+    {
+      "case_id": "summer-shade-with-child",
+      "query": "夏天下午带娃去公园怎么避晒",
+      "area_anchor": "奥林匹克公园片区",
+      "relevant_poi_names": ["奥林匹克森林公园"]
+    },
+    {
+      "case_id": "sanlitun-driving-with-child",
+      "query": "三里屯带娃自驾停车方便吗",
+      "area_anchor": "三里屯片区",
+      "relevant_poi_names": ["三里屯太古里"]
+    },
+    {
+      "case_id": "corner-cafe-photo",
+      "query": "故宫附近下午找能拍角楼的咖啡",
+      "area_anchor": "天安门-故宫片区",
+      "relevant_poi_names": ["故宫角楼咖啡"]
+    },
+    {
+      "case_id": "hutong-citywalk-link",
+      "query": "周六下午citywalk串雍和宫和国子监",
+      "area_anchor": "五道营-雍和宫片区",
+      "relevant_poi_names": ["五道营胡同"]
+    },
+    {
+      "case_id": "noodle-family-meal",
+      "query": "方砖厂炸酱面带娃吃饭压力大吗",
+      "area_anchor": "五道营-雍和宫片区",
+      "relevant_poi_names": ["方砖厂69号炸酱面(雍和宫店)"]
+    },
+    {
+      "case_id": "multi-risk-queue-parking",
+      "query": "五道营周末下午带娃，想了解排队和停车风险",
+      "area_anchor": "五道营-雍和宫片区",
+      "relevant_poi_names": ["雍和宫", "五道营胡同"]
+    },
+    {
+      "case_id": "multi-risk-forbidden-city-food",
+      "query": "天安门附近周末游，故宫预约和老字号排队风险",
+      "area_anchor": "天安门-故宫片区",
+      "relevant_poi_names": ["故宫博物院", "全聚德前门店"]
+    },
+    {
+      "case_id": "multi-family-meal-snack",
+      "query": "五道营家庭吃饭和低糖加餐",
+      "area_anchor": "五道营-雍和宫片区",
+      "relevant_poi_names": ["悦真雅院(雍和宫店)", "蜜思酸奶(雍和宫店)"]
+    },
+    {
+      "case_id": "multi-culture-citywalk",
+      "query": "五道营文化citywalk串联雍和宫国子监",
+      "area_anchor": "五道营-雍和宫片区",
+      "relevant_poi_names": ["五道营胡同", "雍和宫", "国子监"]
+    }
+  ]
+}

@@ -86,34 +86,41 @@ class LLMStreamingTest(unittest.TestCase):
         joined_events = "\n".join(events)
         self.assertIn("查询人数", joined_events)
         self.assertIn("查询POI候选", joined_events)
-        self.assertIn("启动模型预分析", joined_events)
         self.assertIn("调用LLM生成结构化方案", joined_events)
+        self.assertIn("校验模型输出", joined_events)
         self.assertIn("模型连接成功", joined_events)
 
-    def test_preflight_status_runs_before_full_plan_generation(self) -> None:
+    def test_stream_status_and_plan_share_one_llm_call(self) -> None:
         from src.agents.llm_client import MockLLMClient
         from src.agents.planner import plan
         from src.agents.types import UserPreferences
 
+        class CountingClient(MockLLMClient):
+            def __init__(self) -> None:
+                self.calls = 0
+
+            def complete(self, *args, **kwargs):
+                self.calls += 1
+                return super().complete(*args, **kwargs)
+
         events: list[str] = []
         tokens: list[str] = []
+        client = CountingClient()
 
         plan(
             user_input="带娃下午出去，别太远。",
             persona="family",
             prefs=UserPreferences(persona="family", party_size=3, has_child=True, child_age=5),
-            client=MockLLMClient(),
+            client=client,
             on_token=tokens.append,
             on_progress=events.append,
             on_stream_event=events.append,
         )
 
-        joined_events = "\n".join(events)
-        self.assertLess(
-            joined_events.index("启动模型预分析"),
-            joined_events.index("调用LLM生成结构化方案"),
-        )
-        self.assertIn("正在读取用户约束", "".join(tokens))
+        streamed = "".join(tokens)
+        self.assertEqual(client.calls, 1)
+        self.assertLess(streamed.index('"event":"status"'), streamed.index('"event":"final_plan"'))
+        self.assertNotIn("启动模型预分析", "\n".join(events))
 
 
 if __name__ == "__main__":

@@ -1,14 +1,15 @@
-# BJ-Pal Mock API 说明 · 生产对接路径
+# BJ-Pal Legacy Mock API 说明
 
-> 给评委看的"如果上生产，明天就能接通"的承诺。
-> 每个 mock 接口在源码里都标了真实 API 对接路径。
+> 本文记录黑客松时期的直接 mock helper，不是当前生产对接承诺。当前公开 demo profile 是 deterministic synthetic，文中的供应商 URL、故障比例和“真实数据”说法没有随 v6.2 获得可复查的授权或 acceptance 证据，不能作为简历事实。
+>
+> v6.2 的正确副作用入口是 `POST /v1/operations` → 非请求者审批 → 独立 sandbox worker → receipt/uncertain → provider-bound 只读 reconciliation；`mock_book.*` 只保留为历史 helper/回归，不再是默认 CLI/Streamlit 预订入口，也不能直接替换成真实 HTTP。
 
 ## 设计原则
 
-1. **接口签名向真实 API 对齐**——参数名 / 字段顺序 / 返回结构都按公开文档来
-2. **数据来源真实**——mock 调用时返回的餐厅 / 路线信息直接来自 `data/amap/merged/...jsonl`，不是凭空编
-3. **故障注入有规律**——5% timeout / 10% no_availability / 8% 排队超长 / 2% 商家拒单（覆盖真实失败模式）
-4. **Tool Call Log 全程暴露**——`tool_calls.db` 记录每次调用的 (timestamp, tool_name, params, response, latency_ms, status, error)，UI Trace 侧栏可展开
+1. helper 保留历史函数签名，便于复现旧 demo；不声称已与当前供应商契约对齐。
+2. 公开默认数据是 synthetic；本机可选 cache 也不等于实时、可预订或获得商业授权。
+3. 旧随机故障注入只用于历史演示，不是生产失败分布证据；v6.2 operation execute/lookup 测试改用确定性 outcome。
+4. 新写入采用 `tool_call_audit_v2` 有界隐私投影、稳定错误码和 session SHA chain，并默认落到独立 `runtime/tool_audit.db`；它仍只是本地调试账本，不是生产审计或 side-effect receipt。历史 `tool_calls.db` 不自动复制或擦除，新 SQLite 也未加密或远端不可变。
 
 ---
 
@@ -103,11 +104,16 @@ BJ_PAL_TEST_LONGCAT=1   # 让 test_planner.py 同时跑 LongCat 真实调用
 
 ## 切换到生产环境的步骤
 
-1. 把 `mock_book.py` 中两个函数的实现替换为真实 HTTP 调用，保持函数签名不变
-2. 把 `mock_message.py` 中 `send_via_wechat_mock` 替换为真实微信 API
-3. `availability_probe.py` 中 `probe()` 改为调真实余位 API；保留 hardcoded TRAP_POIS 作为"已知热门点提前 warning"逻辑；动态 trap 评分（`compute_dynamic_trap_score`）保留并接入实时人流数据
-4. `tool_call_log.py` 切换到公司 trace 系统（保留 SQLite 作 dev fallback）
-5. agent / planner / replanner / preference_mirror 层 **不需要任何改动**——这是抽象层的胜利
+不能直接替换 mock helper。真实副作用必须按以下顺序推进：
+
+1. 取得供应商 API、测试环境、数据/商业授权和可回滚策略；
+2. 用 typed adapter 获得 quote/reference/validity/currency/amount/terms，并保存 provider provenance；
+3. 复用 v6.2 `SideEffectOperationRepository`，让 action + quote 绑定 approval SHA，且请求者不能自批；
+4. 以 operation ID 作为供应商幂等引用，保存可验证 receipt；调用后结果不明时先进入 `uncertain`，禁止盲重试；
+5. 将真实订单查询接入现有 provider-bound reconciliation 并保存 acceptance；把补偿实现为重新 quote/审批/留 receipt 的独立写 operation，再补客服 handoff、PII redaction、secret manager、retention 和审计治理；
+6. 用测试环境 acceptance artifact 证明成功、拒绝、超时、不确定与重复请求语义，再考虑开放真实入口。
+
+`mock_message.send_via_wechat_mock` 也属于外部副作用，不能绕过同类 approval/operation/receipt 边界。
 
 ---
 
@@ -146,19 +152,6 @@ BJ_PAL_TEST_LONGCAT=1   # 让 test_planner.py 同时跑 LongCat 真实调用
 | Task 1.2 时段画像 | 纯规则 + 关键词 | 真实订单时段分布（每 POI 累积 7 桶 visit_intensity） |
 | Task 1.4 routes estimated | haversine × 1.3 + 标准速度 | 高德 navigation API 真实路径（含路况 traffic_index） |
 
-### M1 实时信号源接入路径
+### M1 真实信号源接入路径
 
-详见 `explorations/ideas/bj-pal-amap-heat-research.md`。短版：
-
-```python
-# tools/amap_live.py（M1 第 1 周新增）
-def get_live_heat(poi_id: str, key: str) -> dict:
-    # 组合 4 个 amap API：POI 详情 + 路况 + 天气 + 周边密度
-    return {
-        "live_heat_score": 0.0-1.0,  # 推导值，非真"人流热度"
-        "age_min": 0,                # 数据新鲜度
-        "components": {...},         # 可解释来源拆分
-    }
-```
-
-ranking 公式新增 `live_heat: 0.10` 分量，`rating` 从 0.35 降到 0.30。MVP 工作量约 10.5 小时（1 周）。
+旧文档引用的本地调研文件未随当前仓库保留，因此不再用它作为实现依据。当前接入顺序以 [ROADMAP.md](ROADMAP.md) P1 和 [DESIGN.md](DESIGN.md) 的 provenance 契约为准：先取得合法 provider 与 acceptance sample，再实现 typed adapter、timeout/限流分类、TTL/stale、provider version、reference 和有效期。真实 API 返回 200 不等于实时人流，也不等于可预订。

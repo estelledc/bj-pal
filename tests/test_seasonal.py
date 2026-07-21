@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import sys
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -100,8 +100,7 @@ def test_top_seasonal_pois():
 # ============================================================
 
 def test_fuse_and_rank_seasonal_aware():
-    """seasonal_aware=True 时玉渊潭 4 月相对于 7 月分数差异（同 POI 不同当前月）。"""
-    # 我们没法控制 today，只能验证存在 reason
+    """seasonal_aware=True 时按用户计划日期而不是测试运行日期判断。"""
     from tools.rank_fuse import fuse_and_rank
     from tools.types import POI, SearchConstraints
 
@@ -112,8 +111,10 @@ def test_fuse_and_rank_seasonal_aware():
             rating=4.6, avg_price=2, open_time="06:00-21:00",
             phone="", photos=[])
     constraints = SearchConstraints(persona="family", min_rating=4.0)
-    ranked = fuse_and_rank([p], constraints, seasonal_aware=True)
-    # 当前月（5 月）= spring，玉渊潭 spring 是 peak，应有 seasonal_peak reason
+    ranked = fuse_and_rank(
+        [p], constraints, seasonal_aware=True,
+        target_dt=datetime(2026, 5, 21, 14, 0),
+    )
     has_seasonal = any(rs.factor in ("seasonal_peak", "seasonal_avoid")
                        for r in ranked for rs in r.reasons)
     assert has_seasonal

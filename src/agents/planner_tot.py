@@ -1,10 +1,10 @@
-"""[11] Tree of Thoughts Planner — 多分支并发 + 自评分 + 选优。
+"""[11] Experimental multi-branch planner — 多分支生成 + 自评分 + 选优。
 
 参考 arxiv:2305.10601 Tree of Thoughts (Yao et al. 2023)。
 
 与 plan() / plan_optw() 的关系：
 - plan(): 单次 LLM 调用，便宜（1× LongCat 配额）
-- plan_tot(): K 次并发 LLM 调用 + 自评分（用多样性换正确率，K× 配额）
+- plan_tot(): K 次 LLM 调用 + 自评分（用多样性换正确率，K× 配额）
 - plan_optw(): 0 次 LLM 调用，OR-Tools 求全局最优（无 rationale）
 
 设计：
@@ -16,22 +16,26 @@
 3. 自评分：commonsense + hard constraint + utility + diversity 加权
 4. 返回最高分 plan，把 branches 元信息写到 summary 末尾
 
-工程：
-- ThreadPoolExecutor 并发；LongCat RPM=10 由 llm_robust 全局 limiter 串行化
+工程边界：
+- 这是同一个 planner 的多提示词分支，不是多个自治 Agent；不在生产主链中启用
+- ThreadPoolExecutor 并发时显式复制请求 ContextVar，预算、trace 和 capture 不能旁路
 - 失败分支不抛出，记 score=-inf 让它自然落选
+- 执行预算异常必须向上抛出，不能伪装成普通分支降级
 - Plan 是 dataclass + 普通 dict，pickle 安全
 """
 from __future__ import annotations
 
+import contextvars
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from .llm_client import LLMClient, get_llm_client  # noqa: E402
+from .execution_budget import ExecutionBudgetExceeded  # noqa: E402
 from .planner import plan as make_plan  # noqa: E402
 from .tracing import trace_span  # noqa: E402
 from .types import Plan, UserPreferences  # noqa: E402
@@ -60,6 +64,9 @@ DEFAULT_BRANCHES: list[dict] = [
         "temperature": 0.55,
     },
 ]
+
+MAX_BRANCHES = 3
+BranchPlanner = Callable[..., Plan]
 
 
 # ============================================================
@@ -283,13 +290,18 @@ def plan_tot(
     client: Optional[LLMClient] = None,
     branches: Optional[list[dict]] = None,
     max_workers: int = 3,
+    branch_planner: Optional[BranchPlanner] = None,
 ) -> tuple[Plan, list[BranchScore]]:
-    """ToT planner：生成 K 分支，自评分，返回最高分 plan + 全部分支记录。
+    """实验性多分支 planner：生成 K 分支并用确定性规则选优。
+
+    该入口没有接入 PlanningService/HTTP/job 主链。调用者若在请求级预算、
+    trace 或 capture 中执行，并发分支会显式继承同一份请求上下文。
 
     Args:
         branches: list[{label, hint, temperature}]；None 走 DEFAULT_BRANCHES
         max_workers: 并发线程数；LongCat RPM=10 由 limiter 强制串行化，
                      这里 max_workers 主要影响 mock 模式速度
+        branch_planner: 测试/评测注入点；生产代码保持 None
 
     Returns:
         (best_plan, branch_scores)
@@ -300,18 +312,21 @@ def plan_tot(
     """
     prefs = prefs or UserPreferences(persona=persona, raw_input=user_input)
     client = client or get_llm_client()
-    branches = branches or DEFAULT_BRANCHES
+    branches = DEFAULT_BRANCHES if branches is None else branches
+    branches = _validate_branches(branches, max_workers=max_workers)
+    branch_planner = branch_planner or make_plan
 
     with trace_span("planner.plan_tot", attrs={
         "n_branches": len(branches), "max_workers": max_workers,
         "area_anchor": area_anchor, "client": client.name,
+        "execution_mode": "experimental_multi_branch_v1",
     }):
         return _plan_tot_inner(user_input, persona, prefs, area_anchor,
-                                client, branches, max_workers)
+                                client, branches, max_workers, branch_planner)
 
 
 def _plan_tot_inner(user_input, persona, prefs, area_anchor, client,
-                     branches, max_workers):
+                     branches, max_workers, branch_planner):
     scores: list[BranchScore] = []
 
     def _run_branch(b: dict) -> BranchScore:
@@ -320,7 +335,7 @@ def _plan_tot_inner(user_input, persona, prefs, area_anchor, client,
             "label": b["label"], "temperature": b.get("temperature", 0.3),
         }) as sp:
             try:
-                p = make_plan(
+                p = branch_planner(
                     user_input=user_input,
                     persona=persona,
                     prefs=prefs,
@@ -332,6 +347,10 @@ def _plan_tot_inner(user_input, persona, prefs, area_anchor, client,
                 bs.plan = p
                 bs.score, bs.breakdown = score_plan(p, prefs)
                 sp.set_attribute("score", round(bs.score, 3))
+            except ExecutionBudgetExceeded as exc:
+                bs.error = f"{type(exc).__name__}: {exc}"
+                sp.set_status("error", bs.error)
+                raise
             except Exception as exc:  # noqa: BLE001
                 bs.error = f"{type(exc).__name__}: {exc}"
                 sp.set_status("error", bs.error)
@@ -339,7 +358,12 @@ def _plan_tot_inner(user_input, persona, prefs, area_anchor, client,
 
     if max_workers > 1 and len(branches) > 1:
         with ThreadPoolExecutor(max_workers=max_workers) as ex:
-            futs = {ex.submit(_run_branch, b): b for b in branches}
+            # Context 对象不能被多个线程同时进入，因此每个分支复制一份；
+            # 其中预算 tracker / capture sink 是共享且各自带锁的请求级对象。
+            futs = {
+                ex.submit(contextvars.copy_context().run, _run_branch, b): b
+                for b in branches
+            }
             for fut in as_completed(futs):
                 scores.append(fut.result())
     else:
@@ -362,6 +386,43 @@ def _plan_tot_inner(user_input, persona, prefs, area_anchor, client,
     )
 
     return best.plan, scores
+
+
+def _validate_branches(branches: list[dict], *, max_workers: int) -> list[dict]:
+    """Fail closed on an unbounded or ambiguous experimental fan-out."""
+    if isinstance(max_workers, bool) or not isinstance(max_workers, int):
+        raise ValueError("max_workers must be an integer")
+    if not 1 <= max_workers <= MAX_BRANCHES:
+        raise ValueError(f"max_workers must be between 1 and {MAX_BRANCHES}")
+    if not isinstance(branches, list) or not 1 <= len(branches) <= MAX_BRANCHES:
+        raise ValueError(f"branches must contain between 1 and {MAX_BRANCHES} items")
+
+    labels: set[str] = set()
+    validated: list[dict] = []
+    for index, branch in enumerate(branches):
+        if not isinstance(branch, dict):
+            raise ValueError(f"branch #{index + 1} must be an object")
+        label = branch.get("label")
+        hint = branch.get("hint", "")
+        temperature = branch.get("temperature", 0.3)
+        if not isinstance(label, str) or not label.strip():
+            raise ValueError(f"branch #{index + 1} label must be a non-empty string")
+        label = label.strip()
+        if label in labels:
+            raise ValueError(f"duplicate branch label: {label}")
+        if not isinstance(hint, str):
+            raise ValueError(f"branch {label} hint must be a string")
+        if (
+            isinstance(temperature, bool)
+            or not isinstance(temperature, (int, float))
+            or not 0.0 <= float(temperature) <= 1.0
+        ):
+            raise ValueError(f"branch {label} temperature must be between 0 and 1")
+        labels.add(label)
+        validated.append(
+            {"label": label, "hint": hint, "temperature": float(temperature)}
+        )
+    return validated
 
 
 # ============================================================

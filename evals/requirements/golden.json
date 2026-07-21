@@ -1,0 +1,153 @@
+{
+  "schema_version": 1,
+  "name": "bj-pal-requirement-gate-synthetic-v1",
+  "classification": "synthetic",
+  "label_basis": "Hand-authored execution-critical ambiguity cases. Labels cover the deterministic gate only, not live user satisfaction or full-plan quality.",
+  "cases": [
+    {
+      "case_id": "previous-place-no-context",
+      "user_input": "还是上次那个地方，下午安排一下",
+      "expected_status": "clarification_required",
+      "follow_up": {
+        "user_input": "周六下午去五道营逛四小时",
+        "area_anchor": "五道营-雍和宫片区",
+        "provided_fields": ["user_input", "area_anchor"]
+      }
+    },
+    {
+      "case_id": "previous-plan-no-context",
+      "user_input": "按之前的方案继续安排",
+      "expected_status": "clarification_required",
+      "follow_up": {
+        "user_input": "周六十四点从三里屯开始，逛四小时并安排晚饭",
+        "area_anchor": "三里屯片区",
+        "provided_fields": ["user_input", "area_anchor"]
+      }
+    },
+    {
+      "case_id": "ordinal-selection-no-context",
+      "user_input": "第二个方案吧",
+      "expected_status": "clarification_required",
+      "follow_up": {
+        "user_input": "周六下午去望京，想逛商场并吃晚饭",
+        "area_anchor": "望京片区",
+        "provided_fields": ["user_input", "area_anchor"]
+      }
+    },
+    {
+      "case_id": "relative-home-no-location",
+      "user_input": "别离家太远，带娃玩四小时",
+      "expected_status": "clarification_required",
+      "follow_up": {
+        "user_input": "以望京为中心，带娃玩四小时",
+        "area_anchor": "望京片区",
+        "provided_fields": ["user_input", "area_anchor"]
+      }
+    },
+    {
+      "case_id": "relative-company-no-location",
+      "user_input": "公司附近吃饭再散散步",
+      "expected_status": "clarification_required",
+      "follow_up": {
+        "user_input": "在国贸附近吃饭再散步",
+        "area_anchor": "国贸-CBD片区",
+        "provided_fields": ["user_input", "area_anchor"]
+      }
+    },
+    {
+      "case_id": "text-field-area-conflict",
+      "user_input": "周六下午去三里屯逛逛",
+      "area_anchor": "五道营-雍和宫片区",
+      "provided_fields": ["user_input", "area_anchor"],
+      "expected_status": "clarification_required",
+      "follow_up": {
+        "user_input": "周六下午去三里屯逛逛",
+        "area_anchor": "三里屯片区",
+        "provided_fields": ["user_input", "area_anchor"]
+      }
+    },
+    {
+      "case_id": "multiple-main-areas",
+      "user_input": "三里屯还是国贸，选一个安排下午行程",
+      "expected_status": "clarification_required",
+      "follow_up": {
+        "user_input": "去国贸安排下午行程",
+        "area_anchor": "国贸-CBD片区",
+        "provided_fields": ["user_input", "area_anchor"]
+      }
+    },
+    {
+      "case_id": "wudaoying-from-text",
+      "user_input": "周末下午带娃在五道营附近玩四小时",
+      "expected_status": "proceed"
+    },
+    {
+      "case_id": "sanlitun-from-text",
+      "user_input": "周六下午去三里屯逛街吃饭",
+      "expected_status": "proceed"
+    },
+    {
+      "case_id": "simple-reversible-default",
+      "user_input": "周六下午出去玩四小时",
+      "expected_status": "proceed_with_assumptions"
+    },
+    {
+      "case_id": "relative-home-explicit-area",
+      "user_input": "别离家太远，安排四小时",
+      "area_anchor": "望京片区",
+      "provided_fields": ["user_input", "area_anchor"],
+      "expected_status": "proceed"
+    },
+    {
+      "case_id": "explicit-full-request",
+      "user_input": "周六十四点带五岁孩子逛室内场馆，四小时，不吃辣",
+      "area_anchor": "王府井-东单片区",
+      "provided_fields": ["user_input", "area_anchor", "preferences"],
+      "expected_status": "proceed"
+    },
+    {
+      "case_id": "first-time-not-ordinal-reference",
+      "user_input": "第一次去故宫，想轻松逛逛",
+      "expected_status": "proceed"
+    },
+    {
+      "case_id": "previously-not-visited-not-reference",
+      "user_input": "之前没去过三里屯，周末想去看看",
+      "expected_status": "proceed"
+    },
+    {
+      "case_id": "ordinal-date-not-selection-reference",
+      "user_input": "第二个周六想出去玩四小时",
+      "expected_status": "proceed_with_assumptions"
+    },
+    {
+      "case_id": "same-canonical-area-aliases",
+      "user_input": "从五道营逛到雍和宫，下午四小时",
+      "expected_status": "proceed"
+    },
+    {
+      "case_id": "explicit-unsupported-free-text-area",
+      "user_input": "周六下午逛街吃饭",
+      "area_anchor": "亚运村片区",
+      "provided_fields": ["user_input", "area_anchor"],
+      "expected_status": "proceed"
+    },
+    {
+      "case_id": "ordinary-plan-wording",
+      "user_input": "帮我设计一个周六下午的方案",
+      "expected_status": "proceed_with_assumptions"
+    },
+    {
+      "case_id": "friends-clear-explicit-area",
+      "user_input": "四个朋友周六下午出去，别太赶，能聊天",
+      "area_anchor": "亮马桥片区",
+      "provided_fields": ["user_input", "area_anchor", "preferences"],
+      "expected_status": "proceed"
+    },
+    {
+      "case_id": "weekday-lunch-reversible-default",
+      "user_input": "周三中午想快速吃个饭",
+      "expected_status": "proceed_with_assumptions"
+    }
+  ]
+}

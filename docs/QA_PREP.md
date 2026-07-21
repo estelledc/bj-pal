@@ -1,128 +1,151 @@
-# BJ-Pal · 评委 Q&A 演练手册
+# BJ-Pal 演示与答辩 Q&A
 
-> 30 个最可能问的问题 + 简明答案。比答错更怕"答得软"——每个回答先 1 句结论再 2 句佐证。
-> Q1-Q15 业务/技术/隐私核心；Q16-Q20 v2.2 数据扩展；**Q21-Q30 v2.4-v3.1 升级专属**。
+> 本文只保留当前公开仓库能支撑的回答。求职面试的系统设计追问见 [INTERVIEW_GUIDE.md](INTERVIEW_GUIDE.md)。
 
-## 业务 / 产品类
+## Q1. 这和“GPT 套地图 API”有什么区别？
 
-### Q1. 这跟 GPT 套高德 API 有啥本质区别？
-**A**：三层差异。① **UGC 软信号融合** ranking——纯 GPT 拿不到大众点评 UGC 的结构化抽取。② **主动 reroute**——agent 在用户看到方案前已扫一遍风险，不是被动报错。③ **可解释 reasons**——每个 POI 选择附引用 UGC 原文的依据，纯 LLM 编不出真实评论。
+核心区别不是 prompt，而是边界：候选、约束、风险、状态和数据来源由程序控制；LLM 只从受控候选中做选择、排序和解释。系统还保留初版/终版、局部 reroute、provider warnings 和 artifact，而不是只输出一段文案。
 
-### Q2. 为什么只做北京？
-**A**：v1 北京试点。amap 抓取脚本城市无关，3 天能扩到一线 + 强二线；UGC 抽取链路从大众点评截图通过 GPT-4V 解析也是城市无关。Planner / Ranking / Replanner 完全没有北京特化逻辑。
+## Q2. 现在用的是真实数据吗？
 
-### Q3. 商业价值多大？
-**A**：保守估算北京周末场景日均 1 万次启动 × 30% 完成下单转化 × 平均客单价 200 元 = 60 万 GMV/天。GMV 链路短：方案 → 商家预订 → 蛋糕配送 → 微信卡片，每一节都是美团生态既有产品。
+公开默认不是。`demo` profile 和默认天气 fixture 都是 deterministic synthetic；`real-cache` 只允许本机 POI 缓存，其他数据仍可能 synthetic/estimated，因此是 `mixed`。每个结果返回 per-domain provenance 和 `bookable=false`。Open-Meteo live adapter 存在不等于本项目已完成商业授权或 live acceptance。
 
-### Q4. 为什么不做多 agent debate / RL？
-**A**：命题需要的是落地、把事做完，不是论文 hot 词。Plan-and-Execute 已经够用——评委可以从 Tool Call Trace 看到 ~10 次工具调用 1 个 reroute 一气完成。多 agent debate 会让响应时间从秒级跳到 30 秒+，对周六下午紧迫场景反而扣分。
+## Q3. clone 后能否运行？
 
-### Q5. 5 岁娃 / 减脂这种约束怎么硬保证？
-**A**：两层。L1 硬过滤一票否决——`avg_price > budget × 1.2` 或 `category 含酒吧/夜店且 has_child=true` 的 POI 直接 SQL where 砍掉。L2 软排序——`light_diet` 这类偏好走 ranking weight 调整。硬过滤示范：京兆尹 ¥966 在家庭 ¥120 预算下永远不出现。
+可以运行公开离线链路：
 
-## 技术 / 工程类
+```bash
+make setup
+make bootstrap-demo PYTHON=.venv/bin/python
+make check PYTHON=.venv/bin/python
+make audit-release-candidate PYTHON=.venv/bin/python
+```
 
-### Q6. Agent 思考过程能解释吗？
-**A**：能。Tool Call Trace 侧栏每次调用记 (timestamp, tool, params, response, latency, status)；每个 RankedPOI 附 reasons[(factor, contrib, evidence)]。例子：雍和宫 score=0.325，分解到 amap_rating +0.343 / ugc_soft -0.065 / crowd_penalty -0.059，每条 evidence 直接引 UGC 原文。
+这证明控制流、契约和回归可复现，不证明真实世界结果。
 
-### Q7. LLM 输出不合规怎么办？
-**A**：四层防御。① pydantic-style schema 校验（实际用 dataclass + 默认值兜底，3.9 兼容）。② JSON 解析失败时 `_safe_parse_json` 容忍 ```json ``` 包裹和前后噪声文本。③ Step 字段全部带默认值（duration_min=60, mode_to_here="walking"），LLM 偶尔漏字段不崩。④ 实在不可解析时抛 RuntimeError 带前 300 字 LLM 文本，UI 层 catch 退到 mock client 保 demo 不挂。
+## Q4. 为什么叫 Agent？
 
-### Q8. 余位探针怎么真接通？
-**A**：三条路径。① 美团商家开放 API（POST /merchant/v1/reservation/create）。② 哗啦啦 / 客如云这类餐饮 SaaS 自带余位接口。③ 景区排队走高德 / 美团 LBS 实时拥挤度。每个 mock 接口在源码注释里都标了真实路径，签名一致，切换只需替换 `.complete()` 方法体。
+更准确的工程定义是“确定性工作流 + 有界 LLM 节点”。Planner 能基于目标和候选做决策，Probe 根据环境信号调整计划；但它不是多个远程 Agent 自由对话系统。
 
-### Q9. 排队时长怎么准？
-**A**：三层数据源融合。① UGC 结构化抽取的 wait_min（已落 SQLite）。② 美团商家系统实时排队号（生产环境）。③ 高峰期启发式（11:30-13:30 / 17:30-20:00）。本 demo 默认用 ① + 启发式，trap POI（雍和宫 / 故宫等）用 hardcode 确保现场必触发。
+## Q5. 为什么不增加更多 Agent？
 
-### Q10. UGC 数据质量如何？（v2.2 升级版）
-**A**：**1,102 条 aspect 切片 / 103 片区 / 5 类来源透明区分**：
-- `manual_ugc_seed_v1` 37 条 — 89 张大众点评截图 GPT-4V 抽取
-- `synthetic_from_public_summaries_v2` 732 条（Class A 479 + Class C 场景 137 + Round 5 主题 116） — 网络公开评论汇总 LongCat 结构化抽取
-- `derived_from_amap_attributes_v2` 333 条 — 仅基于 amap 客观字段（评分 / 价格 / 类目）推理，**禁止编造网友评论**
+当前瓶颈是数据可信、失败恢复和副作用安全。历史 ToT 也只是 3 个同构 planner 分支，不是 3 个 Agent。v6.8 的 3-case deterministic mock 对照中，多分支质量提升率和语义输出变化率都是 0，LLM/data 调用都是 3 倍，默认服务端预算还会拒绝第二个 data batch，因此主链保持单分支。这个结论只适用于当前 mock/数据/规则 scorer；拿到真实 badcase/outcome 后应同口径重跑。
 
-每条带 `confidence ∈ [0,1]` + `weekend_afternoon_intensity ∈ [0,1]` + `dataset_version` + `extraction_status` + `privacy_status` + `raw_text_excerpt`（200 字）。
-质量门槛：ranking 层 `confidence ≥ 0.6` 且 intensity 加权；reroute 触发 `confidence ≥ 0.7 + sentiment=negative`；动态 trap 用 amap rating ≥ 4.7 + UGC crowd negative 交叉。
-覆盖密度：王府井-东单 20 / 五道营-雍和宫 19 / 安定门-雍和宫 16 / 三里屯 14 / 望京 14 / 798 12 / scenario 主题各 10-16。
+## Q6. LLM 输出不合法怎么办？
 
-## 隐私 / 合规类
+HTTP 输入和 Planner 输出是两条不同的信任边界。v6.9 的 `model_output_contract_v1` 在构造 `Plan`、查路线和写 trace 前检查 strict 字段/类型、请求 persona/area、当前候选 ID/名称、重复地点、depart/index 和时间序列；未知字段、类型强转和本地补残 JSON 都不能静默通过。首次失败最多调用同一 provider 修复一次，并和首次生成共享 request LLM budget；第二次仍失败时同步/澄清 continuation 返回脱敏 502 `invalid_model_output`，durable job terminal failed 且不走普通 retry。
 
-### Q11. 用户隐私怎么处理？
-**A**：三道闸。① UGC `privacy_status=identity_removed`——大众点评截图已脱敏。② 用户对话不持久化——session_id 哈希前 8 位，会话结束 SQLite 滚动。③ Tool Call Log 不存原文 prompt，只存 params 摘要。生产接入按公司隐私基线走。
+当前 12 条 hand-authored adversarial payload 与 4 条 scripted lifecycle case 全通过，只证明这些失败边界和调用次数，不代表真实模型幻觉率、修复率或方案质量。
 
-### Q12. 蛋糕配送 / 微信发送都是真的吗？
-**A**：demo 是 mock。每个 mock 接口在 `MOCK_API_README.md` 标了真实对接路径——美团秒送 / 微信小程序 subscribeMessage 等。生产路径上 agent 层不需要任何改动，这是抽象层的设计胜利。
+## Q7. 某个数据源失败怎么办？
 
-## 数据 / 扩展类
+候选类别独立返回。单类失败记录为 retryable optional `ProviderIssue` 并进入 `data_warnings`；全部候选为空则 fail closed。缺失数据不会按零成本或成功处理。
 
-### Q13. 数据扩展路径？
-**A**：amap 抓取脚本（`scripts/fetch_amap_pois.py`）城市无关，改 city 参数即可；UGC 抽取脚本（`scripts/extract_ugc_aspects.py`）从大众点评截图通过 GPT-4V 解析，城市无关。3 天能扩到上海 / 杭州，1 周覆盖一线 + 强二线。
+## Q7.1. 为什么正餐不会被换成咖啡馆？
 
-### Q14. 模型可替换吗？
-**A**：可以。`agents/llm_client.py` 抽象层支持 `mock / longcat / anthropic` 三种后端，切换只改环境变量 `BJ_PAL_LLM`。LongCat 走 Anthropic 兼容协议 + Bearer 认证，Claude / DeepSeek 都能在 30 分钟内接通。Mock 后端规则化生成，离线开发期不耗 token。
+Replanner 不再直接对数据库同类候选排名。`constraint_preserving_replan_v1` 先做 hard filter：meal 保持正餐、snack/rest 排除正餐、雨天户外跨类切有遮蔽地点；事件返回每个过滤阶段的候选数。没有合法替补时只 warning，不伪造成功。
 
-### Q15. 为什么 LongCat 不是 GPT？
-**A**：合规优先。LongCat 是美团自研，黑客松场景无第三方 LLM 合规风险。从 activity-planner 项目复用接入方式，0 成本切换。
+## Q7.2. 换了中间 POI 后，下一段路线会不会还是旧的？
 
-## 数据扩展专属（v2.2 加问 5 题）
+不会静默沿用。v5.2 把路线当作完整 plan snapshot：换点后先清空旧路线，再重算所有真正相邻的 POI leg；进入新站和离开新站的两段都会更新。若缺坐标或 lookup 失败，字段保持空，`route_refresh_v1` 返回 partial warning，也不会跨过缺数据站点连线。当前来源只有 `cached/estimated`，不是实时导航。
 
-### Q16. 1,102 条 UGC 是不是都是真的？
-**A**：**坦白讲，不全是 — 但每条来源都透明可查**。manual_v1 37 条来自真实大众点评截图 GPT-4V 抽取，是真 UGC。其余 1,065 条是合成数据，**但合成方法学诚实**：Class A 用网络公开评论汇总让 LongCat 抽 aspect schema（不伪造具体引用、用"普遍反映"客观语气）；Class B 仅基于 amap 客观字段（评分 / 价格 / 类目）推理（禁止编造网友评论）。每条 raw_json 字段标 `dataset_version` + `extraction_status` + `source_urls` + `raw_text_excerpt`，评委想看哪条溯源都能查。
+## Q7.3. 为什么计划里的时间不会再和路程重叠？
 
-### Q17. 动态 trap POI 评分怎么定的？
-**A**：`compute_dynamic_trap_score` 三维加权：① amap 评分 ≥ 4.8 +0.4 / 4.7 +0.3 / 4.5 +0.15（高分店才可能 trap）② UGC negative crowd/queue/booking_risk +0.2 每条（最多 +0.5）③ 名字含"全聚德/便宜坊/海底捞/胡大/老字号/故宫/雍和宫"等关键词 +0.15（demo 直觉）。score ≥ 0.5 即触发 reroute；普通店 rating < 4.5 直接返回 0 不误伤。实测：全聚德前门店 score=0.75（amap 4.8 + UGC queue + 老字号关键词三层全中），路边小馆 score=0.0。
+`start_time` 统一表示到站时间。路线刷新后，Schedule Reconciler 按“上一站到达 + 停留 + 当前站入站路程”级联重排。超出用户窗口时先按版本化最小停留压缩 rest/culture 等柔性时长；仍放不下就返回 `overrun`。缺路线证据则是 `partial`，不会把 0 分钟当已验证成本。
 
-### Q18. weekend_afternoon_intensity 怎么算的？
-**A**：**纯规则可解释**，不依赖 LLM：① `time_bucket` 直接命中 `weekend_afternoon` → 1.0；② `general` + 含"周末/下午/citywalk/14:00-17:00"等关键词 → 0.7；③ `general` 默认 0.5；④ 含"工作日/早上/深夜/晚餐/夜场"等负向词 → -0.2 衰减；⑤ `evening / weekday_dinner` 桶 → 0.1-0.2。1,102 条全填，HIGH 215 / MID 764 / LOW 123。db rebuild 时 loader 自动 fallback compute，不用每次重跑 ETL。
+## Q7.4. 用户说“还是上次那个地方”，系统会不会直接猜？
 
-### Q19. routes 1,892 条都是高德路网吗？
-**A**：**52 条 amap 真实路径 + 1,840 条 estimated_v2** — 后者透明标注。estimated_v2 用 haversine × 1.3 detour（北京城市内典型绕行系数）+ 4 模式标准速度（步行 5km/h / 骑行 15 / 驾车 25 市区 / 公交 18 + 5min 等车）。覆盖 150 个核心 POI × 5 nearest 配对 ≈ 473 unique leg × 4 模式。源码注释 + raw_json 字段 `method=haversine_x_detour_with_mode_speed` 都标了。MVP 后切高德 navigation API 真实路径只需替换 `_find_cached_leg` 实现。
+不会。`requirement_gate_v1` 在 Planner/tool fan-out 前识别无法解析的历史/序号指代、相对位置缺参考和片区冲突，返回结构化 `409 clarification_required`、一个问题及 2-3 个选项；durable submit 不会先把它排队。普通可逆缺省只记录 assumption 后继续，避免过度追问。20 条 synthetic case 的 false clarification rate 为 0，但这不是开放域或真实用户准确率。
 
-### Q20. clone 后能直接跑通吗？
-**A**：可以。`expanded_v2.jsonl`（UGC + routes 共 2.4MB）已进 git；clone 后 `python3 src/loader.py` 自动加载 → 1065 UGC + 1892 routes（不依赖 manual_ugc_seed.jsonl，loader graceful 跳过缺失文件）。原始 amap POI（86MB）和大众点评截图仍 gitignore。test_data_coverage.py 4 章节 16 断言全过即可证明数据完整。
+## Q7.5. 用户文本写两个人，表单或默认值写三个人时怎么办？
 
-注：**v3.0 后 UGC 已扩到 8,666 条**（5/21 全天 R6-R100 共 95 轮共 +2366 条），`expanded_v2.jsonl` 同步更新；详见 `docs/100-improvements.md` "v2.4 → v3.1 行为级跃迁" 段。
+`constraint_ledger_v1` 在 Requirement Gate 后把支持的文本约束映射为 typed preferences，并保存文本值、最终值、来源、evidence 和 merge outcome。文本与调用方显式人数、预算、时间、时长或 persona 冲突时返回结构化 409，Planner 不运行、durable job 不入队；忌口限制取安全并集。30 条 synthetic case 当前 extraction、preservation、conflict recall、rewrite 和 round-trip 均为 1.000，但只覆盖固定规则，不代表开放域中文理解。
 
-## v2.4 → v3.1 升级专属（5/22 - 5/29 加问 10 题）
+## Q7.6. 409 后如何保证继续的是原请求，而且不会重复执行？
 
-### Q21. 评测体系搞 L1/L2/L3 三层是不是 over-engineering？
-**A**：**不是过度设计，是成本约束逼出来的**。100 case × 5 信号 × 每 commit 跑 = LongCat token 烧不起。我们的解法：L1 anchor 5 case 全 mock 30s 跑（每 commit），L2 集成 25 case 抽样 LongCat 5min 跑（每周），L3 全量 100 × 5 = 280 检查 LongCat 30min 跑（每 release）。频率 × 规模 × 信号强度三层解耦，参考 video-eval-agent 的 gstack 三阶段防火墙。详见 `docs/EVAL_FRAMEWORK.md`。
+服务把原 `PlanRequest`、request/decision SHA、typed options、delivery/deadline/priority policy 和 TTL 保存为 clarification session；用户选择形成 `clarification_resolution_v1`，再进入同一个 `PlanningPreflight`。同一答案重放返回缓存同步结果或同一 job，不同答案返回冲突，并发执行由 lease owner fencing。多项冲突按层处理，父 session 固定指向同一个下一问。同步计算在结果落库前崩溃仍可能重算，因此不宣称 exactly-once；真实副作用仍需 operation id 和 receipt。16 条 synthetic case 的续跑/有效值/指纹/恢复/重放指标为 1.000，同冲突复发率为 0，但没有真实用户多轮满意度证据。
 
-### Q22. ToT / OPTW / 普通三分支是怎么选的？
-**A**：**入口决策树写在 planner.plan() 里**：query 简单 / 群人数 ≤ 2 / 时间富裕 → 普通分支；用户提了 ≥ 2 偏好维度 / 复杂约束 → ToT 分支（K=3 候选并发自评分 5 维：commonsense + hard_constraint + utility + diversity + rationale_quality）；候选池 ≥ 30 / 强时间窗约束 / 多 POI 最优访问序列 → OPTW 分支（OR-Tools CP-SAT，5s timeout）。三分支 entry 都过 plan_tracer 接到统一下游链路。`planner_tot.py` 5/5 测试，`optw_solver.py` 7/7 测试 + 端到端 4 步 POI 5s FEASIBLE。
+## Q8. 为什么有同步和异步两套接口？
 
-### Q23. ECE 0.1089 真的够准吗？
-**A**：**达标但不完美，我们坦诚地说**。Global ECE 0.1089（291 paired outcomes 计算），目标 ≤ 0.15 已达成。但置信度直方图显示 79.1% 的 trace 集中在 0.7-0.8 桶——说明 plan_tracer 默认值（约 0.74-0.78）占主导，LLM 自评的细粒度还没充分用上。能 pass 是因为 mean_actual_success 刚好接近 0.7-0.8。**v4.0 改进项**：让 planner_tot 的 5 维自评分真正传到 plan_tracer.confidence。详见 `docs/eval-100-results.md` §4。
+同步接口方便短请求和现场演示；durable job 先落库、再由独立 worker 处理，可应对断线和进程中断。两者共用同一个 PlanningService，因此业务行为不分叉。
 
-### Q24. 280 信号检查 100% pass 是不是过拟合 fixture？
-**A**：**有这个风险，所以我们用 deterministic 检查 + fixture/prompt 分库**。S1-S5 都不依赖 LLM judge——S1 检查 `plan_tracer.coverage_rate == 1.0`，S2 检查 `len(extract_red_flags) >= 1`，都是接到模块返回值。fixture 用通用语境 query，与 production prompt 隔离（参考 video-eval-agent 防火墙原则）。**真实风险在 L2 / L3 case 设计**：如果 case 只覆盖"已知能 pass 的"形态，新场景就会爆。所以 ROADMAP 里把"L3 case 多样性扩展"列为 v4.0 P1 项。
+## Q9. 如何防重复任务？
 
-### Q25. v2.7 stateful 跨 session 记忆怎么处理隐私？
-**A**：**三道闸**。① user_memory 表存的是 facet 抽象（cuisine_pref / dietary / physical_limit）+ confidence，不存原始 query 文本。② 每个 facet 字段独立 visibility 配置（self_only / group / trusted_only），群推荐时 `get_visible_history(group_members)` 只取并集可见的。③ 每 session 顶部"隐私模式"toggle，开启后纯靠当下输入计算，不读历史；状态在 IM 卡片显示"小李是隐私模式"避免群友误判。`forget(user_id, facet)` 和 `forget(user_id, before=ts)` 都支持。
+`Idempotency-Key` 在 tenant namespace 内与规范化请求 hash、deadline、priority 策略绑定；同 tenant 下策略相同返回原 job，任一变化返回 409，不同 tenant 可复用同一 key。worker 用事务和 lease claim；当前仍是 at-least-once，真实副作用还需 operation id 和 receipt。
 
-### Q26. Kemeny-Young O(K!N) 真的能跑起来？
-**A**：**两段式优化**。第一轮 Borda O(NK) 粗排 top-7（4 人对 50 候选 < 10ms），第二轮 Kemeny-Young 用 ILP（`pulp` 库）求 top-7 的最小 Kendall tau 共识，K=7 阶乘只 5040 种排列，可枚举求最优 < 100ms。互补：Borda 快、Kemeny 准。`agents/voting.py` 11/11 测试。
+## Q9.1. 高优先级任务会不会让普通任务永远排不到？
 
-### Q27. promo 8 件套是 AI 自动生成还是手设计的？
-**A**：**100% AI 自动生成**——用本机 Open Design（Claude Code 调）跑了 4 个项目（pitch / landing / xhs / one-pager），总耗时 ~80 分钟（含一次 daemon 重启 + 多次重试）。失败率：3 并发 ~50%，串行 + 简化 skill ~10%。关键 fix 是避开复杂 skill（如 magazine-web-ppt）改用 article-magazine / card-xiaohongshu，prompt 末尾明确"直接 Write index.html，不要等模板探索"。详见 `promo/README.md` "生成代价 + 教训" 段。
+不会只按固定 priority 排。`tenant_fair_priority_aging_v2` 先用 `priority_aging_v1` 在任务 eligible 后每等待 60 秒提升一级、最高 9；同有效优先级时先选最久未获服务 tenant，再按 eligible time FIFO。retry backoff 到期前不参与竞争，claim event 保存 priority/fairness policy、tenant cursor、基础/有效优先级和 queue wait，4-case verifier 独立复算。v5.9 的 principal `max_priority` 防越权，v6.0 的 tenant admission 防合法请求无限占槽。边界是没有空闲 worker 时仍不保证启动时间，新 tenant 有一次初始机会，也没有在线 reprioritize 或多实例全局调度。
 
-### Q28. LongCat 限流 / 改协议 / 挂了怎么办？
-**A**：**llm_client.py 多模型 fallback chain 已落地**。环境变量 `BJ_PAL_LLM=mock|longcat|anthropic` 三档，默认 longcat。limit 错误（429）走 RPM 令牌桶 + 指数退避（base=2s, jitter±0.5, max=60s, max_attempts=4），见 `agents/llm_robust.py`。极端情况 mock 全程兜底（规则化生成）。**真实演练过**：5/21 跑 100 场景 LongCat 时遇到限流连续段头 S16，[73] partial parse + [75] RPM 限流后 8/40 限流 case 压到 0。
+## Q9.2. tenant 配额怎么保证并发下不超卖？这算限流吗？
 
-### Q29. v4.0 最关心哪个改进？
-**A**：**三个，按优先级**：① **plan_tracer.confidence 真实化**（解决 Q23 的桶集中问题，让 ToT 自评分真传到下游）；② **真实 amap 实时数据接入**（详见 `bj-pal-amap-heat-research.md`：高德 POI 详情 + 路况 + 天气组合 API 1 周 MVP，ranking 加 `live_heat_score` 分量）；③ **L2 evals 归档化**（当前只 stdout，改为写 JSON 到 `evals/results/L2_<sha>_<ts>.json` 跟 L1/L3 一致），详见 `docs/ROADMAP.md`。
+普通 submit、manual replay 和 job clarification continuation 都在同一个 SQLite `BEGIN IMMEDIATE` 中检查 queued/running active 数与过去 60 秒 accepted new job 数，再创建 job 和 admission event；两个并发提交不会都读到旧计数。匹配幂等重试直接复用原 job，不消耗新 quota。active/rate 拒绝返回不同 429 code，rate 场景给 `Retry-After`，所有 admitted/rejected/reuse decision 都进入 append-only tenant audit。准确边界是“单库原子准入”，不是公网 raw-attempt rate limiter：被拒绝请求不计 accepted-submission 窗口，audit 也还没有 retention，跨实例需要外部协调存储。
 
-### Q30. 你们用 22 个 agent 模块会不会反而成本太高？
-**A**：**不会，因为 agent 不全在同一 query 跑**。一次 plan 链路只调 4-6 个 agent（preference_mirror / planner / replanner / plan_tracer，群投票场景加 voting / group_convergence），其他 agent 是 evals 或 demo 模式按需启动。Tool Call Trace 实测一次 plan ~10 次工具调用、~6 次 agent 调用、总 latency 1.5-3s（mock）/ 3-8s（LongCat）。22 个 agent 是**能力总和**，不是**单次成本**。
+## Q10. 置信度可信吗？
 
----
+字段当前表示 `evidence_support_v1`，不是成功概率。它透明记录 grounding、rating、UGC、route、risk 和 profile 等因子；synthetic/mixed profile 会封顶。没有真实 outcome 配对时不报告当前 ECE。
 
-## 演练 checklist
+## Q11. L1/L2/L3 100% 代表什么？
 
-- [ ] 90s pitch 背诵 3 遍，时间控制在 85-95s
-- [ ] 5 分钟现场 demo 全跑 1 遍，本地无报错
-- [ ] Q1-Q30 每题用一句话回答（避免长篇大论）
-- [ ] **Q21-Q30 重点演练**——这是 v2.4-v3.1 升级后评委最可能挑刺的部分
-- [ ] Trace 侧栏能现场展开（带网线 / 不带都能跑）
-- [ ] **校准面板能现场展开**（`ui/calibration_panel.py`）展示 ECE 0.1089 + 置信度直方图
-- [ ] 准备一份预录视频 mp4 作为兜底（如现场 streamlit 挂掉）
-- [ ] 提前部署到云端 demo URL（GitHub Pages 用 `promo/landing-page.html`），现场万一本机出问题切线上
+只代表 deterministic mock regression case 通过。L1 检入口，L2 检模块，L3 检分布；verifier 从 raw cases 重算摘要。它不代表用户满意度、准确率或商业转化。
+
+## Q11.1. 现在有用户 outcome 了吗？
+
+有“收集与知情试用机制”，没有真实样本。v6.3 为精确 plan artifact 发放限时 capability，分开收 decision/outcome；v6.4 再用 tenant-scoped cohort、精确 notice SHA、单次加入码、匿名 participant capability、退出排除和冻结 snapshot 约束试用分母；v6.6 增加到期本地清除事务。4-case/8-metric outcome 与 6-case/13-metric trial 的 1.000 都只证明 synthetic contract，不是采纳率或完成率。当前真实 participant/report 数均为 0。
+
+## Q11.2. 为什么这些 outcome 不能直接算 ECE？
+
+它们是整份 plan 的自报结果，不是每个 step 的同定义概率标签。项目把旧 outcome 分类为 synthetic、legacy 和 human-verified step；诊断 UI 只读取最后一种。把一个 `completed` 复制到所有 step 会制造伪校准，因此明确禁止。
+
+## Q11.3. 5 个 participant capability 等于 5 位真人吗？
+
+不等于。它只能证明 5 个不同匿名参与凭证各自完成了精确 notice SHA 同意，且每个 phase 最多提交一次；没有账号、实名或外部 IdP 时，同一个人仍可能持有多个凭证。项目因此把聚合称为 `self_reported_unverified`，简历和面试只能说“不同参与凭证”，不能说“5 位已验证真人”。
+
+## Q11.4. 真实试用怎么避免 operator 自己泄露加入码或误冻结？
+
+v6.5 的 `manage_trial.py` 不在 stdout 输出原始码；批量码只允许写入不存在的新文件，权限为 0600 且文件名被 gitignore。冻结必须精确传回 trial ID，任何 phase 未达门槛时默认拒绝，只有显式接受低样本才会生成 snapshot。它仍是本地 privileged 工具，组织者必须逐人分发并删除自己的 secret bundle 副本。
+
+## Q11.5. retention purge 能否证明数据不可恢复？
+
+不能。v6.6 证明的是一个本地 SQLite live-table 删除事务：已冻结且到期、精确 trial-ID/secret/backup disposition、排他锁、`secure_delete=ON`、目标行计数、trigger 恢复、foreign-key check、hash receipt 和故障回滚。WAL 模式会拒绝执行。但 `secure_delete` 和 operator attestation 仍不能独立证明文件系统快照、secret 文件、复制库或外部备份已被取证级擦除。
+
+## Q12. 真实预订为什么还没接？
+
+因为真实副作用不能只换一个 HTTP client。v6.2 已先实现完全离线的安全骨架：provider quote/reference/validity/terms 与 action 绑定、请求/审批职责分离、tenant-local 幂等 operation、独立 worker、side-effect receipt、append-only event/reconciliation，以及调用后不明时进入 `uncertain` 且不自动重试。已有 provider-reference-bound 只读状态核对，但 execute/lookup 都被硬限制为 `bj-pal-sandbox`，没有真实餐厅、支付或消息调用。接真实环境前仍需要供应商授权与测试环境、真实订单查询 acceptance、补偿 operation、客服 handoff、第三方签名回执、PII/secret 和 retention。
+
+## Q12.1. 为什么副作用 worker 失联后不自动 reclaim？
+
+纯计算 job 重算通常只是浪费算力，真实预订重放却可能重复下单。v6.2 因此把 executing lease 过期收敛为 `uncertain`，而不是沿用 planning job 的 at-least-once retry；有 provider operation ID 时只读查询并校验绑定证据，没有 reference 时交给人工处理。这是“宁可暂停确认，也不盲目重复写”的安全取舍。
+
+## Q13. 为什么没用 LangGraph/MCP/A2A？
+
+当前线性有界工作流用 Application Service 更容易验证；同进程 provider 用 Protocol 足够；没有远程 Agent 互操作需求。复杂审批循环、跨进程工具或独立 Agent 服务出现后再引入对应框架/协议。
+
+## Q14. 当前最大的技术风险？
+
+当前最大的证据风险是还没有真实 participant/report 和 badcase 闭环：v6.9 已完成模型输出失败关闭，v6.8 完成编排选型对照，v6.7 完成请求级调用/retry/实报 token/checkpoint-time budget，但还没有真的创建批次、招募和分发。技术侧还缺托管 purge/备份删除证明、适用于宣传部署的天气商业授权或自托管 live acceptance，POI/路线仍无 live provider；控制面缺外部 IdP/动态 RBAC、credential 生命周期、存储层隔离、入口 raw-attempt abuse protection、跨实例全局准入/调度、tenant 金额预算和 audit retention；副作用没有真实 provider 查询 acceptance、补偿、客服 handoff 或签名回执。12+4 条输出 fixture 不能替代真实模型 badcase，继续堆 UI 或 Agent 数量也不会消除这些缺口。
+
+## Q15. Docker 和 CI 到什么程度？
+
+Dockerfile 使用 Python 3.11 slim，build 时生成 demo 数据，容器非 root 运行并配置 health check；CI 会运行测试、API/job smoke、公开 eval 并构建镜像。本机 Docker daemon 未运行时不能声称本地镜像 build 已通过。
+
+## 答辩演练 checklist
+
+- [ ] 60 秒说明问题、边界、主链和一个可靠性难点。
+- [ ] 现场运行 `make api-smoke` 和 `make job-smoke`。
+- [ ] 展示返回结果里的 `data_provenance`、`data_warnings` 和支持度因子。
+- [ ] 用“还是上次那个地方”展示 Planner 调用前的结构化澄清，再用明确片区展示零额外摩擦。
+- [ ] 用“2 人 / 15:00 / 3 小时 / 人均 100 / 不吃辣”展示 Constraint Ledger，再用文本 2 人、表单 4 人展示冲突 409 和零入队。
+- [ ] 从该 409 选择 `use_text_value`，展示同一个请求继续、ledger source=`user_clarification`，再重复请求验证 plan/job ID 不变，并用另一答案展示 resolution conflict。
+- [ ] 展示 weather provenance 与 `offline_contract_only` artifact，并主动说明未执行 live smoke。
+- [ ] 运行 `make demo-trial` 与 `make eval-trials`，说明 synthetic 0.8 不是用户指标、participant capability 不是身份、purge receipt 不是取证级擦除或备份删除证明。
+- [ ] 展示 `make trial-operator-help` 和 operator contract 测试，说明 0600 bundle 仍需人工安全分发/删除，purge 要冻结/到期/精确确认且 WAL fail closed，本地 CLI 不等于远程 IAM。
+- [ ] 展示 `execution_observation_v2` 的 request/job correlation、span tree、token completeness、`execution_budget_v1` 和双层 SHA；运行 `make eval-execution-budget`，说明 N+1 在 body 前拒绝、mock token 为 unavailable、checkpoint 不能强杀已阻塞调用、本地 capture 不等于 OTLP/生产监控或金额成本治理。
+- [ ] 运行 `make eval-model-output`，展示 hallucinated ID、名称错配、补残 JSON、一次修复和预算阻止第二次正文；说明 prompt schema 不等于 runtime validation，1.000 也不等于幻觉率为 0。
+- [ ] 画出 queued → running → succeeded/failed/dead_lettered/cancelled/timed_out，以及 heartbeat、retry、cancel、deadline 和 lease recovery。
+- [ ] 用两个不同 priority、一个 backoff job 和两个同优先级 tenant 解释 aging/tenant rotation/FIFO/eligible boundary，并明确“选择公平不等于启动 SLA”。
+- [ ] 演示 job 控制面缺 registry 时 503、错凭证 401、缺 scope/越 priority cap 时 403、跨 tenant 时 404、active/rate admission 时 429；说明静态 principal registry 不等于外部 IdP/动态 RBAC/数据库 RLS。
+- [ ] 查询 `/v1/planning-admission-events`，解释幂等复用为何不消耗新 quota，以及 accepted-submission cap 为何不等于 raw-attempt limiter。
+- [ ] 运行 `make eval-access-control`，解释 verifier 为什么同时检查允许/拒绝路径、admission audit、continuation recovery 和 credential exclusion。
+- [ ] 主动说明 demo/synthetic/real-cache/real bookable 的区别。
+- [ ] 不引用无 raw artifact 的历史 ECE、真实数据规模或成功率。

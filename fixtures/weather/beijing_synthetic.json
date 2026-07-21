@@ -1,0 +1,46 @@
+{
+  "fixture_metadata": {
+    "schema_version": 1,
+    "classification": "synthetic",
+    "scenario_date": "2026-07-20",
+    "source_documentation": "https://open-meteo.com/en/docs",
+    "license_note": "The values below are authored synthetic test data, not an Open-Meteo observation or forecast.",
+    "purpose": "Offline adapter contract and deterministic reroute rehearsal"
+  },
+  "response": {
+    "latitude": 39.9474,
+    "longitude": 116.4166,
+    "generationtime_ms": 0.01,
+    "utc_offset_seconds": 28800,
+    "timezone": "Asia/Shanghai",
+    "timezone_abbreviation": "GMT+8",
+    "elevation": 50,
+    "hourly_units": {
+      "time": "iso8601",
+      "temperature_2m": "°C",
+      "apparent_temperature": "°C",
+      "precipitation_probability": "%",
+      "precipitation": "mm",
+      "weather_code": "wmo code",
+      "wind_speed_10m": "km/h"
+    },
+    "hourly": {
+      "time": [
+        "2026-07-20T13:00",
+        "2026-07-20T14:00",
+        "2026-07-20T15:00",
+        "2026-07-20T16:00",
+        "2026-07-20T17:00",
+        "2026-07-20T18:00",
+        "2026-07-20T19:00",
+        "2026-07-20T20:00"
+      ],
+      "temperature_2m": [31.0, 30.0, 29.0, 29.0, 28.0, 27.0, 26.0, 25.0],
+      "apparent_temperature": [33.0, 32.0, 31.0, 31.0, 30.0, 29.0, 28.0, 27.0],
+      "precipitation_probability": [20, 85, 80, 35, 10, 5, 5, 5],
+      "precipitation": [0.0, 1.6, 1.2, 0.0, 0.0, 0.0, 0.0, 0.0],
+      "weather_code": [3, 61, 61, 3, 2, 1, 1, 0],
+      "wind_speed_10m": [8.0, 14.0, 16.0, 12.0, 9.0, 7.0, 6.0, 5.0]
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/estelledc/bj-pal/main/evals/artifact.schema.json",
+  "title": "BJ-Pal public evaluation artifact",
+  "type": "object",
+  "required": [
+    "schema_id",
+    "schema_version",
+    "run",
+    "evaluations",
+    "summary",
+    "integrity"
+  ],
+  "properties": {
+    "schema_id": {"const": "bj-pal.public-eval-artifact"},
+    "schema_version": {"const": 1},
+    "run": {
+      "type": "object",
+      "required": ["generated_at", "git", "environment", "backend", "deterministic", "command", "data_profile"]
+    },
+    "evaluations": {
+      "type": "object",
+      "required": ["L1", "L2", "L3"]
+    },
+    "summary": {
+      "type": "object",
+      "required": ["levels", "overall_pass"]
+    },
+    "integrity": {
+      "type": "object",
+      "required": ["algorithm", "payload_sha256", "semantic_sha256"],
+      "properties": {
+        "algorithm": {"const": "sha256"},
+        "payload_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "semantic_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    }
+  }
+}

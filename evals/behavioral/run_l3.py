@@ -126,6 +126,8 @@ def run_all(*, verbose: bool = True,
              "failed_signals": [s for s, x in r["signals"].items() if not x["pass"]]}
             for r in case_results if not r["all_pass"]
         ][:20],
+        # v4.2：保留逐 case 原始信号，artifact verifier 才能独立复算摘要。
+        "cases": case_results,
     }
 
     if verbose:

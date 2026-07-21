@@ -1,4 +1,4 @@
-"""[88] OpenTelemetry tracing — 可选依赖，未装走 JSONL fallback。
+"""Request-local tracing with optional JSONL/OpenTelemetry export.
 
 用途：在 hackathon demo 里把 planner / replanner / llm_client / 工具调用
 绑成一棵 trace 树，便于复现 + 性能分析 + 失败复盘。
@@ -17,9 +17,10 @@ API：
 - @traced("name") 函数装饰器
 
 设计：
-- span 之间通过 ContextVar 维护 parent，跨线程 / asyncio 自动衔接
+- span 之间通过 ContextVar 维护 parent；async task 继承 context，新线程须显式复制 context
 - session_id 由 set_session() 设置，写到每个 span 的 attrs
-- 即使后端 = off，with 块和装饰器仍正常运行（no-op span）
+- 后端 = off 时，普通调用仍是 no-op；PlanningService 可显式开启内存 capture
+  生成可验证的 execution observation，不依赖外部 collector
 """
 from __future__ import annotations
 
@@ -53,6 +54,7 @@ class _SpanRecord:
     attrs: dict = field(default_factory=dict)
     status: str = "unset"
     error: str = ""
+    backend_handle: Any = field(default=None, repr=False, compare=False)
 
     def to_jsonl(self) -> str:
         return json.dumps({
@@ -78,6 +80,9 @@ _session_id: contextvars.ContextVar[str] = contextvars.ContextVar(
 _trace_id: contextvars.ContextVar[str] = contextvars.ContextVar(
     "bj_pal_trace_id", default=""
 )
+_execution_capture: contextvars.ContextVar[Optional["ExecutionTraceCapture"]] = (
+    contextvars.ContextVar("bj_pal_execution_capture", default=None)
+)
 
 
 # ============================================================
@@ -85,6 +90,9 @@ _trace_id: contextvars.ContextVar[str] = contextvars.ContextVar(
 # ============================================================
 
 class _Backend:
+    def begin(self, sp: _SpanRecord, parent_handle: Any = None) -> Any:
+        return None
+
     def emit(self, sp: _SpanRecord) -> None:
         ...
 
@@ -110,7 +118,7 @@ class _JsonlBackend(_Backend):
 
 
 class _OtelBackend(_Backend):
-    """OpenTelemetry SDK 包装。"""
+    """OpenTelemetry SDK adapter with explicit parent propagation."""
 
     def __init__(self):
         from opentelemetry import trace as otel_trace
@@ -127,27 +135,30 @@ class _OtelBackend(_Backend):
         provider.add_span_processor(SimpleSpanProcessor(exporter))
         otel_trace.set_tracer_provider(provider)
         self._tracer = otel_trace.get_tracer("bj-pal")
-        # 维护一个 span_id → otel span 映射，因为我们用自己的 _SpanRecord 树
-        self._otel_spans: dict[str, Any] = {}
-        self._lock = threading.Lock()
+        self._otel_trace = otel_trace
 
-    def emit(self, sp: _SpanRecord) -> None:
-        # 已 emit 的 span 都已 finish，OTel 立即看见
-        # 这里做 "事后 emit"：在 _SpanRecord end 时一次性创建 OTel span
-        # 用 start_as_current_span 兼容上下文
-        from opentelemetry import trace as otel_trace
-        from opentelemetry.trace import StatusCode, Status
-        # 用 OTel 的 manual span（不进入 context）
-        otel_span = self._tracer.start_span(
+    def begin(self, sp: _SpanRecord, parent_handle: Any = None) -> Any:
+        context = None
+        if parent_handle is not None:
+            context = self._otel_trace.set_span_in_context(parent_handle)
+        return self._tracer.start_span(
             sp.name,
+            context=context,
             start_time=int(sp.start_ts * 1e9),
         )
+
+    def emit(self, sp: _SpanRecord) -> None:
+        from opentelemetry.trace import StatusCode, Status
+        otel_span = sp.backend_handle
+        if otel_span is None:
+            return
         for k, v in sp.attrs.items():
             try:
                 otel_span.set_attribute(k, v)
             except Exception:
                 otel_span.set_attribute(k, str(v))
         otel_span.set_attribute("session_id", sp.session_id)
+        otel_span.set_attribute("bj_pal.trace_id", sp.trace_id)
         if sp.status == "error":
             otel_span.set_status(Status(StatusCode.ERROR, sp.error or "error"))
         else:
@@ -188,6 +199,71 @@ def _default_jsonl_dir() -> Path:
 # ============================================================
 # 公共 API
 # ============================================================
+
+class ExecutionTraceCapture:
+    """Request-local in-memory span sink used by the application boundary.
+
+    The snapshot deliberately excludes span attributes except provider-reported
+    numeric token usage. User input, prompts, POI decisions, and user IDs must
+    not enter the public execution artifact.
+    """
+
+    def __init__(self, *, correlation_id: str | None = None) -> None:
+        self.execution_id = f"exec-{uuid.uuid4().hex}"
+        self.correlation_id = correlation_id
+        self.trace_id = uuid.uuid4().hex
+        self._records: list[_SpanRecord] = []
+        self._lock = threading.Lock()
+
+    def record(self, span: _SpanRecord) -> None:
+        with self._lock:
+            self._records.append(span)
+
+    def snapshot(self) -> dict[str, Any]:
+        with self._lock:
+            ordered = sorted(
+                self._records,
+                key=lambda item: (item.start_ts, item.end_ts, item.span_id),
+            )
+        return {
+            "execution_id": self.execution_id,
+            "correlation_id": self.correlation_id,
+            "trace_id": self.trace_id,
+            "spans": [
+                {
+                    "name": item.name,
+                    "span_id": item.span_id,
+                    "parent_span_id": item.parent_id,
+                    "started_at_epoch": item.start_ts,
+                    "duration_ms": round(max(0.0, item.end_ts - item.start_ts) * 1000, 3),
+                    "status": item.status,
+                    "input_tokens": _reported_token(item.attrs.get("input_tokens")),
+                    "output_tokens": _reported_token(item.attrs.get("output_tokens")),
+                }
+                for item in ordered
+            ],
+        }
+
+
+def _reported_token(value: Any) -> int | None:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return None
+    return value
+
+
+@contextmanager
+def capture_execution(correlation_id: str | None = None):
+    """Capture one execution without requiring JSONL or an OTEL collector."""
+    capture = ExecutionTraceCapture(correlation_id=correlation_id)
+    capture_token = _execution_capture.set(capture)
+    session_token = _session_id.set(correlation_id or capture.execution_id)
+    trace_token = _trace_id.set(capture.trace_id)
+    try:
+        yield capture
+    finally:
+        _trace_id.reset(trace_token)
+        _session_id.reset(session_token)
+        _execution_capture.reset(capture_token)
 
 def set_session(session_id: str) -> None:
     """绑定当前 ContextVar 的 session_id；同时新开 trace_id。"""
@@ -231,13 +307,34 @@ class _Span:
 @contextmanager
 def trace_span(name: str, attrs: Optional[dict] = None):
     """开 span。"""
-    if (os.environ.get("BJ_PAL_TRACE") or "off").lower() == "off":
+    # The request budget is independent from the export backend. Enforce it
+    # before the bounded operation begins, including when tracing is `off`.
+    from .execution_budget import current_execution_budget
+
+    execution_budget = current_execution_budget()
+    if execution_budget is not None:
+        execution_budget.before_span(name)
+    capture = _execution_capture.get()
+    backend_enabled = (os.environ.get("BJ_PAL_TRACE") or "off").lower() != "off"
+    if not backend_enabled and capture is None:
         # 完全 no-op，zero overhead
-        yield _Span(_SpanRecord(
+        record = _SpanRecord(
             name=name, span_id="", parent_id=None, trace_id="",
             session_id="", start_ts=time.time(), end_ts=time.time(),
             attrs=attrs or {},
-        ))
+        )
+        span = _Span(record)
+        try:
+            yield span
+            record.status = "ok"
+        except Exception as exc:
+            record.status = "error"
+            record.error = f"{type(exc).__name__}: {exc}"
+            raise
+        finally:
+            record.end_ts = time.time()
+            if execution_budget is not None and record.status == "ok":
+                execution_budget.after_span(record.name, record.attrs)
         return
 
     parent = _current_span.get()
@@ -255,6 +352,15 @@ def trace_span(name: str, attrs: Optional[dict] = None):
         start_ts=time.time(),
         attrs=dict(attrs or {}),
     )
+    backend = _resolve_backend() if backend_enabled else None
+    if backend is not None:
+        try:
+            rec.backend_handle = backend.begin(
+                rec,
+                parent.backend_handle if parent is not None else None,
+            )
+        except Exception:
+            rec.backend_handle = None
     span = _Span(rec)
     token = _current_span.set(rec)
     try:
@@ -268,11 +374,19 @@ def trace_span(name: str, attrs: Optional[dict] = None):
     finally:
         rec.end_ts = time.time()
         _current_span.reset(token)
+        if capture is not None:
+            capture.record(rec)
         try:
-            _resolve_backend().emit(rec)
+            if backend is not None:
+                backend.emit(rec)
         except Exception:
             # trace 不能让业务挂
             pass
+        # Provider-reported usage only exists after the operation returns.
+        # Enforcing here stops the next stage without pretending the tokens
+        # already spent by that call can be recovered.
+        if execution_budget is not None and rec.status == "ok":
+            execution_budget.after_span(rec.name, rec.attrs)
 
 
 def traced(name: Optional[str] = None, **default_attrs):
