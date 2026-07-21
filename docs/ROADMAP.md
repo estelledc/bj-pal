@@ -53,8 +53,8 @@
 | v6.23 Bounded live-provider acceptance | 已通过 [PR #10](https://github.com/estelledc/bj-pal/pull/10) 合并 `main` | 显式费用确认 + owner-only regular 0600 CSSwitch active DeepSeek profile；拒绝 symlink/宽权限/非 HTTPS/隐式模型/覆盖；固定三里屯一次首轮通过，1 LLM call、53 input + 1411 output = 1464 provider-reported token、约 28.9 秒；observation/quality/acceptance 三份 0600 工件 Key 精确命中 0；独立 verifier 重算 usage/budget/quality/link/gate；557-file secret gate、903 collected / 900 passed / 3 skipped、ASGI/TCP 均 20/20 | 单次 configured-client operator observation，不是 signed provider receipt、成功率、延迟分布、发票或币种成本；不等于 KMS、服务端过期/轮换/撤销、多租户金额预算或 billing reconciliation |
 | v6.24 OCI release gate | 已发布 | tag/version 双源核对、credential-free build、hardened container smoke、release/SHA/latest tag 与匿名 digest 验证 | 单架构 mock/synthetic 镜像，不是公网 API、生产部署或 SLA |
 | v6.25 Public demo isolation | 已发布 | mock/synthetic 启动前 gate、public 3-path OpenAPI、raw-attempt/concurrency/body guard、无 feedback/clarification state、不可变 OCI digest | 进程级 aggregate limiter；无可信 IP、WAF、长期 HTTPS、多实例或 SLA |
-| v6.26 HTTP composition root | 本地实现并通过全量 pytest，待远端验收 | 5 个 domain router + shared response/public-surface policy；`app.py` 3,099→303；32-path 去版本 OpenAPI SHA 不变；public 3-path；936 passed / 3 skipped | 行为等价与结构证据，不是 API 永久兼容；jobs router 仍较大；远端 PR/tag/OCI 状态待实际完成 |
-| GitHub 发布 | 已公开发布 v6.25 | `main` 为 `fcf1f33`；Core、Pages、v6.25 Release 与 GHCR digest 均已复核；description、homepage 与 topics 已设置 | 许可证仍未选择；Pages 是静态案例而非 API 部署；v6.26 尚待远端发布，真实试用仍为 0 |
+| v6.26 HTTP composition root | 已通过 [PR #17](https://github.com/estelledc/bj-pal/pull/17) 发布 | 5 个 domain router + shared response/public-surface policy；`app.py` 3,099→303；32-path 去版本 OpenAPI SHA 不变；public 3-path；936 passed / 3 skipped；main Core/Pages/OCI 均通过 | 行为等价与结构证据，不是 API 永久兼容；jobs router 仍较大；无长期 HTTPS API |
+| GitHub 发布 | 已公开发布 v6.26 | `main` 发布提交为 `fda3944`；Core、Pages、[v6.26 Release](https://github.com/estelledc/bj-pal/releases/tag/v6.26.0) 与 GHCR digest `a4242a…117051` 均已复核；description、homepage 与 topics 已设置 | 许可证仍未选择；Pages 是静态案例而非 API 部署；真实试用仍为 0 |
 
 ## 1.1 v6.18 GitHub 发布门
 
