@@ -96,6 +96,11 @@ class PlanningJobService:
     def probe(self) -> bool:
         return self.repository.probe()
 
+    def close(self) -> None:
+        close = getattr(self.repository, "close", None)
+        if callable(close):
+            close()
+
     def submit(
         self,
         *,

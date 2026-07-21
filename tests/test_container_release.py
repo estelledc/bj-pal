@@ -18,8 +18,8 @@ from verify_release_tag import verify_release_tag  # noqa: E402
 from http_api.public_healthcheck import healthcheck_url  # noqa: E402
 
 
-def test_v628_release_tag_matches_both_version_sources() -> None:
-    assert verify_release_tag("v6.28.0", ROOT) == "6.28.0"
+def test_v629_release_tag_matches_both_version_sources() -> None:
+    assert verify_release_tag("v6.29.0", ROOT) == "6.29.0"
 
 
 @pytest.mark.parametrize("tag", ["6.25.0", "v6.25", "v06.25.0", "v6.25.0-rc1"])

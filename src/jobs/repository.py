@@ -331,6 +331,9 @@ class PlanningJobRepository:
             row = connection.execute("SELECT 1 AS ready").fetchone()
         return row is not None and int(row["ready"]) == 1
 
+    def close(self) -> None:
+        """Match the store lifecycle contract; SQLite keeps no shared handles."""
+
     @staticmethod
     def _initialize_schema(connection: sqlite3.Connection) -> None:
         tables = {

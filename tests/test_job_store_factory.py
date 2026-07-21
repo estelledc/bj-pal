@@ -54,3 +54,43 @@ def test_postgres_repository_rejects_unsafe_schema_before_connecting(schema: str
             "postgresql://not-opened.example/db",
             schema=schema,
         )
+
+
+@pytest.mark.parametrize(
+    ("settings", "message"),
+    [
+        ({"BJ_PAL_JOB_POSTGRES_POOL_MIN_SIZE": "many"}, "must be an integer"),
+        ({"BJ_PAL_JOB_POSTGRES_POOL_MAX_SIZE": "0"}, "between 1 and 64"),
+        (
+            {
+                "BJ_PAL_JOB_POSTGRES_POOL_MIN_SIZE": "5",
+                "BJ_PAL_JOB_POSTGRES_POOL_MAX_SIZE": "4",
+            },
+            "must not exceed",
+        ),
+        ({"BJ_PAL_JOB_POSTGRES_POOL_TIMEOUT_SECONDS": "0"}, "between 0.05 and 60"),
+        ({"BJ_PAL_JOB_POSTGRES_POOL_MAX_WAITING": "257"}, "between 1 and 256"),
+    ],
+)
+def test_postgres_factory_rejects_invalid_pool_configuration_before_connecting(
+    settings: dict[str, str],
+    message: str,
+) -> None:
+    environment = {
+        "BJ_PAL_JOB_STORE": "postgres",
+        "BJ_PAL_JOB_POSTGRES_DSN": "postgresql://not-opened.example/db",
+        **settings,
+    }
+    with pytest.raises(RuntimeError, match=message):
+        create_planning_job_store(environment)
+
+
+def test_postgres_repository_rejects_invalid_pool_bounds_before_connecting() -> None:
+    from jobs.postgres_repository import PostgresPlanningJobRepository
+
+    with pytest.raises(ValueError, match="must not exceed"):
+        PostgresPlanningJobRepository(
+            "postgresql://not-opened.example/db",
+            pool_min_size=2,
+            pool_max_size=1,
+        )

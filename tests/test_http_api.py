@@ -74,6 +74,20 @@ def _client(app) -> TestClient:
     return TestClient(app, headers=CONTROL_HEADERS)
 
 
+def test_app_lifespan_closes_injected_job_service() -> None:
+    class ClosableJobService:
+        closed = False
+
+        def close(self) -> None:
+            self.closed = True
+
+    jobs = ClosableJobService()
+    app = create_app(readiness_probe=_ready, job_service=jobs)
+    with TestClient(app):
+        assert jobs.closed is False
+    assert jobs.closed is True
+
+
 def _credential(
     *,
     token: str,

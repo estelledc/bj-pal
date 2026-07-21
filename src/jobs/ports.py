@@ -23,6 +23,8 @@ class PlanningJobStore(Protocol):
 
     def probe(self) -> bool: ...
 
+    def close(self) -> None: ...
+
     def submit(
         self,
         *,
