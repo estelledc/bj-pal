@@ -65,6 +65,22 @@ def test_release_manifest_allows_public_compose_contract(tmp_path: Path) -> None
     assert artifact["entries"][0]["path"] == "compose.public.yaml"
 
 
+def test_release_manifest_allows_public_showcase_source(tmp_path: Path) -> None:
+    repo = _repo(tmp_path)
+    (repo / "promo").mkdir()
+    (repo / "promo" / "landing-page.html").write_text(
+        "<!doctype html><title>BJ-Pal</title>\n",
+        encoding="utf-8",
+    )
+
+    artifact = generate_release_candidate_manifest(repo, base_ref="HEAD")
+    summary = verify_release_candidate_manifest(artifact, repo)
+
+    assert artifact["ready"] is True
+    assert summary["candidate_count"] == 1
+    assert artifact["entries"][0]["path"] == "promo/landing-page.html"
+
+
 def test_release_manifest_rejects_secret_runtime_and_absolute_paths(tmp_path: Path) -> None:
     repo = _repo(tmp_path)
     (repo / ".env.local").write_text("TOKEN=placeholder\n", encoding="utf-8")
