@@ -1,0 +1,45 @@
+Dockerfile
+  s_320fc30545703f::t_871e4dbaa96c3e 16-18,38,40
+compose.public.yaml
+  s_320fc30545703f::t_61580c3496b88a 7-10
+pyproject.toml
+  s_320fc30545703f::t_c87b248389bc62 3
+scripts/smoke_deployed_api.py
+  s_320fc30545703f::t_a09e05e6b2f1fa 7-8,14,29-35,42,60-62,67-68,72,76,79-84,87,107-115,117-137,142
+src/http_api/app.py
+  s_320fc30545703f::t_c1486d2944de91 375,501-502,1040-1044,1060-1073,1102-1118,3074-3095
+src/http_api/public_app.py
+  s_320fc30545703f::t_5eb33d4f563955 1-48
+src/http_api/public_demo.py
+  s_320fc30545703f::t_5eb38547209ef0 1-335
+src/http_api/public_healthcheck.py
+  s_320fc30545703f::t_43a2eaff3fa28c 1-22
+src/http_api/public_server.py
+  s_320fc30545703f::t_b6f48d7681afa3 1-32
+src/version.py
+  s_320fc30545703f::t_f432d6f39d075f 3
+tests/test_container_release.py
+  s_320fc30545703f::t_5f043aa4e2a4a1 11,13-16,18,21-22,25,42-49,79-80,90-97
+tests/test_public_demo.py
+  s_320fc30545703f::t_193bed6635ca61 1-268
+tests/test_trace_export.py
+  s_320fc30545703f::t_31d3fea4970f97 116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "f0eaed768dcb82c0e9b8e24cf3cc719178a033bc",
+  "prompts": {},
+  "sessions": {
+    "s_320fc30545703f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_320fc30545703f",
+        "model": "unknown"
+      },
+      "human_author": "zhouxun <zhouxun.13@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
