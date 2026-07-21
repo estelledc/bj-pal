@@ -12,6 +12,7 @@ CLARIFICATIONS_ARTIFACT ?= evals/results/clarifications-core.json
 OBSERVABILITY_ARTIFACT ?= evals/results/observability-core.json
 JOB_DIAGNOSTICS_ARTIFACT ?= evals/results/job-diagnostics-contract.json
 WORKLOAD_HEALTH_ARTIFACT ?= evals/results/workload-health-contract.json
+POSTGRES_POOL_ARTIFACT ?= evals/results/postgres-pool-acceptance.json
 OTLP_EXPORT_ARTIFACT ?= evals/results/otlp-export-contract.json
 OPERATIONAL_ALERT_ARTIFACT ?= evals/results/operational-alert-contract.json
 TOOL_AUDIT_ARTIFACT ?= evals/results/tool-audit-contract.json
@@ -58,7 +59,7 @@ CHECK_CLARIFICATION_DB ?= $(CURDIR)/runtime/check/clarifications.db
 CHECK_JOB_DB ?= $(CURDIR)/runtime/check/planning-jobs.db
 CHECK_FEEDBACK_DB ?= $(CURDIR)/runtime/check/plan-feedback.db
 
-.PHONY: python-check secret-scan setup bootstrap-demo test test-postgres-job-store api api-smoke job-worker job-smoke operation-worker docker-build demo demo-clarification demo-trial trial-operator-help showcase audit-legacy-retirement audit-release-candidate eval-public eval-retrieval eval-requirements eval-constraints eval-clarifications eval-observability eval-job-diagnostics eval-workload-health eval-otlp-export eval-operational-alerts eval-tool-audit eval-state-layout eval-prediction-state eval-user-memory-state eval-legacy-retirement eval-execution-budget eval-model-output eval-orchestration eval-scheduling eval-access-control eval-side-effects eval-outcomes eval-trials eval-weather verify-live-model-observation verify-live-plan-quality verify-live-provider-acceptance live-model-smoke live-provider-acceptance weather-live-smoke benchmark-http benchmark-socket-http check-runtime-reset check
+.PHONY: python-check secret-scan setup bootstrap-demo test test-postgres-job-store eval-postgres-pool api api-smoke job-worker job-smoke operation-worker docker-build demo demo-clarification demo-trial trial-operator-help showcase audit-legacy-retirement audit-release-candidate eval-public eval-retrieval eval-requirements eval-constraints eval-clarifications eval-observability eval-job-diagnostics eval-workload-health eval-otlp-export eval-operational-alerts eval-tool-audit eval-state-layout eval-prediction-state eval-user-memory-state eval-legacy-retirement eval-execution-budget eval-model-output eval-orchestration eval-scheduling eval-access-control eval-side-effects eval-outcomes eval-trials eval-weather verify-live-model-observation verify-live-plan-quality verify-live-provider-acceptance live-model-smoke live-provider-acceptance weather-live-smoke benchmark-http benchmark-socket-http check-runtime-reset check
 
 python-check:
 	$(PYTHON) -c 'import sys; assert sys.version_info >= (3, 11), "BJ-Pal requires Python 3.11+"'
@@ -81,6 +82,10 @@ test: python-check
 test-postgres-job-store: python-check
 	$(PYTHON) -c 'import os; assert os.environ.get("BJ_PAL_TEST_POSTGRES_DSN"), "BJ_PAL_TEST_POSTGRES_DSN is required"'
 	$(PYTHON) -m pytest -q tests/test_postgres_job_store.py tests/test_job_store_factory.py tests/test_job_store_migration.py
+
+eval-postgres-pool: python-check
+	$(PYTHON) evals/run_postgres_pool_acceptance.py --output $(POSTGRES_POOL_ARTIFACT)
+	$(PYTHON) evals/verify_postgres_pool_acceptance.py $(POSTGRES_POOL_ARTIFACT)
 
 api: python-check
 	BJ_PAL_LLM=mock $(PYTHON) -m uvicorn http_api.app:app --app-dir src --host 0.0.0.0 --port 8000

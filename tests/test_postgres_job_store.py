@@ -14,7 +14,11 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from jobs import IdempotencyConflict, TenantAdmissionRejected  # noqa: E402
+from jobs import (  # noqa: E402
+    IdempotencyConflict,
+    JobStoreUnavailable,
+    TenantAdmissionRejected,
+)
 from jobs.postgres_repository import PostgresPlanningJobRepository  # noqa: E402
 from jobs.service import PlanningJobService  # noqa: E402
 
@@ -35,6 +39,7 @@ def postgres_store():
         import psycopg
         from psycopg import sql
 
+        repository.close()
         with psycopg.connect(dsn, autocommit=True) as connection:
             connection.execute(
                 sql.SQL("DROP SCHEMA IF EXISTS {} CASCADE").format(
@@ -65,19 +70,22 @@ def _submit(
 def _drain_in_process(dsn: str, schema: str, worker_index: int) -> list[str]:
     repository = PostgresPlanningJobRepository(dsn, schema=schema)
     claimed_ids: list[str] = []
-    while True:
-        job = repository.claim_next(
-            worker_id=f"process-worker-{worker_index}",
-            lease_seconds=30,
-        )
-        if job is None:
-            return claimed_ids
-        claimed_ids.append(job.job_id)
-        repository.succeed(
-            job_id=job.job_id,
-            worker_id=f"process-worker-{worker_index}",
-            result_payload={"worker_process": worker_index},
-        )
+    try:
+        while True:
+            job = repository.claim_next(
+                worker_id=f"process-worker-{worker_index}",
+                lease_seconds=30,
+            )
+            if job is None:
+                return claimed_ids
+            claimed_ids.append(job.job_id)
+            repository.succeed(
+                job_id=job.job_id,
+                worker_id=f"process-worker-{worker_index}",
+                result_payload={"worker_process": worker_index},
+            )
+    finally:
+        repository.close()
 
 
 def test_postgres_lifecycle_idempotency_fencing_and_append_only(postgres_store) -> None:
@@ -191,6 +199,8 @@ def test_postgres_admission_limit_is_global_across_connections(postgres_store) -
         except TenantAdmissionRejected as exc:
             assert exc.code == "tenant_active_job_limit_exceeded"
             return "rejected"
+        finally:
+            independent.close()
 
     with ThreadPoolExecutor(max_workers=8) as executor:
         outcomes = list(executor.map(attempt, range(8)))
@@ -253,3 +263,136 @@ def test_postgres_retry_replay_and_workload_evidence_match_service_contract(
     )
     assert [item.job_id for item in evidence] == [original.job_id, replayed.job_id]
     assert [item.status for item in evidence] == ["dead_lettered", "queued"]
+
+
+def test_postgres_pool_fails_closed_at_capacity_then_recovers(postgres_store) -> None:
+    bounded = PostgresPlanningJobRepository(
+        postgres_store._dsn,
+        schema=postgres_store.schema,
+        pool_min_size=1,
+        pool_max_size=1,
+        pool_timeout_seconds=0.05,
+        pool_max_waiting=1,
+    )
+    try:
+        with bounded._connect():
+            started = time.monotonic()
+            with pytest.raises(
+                JobStoreUnavailable,
+                match="connection acquisition timed out",
+            ) as failure:
+                bounded.probe()
+            elapsed = time.monotonic() - started
+
+        assert elapsed >= 0.04
+        assert bounded._dsn not in str(failure.value)
+        assert bounded.probe() is True
+        assert bounded.pool_stats()["requests_errors"] >= 1
+    finally:
+        bounded.close()
+
+
+def test_postgres_pool_rejects_excess_waiters_without_exposing_dsn(
+    postgres_store,
+) -> None:
+    bounded = PostgresPlanningJobRepository(
+        postgres_store._dsn,
+        schema=postgres_store.schema,
+        pool_min_size=1,
+        pool_max_size=1,
+        pool_timeout_seconds=0.2,
+        pool_max_waiting=1,
+    )
+    try:
+        with bounded._connect():
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                waiting = executor.submit(bounded.probe)
+                deadline = time.monotonic() + 0.2
+                while (
+                    bounded.pool_stats().get("requests_waiting", 0) < 1
+                    and time.monotonic() < deadline
+                ):
+                    time.sleep(0.001)
+                with pytest.raises(
+                    JobStoreUnavailable,
+                    match="connection queue is full",
+                ) as failure:
+                    bounded.probe()
+                with pytest.raises(
+                    JobStoreUnavailable,
+                    match="connection acquisition timed out",
+                ):
+                    waiting.result()
+        assert bounded._dsn not in str(failure.value)
+    finally:
+        bounded.close()
+
+
+def test_postgres_pool_replaces_terminated_connection(postgres_store) -> None:
+    import psycopg
+
+    bounded = PostgresPlanningJobRepository(
+        postgres_store._dsn,
+        schema=postgres_store.schema,
+        pool_min_size=1,
+        pool_max_size=1,
+        pool_timeout_seconds=1.0,
+        pool_max_waiting=1,
+    )
+    try:
+        with bounded._connect() as pooled:
+            original_pid = int(
+                pooled.execute("SELECT pg_backend_pid() AS pid").fetchone()["pid"]
+            )
+        with psycopg.connect(postgres_store._dsn, autocommit=True) as control:
+            terminated = control.execute(
+                "SELECT pg_terminate_backend(%s) AS terminated",
+                (original_pid,),
+            ).fetchone()[0]
+        assert terminated is True
+
+        assert bounded.probe() is True
+        with bounded._connect() as pooled:
+            replacement_pid = int(
+                pooled.execute("SELECT pg_backend_pid() AS pid").fetchone()["pid"]
+            )
+        assert replacement_pid != original_pid
+        assert bounded.pool_stats()["connections_lost"] >= 1
+    finally:
+        bounded.close()
+
+
+def test_postgres_pool_close_rejects_new_work_without_leaking_sessions(
+    postgres_store,
+) -> None:
+    import psycopg
+
+    with psycopg.connect(postgres_store._dsn) as control:
+        baseline = control.execute(
+            """
+            SELECT COUNT(*)
+            FROM pg_stat_activity
+            WHERE application_name = 'bj-pal-job-store'
+            """
+        ).fetchone()[0]
+    bounded = PostgresPlanningJobRepository(
+        postgres_store._dsn,
+        schema=postgres_store.schema,
+        pool_min_size=2,
+        pool_max_size=2,
+    )
+    assert bounded.probe() is True
+    bounded.close()
+    assert bounded.closed is True
+    with pytest.raises(JobStoreUnavailable, match="connection pool is closed"):
+        bounded.probe()
+
+    with psycopg.connect(postgres_store._dsn) as control:
+        active = control.execute(
+            """
+            SELECT COUNT(*)
+            FROM pg_stat_activity
+            WHERE application_name = 'bj-pal-job-store'
+            """
+        ).fetchone()[0]
+    assert active == baseline

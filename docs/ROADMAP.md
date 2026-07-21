@@ -56,6 +56,7 @@
 | v6.26 HTTP composition root | 已通过 [PR #17](https://github.com/estelledc/bj-pal/pull/17) 发布 | 5 个 domain router + shared response/public-surface policy；`app.py` 3,099→303；32-path 去版本 OpenAPI SHA 不变；public 3-path；936 passed / 3 skipped；main Core/Pages/OCI 均通过 | 行为等价与结构证据，不是 API 永久兼容；jobs router 仍较大；无长期 HTTPS API |
 | v6.27 PostgreSQL durable-job store | 已通过 [PR #19](https://github.com/estelledc/bj-pal/pull/19) 发布 | `PlanningJobStore` port + 显式 factory；SQLite 默认/PostgreSQL 可选；PostgreSQL 17 下 4 个独立 worker 进程无重复领取 12 job，8 路提交精确执行共享 active cap；lease reclaim/旧 owner fencing/replay/append-only trigger/readiness probe；954 collected / 951 passed / 3 skipped；main Core/Pages/OCI 均通过 | 短 transaction advisory lock 优先正确性而非吞吐；无 SQLite 在线迁移、容量/故障恢复、RLS、broker 或生产多实例负载证据 |
 | v6.28 Job-store migration/cutover | 已通过 [PR #21](https://github.com/estelledc/bj-pal/pull/21) 发布 | SQLite→PostgreSQL dry-run/apply/verify；显式 quiescence + running lease/WAL/非空 target gate；SQLite writer lock + PostgreSQL advisory lock；四表稳定 copy、sequence reset、跨库 count/digest、append-only receipt；重复 apply 幂等；post-cutover drift 禁止直接 rollback；真实 PostgreSQL 17 故障注入验证目标整事务回滚；966 collected / 963 passed / 3 skipped；main Core/Pages/OCI 均通过 | operator attestation 不是自动 drain；停写窗口不是在线双写/零停机；无自动 forward reconciliation、托管备份、HA、RPO/RTO 或生产容量证据 |
+| v6.29 PostgreSQL bounded pool | release candidate，本机验收已通过 | `psycopg_pool` 显式 `open/wait/close`；默认 1..4 个连接、8 个等待者、1 秒 timeout；配置边界连接前失败关闭；借出前连接检查；FastAPI/worker 显式关闭；PostgreSQL 17.10 下 pool timeout/queue full、释放恢复、backend termination 后替换、64/64 readiness、关闭会话回 baseline；独立 SHA verifier；979 collected / 976 passed / 3 skipped | 单机 Docker、并发 2、readiness 查询；不是生产容量、跨主机故障转移、数据库 HA、RPO/RTO 或 SLA；公开 PR/main/OCI 待完成 |
 | GitHub 发布 | 已公开发布 v6.28 | `main` 发布提交为 `239e4ae`；[Core](https://github.com/estelledc/bj-pal/actions/runs/29810717686)、[Pages](https://github.com/estelledc/bj-pal/actions/runs/29810717693)、[v6.28 Release](https://github.com/estelledc/bj-pal/releases/tag/v6.28.0) 与 [OCI](https://github.com/estelledc/bj-pal/actions/runs/29810950348) digest `5767a1…650e9` 均已复核；description、homepage 与 topics 已设置 | 许可证仍未选择；Pages 是静态案例而非 API 部署；真实试用仍为 0 |
 
 ## 1.1 v6.18 GitHub 发布门
@@ -478,7 +479,7 @@
 - 已完成：单机 tenant active/accepted-submission 准入、append-only admission audit、同有效优先级最久未服务 tenant 轮转及独立 verifier；
 - 待完成：外部 IdP/动态 RBAC、token 过期/轮换/撤销、数据库 RLS 或等价存储隔离、跨实例全局配额/调度、audit retention/abuse protection、在线 reprioritize 与单次 provider/model 调用的主动中止；
 - 扩展现有 event log：细粒度业务进度；
-- 为 SQLite→PostgreSQL 增加显式迁移/cutover/rollback，并补连接池、容量、故障恢复与多主机负载证据；
+- v6.28 已补 SQLite→PostgreSQL 显式 migration/cutover/rollback，v6.29 已补单进程有界连接池与本机坏连接替换；下一步仍需托管容量基线、数据库 HA/failover 和跨主机负载/故障证据；
 - 已完成本地请求级 execution observation、request/job correlation、阶段 span、调用/业务计数和真实 token completeness；
 - 待完成经授权的远程 OTLP collector 与 metrics backend：持续汇聚 queue wait、run latency p50/p95/p99、error/retry、provider freshness 和真实成本。
 

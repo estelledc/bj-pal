@@ -18,6 +18,12 @@ from .repository import JobStoreUnavailable, PlanningJobRepository
 
 POSTGRES_SCHEMA_PATTERN = re.compile(r"^[a-z][a-z0-9_]{0,62}$")
 POSTGRES_WRITE_LOCK_KEY = 4_770_216_271_983_143_219
+DEFAULT_POSTGRES_POOL_MIN_SIZE = 1
+DEFAULT_POSTGRES_POOL_MAX_SIZE = 4
+DEFAULT_POSTGRES_POOL_TIMEOUT_SECONDS = 1.0
+DEFAULT_POSTGRES_POOL_MAX_WAITING = 8
+MAX_POSTGRES_POOL_SIZE = 64
+MAX_POSTGRES_POOL_WAITING = 256
 
 
 POSTGRES_SCHEMA_STATEMENTS = (
@@ -243,8 +249,9 @@ class _PostgresResult:
 class _PostgresConnection:
     """Small DB-API compatibility layer for the shared transition code."""
 
-    def __init__(self, connection: Any) -> None:
+    def __init__(self, connection: Any, lease: Any) -> None:
         self._connection = connection
+        self._lease = lease
 
     def __enter__(self) -> _PostgresConnection:
         return self
@@ -256,17 +263,11 @@ class _PostgresConnection:
         traceback: TracebackType | None,
     ) -> bool:
         try:
-            if exc_type is None:
-                self._connection.commit()
-            else:
-                self._connection.rollback()
-        except Exception as commit_error:
+            return bool(self._lease.__exit__(exc_type, exc, traceback))
+        except Exception as transaction_error:
             raise JobStoreUnavailable(
                 "PostgreSQL durable job store transaction failed"
-            ) from commit_error
-        finally:
-            self._connection.close()
-        return False
+            ) from transaction_error
 
     @property
     def in_transaction(self) -> bool:
@@ -337,17 +338,108 @@ class PostgresPlanningJobRepository(PlanningJobRepository):
     units; identifiers are validated before interpolation.
     """
 
-    def __init__(self, dsn: str, *, schema: str = "public") -> None:
+    def __init__(
+        self,
+        dsn: str,
+        *,
+        schema: str = "public",
+        pool_min_size: int = DEFAULT_POSTGRES_POOL_MIN_SIZE,
+        pool_max_size: int = DEFAULT_POSTGRES_POOL_MAX_SIZE,
+        pool_timeout_seconds: float = DEFAULT_POSTGRES_POOL_TIMEOUT_SECONDS,
+        pool_max_waiting: int = DEFAULT_POSTGRES_POOL_MAX_WAITING,
+    ) -> None:
         if not isinstance(dsn, str) or not dsn.strip():
             raise ValueError("PostgreSQL DSN must not be empty")
         if not POSTGRES_SCHEMA_PATTERN.fullmatch(schema):
             raise ValueError("PostgreSQL schema must be a safe lowercase identifier")
+        if isinstance(pool_min_size, bool) or not isinstance(pool_min_size, int):
+            raise ValueError("PostgreSQL pool_min_size must be an integer")
+        if isinstance(pool_max_size, bool) or not isinstance(pool_max_size, int):
+            raise ValueError("PostgreSQL pool_max_size must be an integer")
+        if not 0 <= pool_min_size <= MAX_POSTGRES_POOL_SIZE:
+            raise ValueError(
+                f"PostgreSQL pool_min_size must be between 0 and {MAX_POSTGRES_POOL_SIZE}"
+            )
+        if not 1 <= pool_max_size <= MAX_POSTGRES_POOL_SIZE:
+            raise ValueError(
+                f"PostgreSQL pool_max_size must be between 1 and {MAX_POSTGRES_POOL_SIZE}"
+            )
+        if pool_min_size > pool_max_size:
+            raise ValueError(
+                "PostgreSQL pool_min_size must not exceed pool_max_size"
+            )
+        if isinstance(pool_timeout_seconds, bool) or not isinstance(
+            pool_timeout_seconds, (int, float)
+        ):
+            raise ValueError("PostgreSQL pool_timeout_seconds must be numeric")
+        if not 0.05 <= float(pool_timeout_seconds) <= 60.0:
+            raise ValueError(
+                "PostgreSQL pool_timeout_seconds must be between 0.05 and 60"
+            )
+        if isinstance(pool_max_waiting, bool) or not isinstance(pool_max_waiting, int):
+            raise ValueError("PostgreSQL pool_max_waiting must be an integer")
+        if not 1 <= pool_max_waiting <= MAX_POSTGRES_POOL_WAITING:
+            raise ValueError(
+                "PostgreSQL pool_max_waiting must be between "
+                f"1 and {MAX_POSTGRES_POOL_WAITING}"
+            )
         self._dsn = dsn
         self.schema = schema
-        self._initialize_postgres_schema()
+        self.pool_min_size = pool_min_size
+        self.pool_max_size = pool_max_size
+        self.pool_timeout_seconds = float(pool_timeout_seconds)
+        self.pool_max_waiting = pool_max_waiting
+        self._create_postgres_schema()
+        self._pool = self._create_pool()
+        try:
+            self._pool.open(wait=True, timeout=5.0)
+            self._initialize_postgres_schema()
+        except JobStoreUnavailable:
+            self._pool.close()
+            raise
+        except Exception as exc:
+            self._pool.close()
+            raise JobStoreUnavailable(
+                "PostgreSQL durable job store pool initialization failed"
+            ) from exc
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}(schema={self.schema!r})"
+
+    def _create_pool(self) -> Any:
+        try:
+            from psycopg.rows import dict_row
+            from psycopg_pool import ConnectionPool
+        except ImportError as exc:  # pragma: no cover - exercised by packaging gate
+            raise RuntimeError(
+                "PostgreSQL job store requires psycopg_pool; install requirements.txt"
+            ) from exc
+        return ConnectionPool(
+            conninfo=self._dsn,
+            kwargs={
+                "row_factory": dict_row,
+                "connect_timeout": 5,
+                "application_name": "bj-pal-job-store",
+            },
+            min_size=self.pool_min_size,
+            max_size=self.pool_max_size,
+            timeout=self.pool_timeout_seconds,
+            max_waiting=self.pool_max_waiting,
+            configure=self._configure_pool_connection,
+            check=ConnectionPool.check_connection,
+            name="bj-pal-job-store",
+            open=False,
+        )
+
+    def _configure_pool_connection(self, connection: Any) -> None:
+        from psycopg import sql
+
+        connection.execute(
+            sql.SQL("SET search_path TO {}, pg_catalog").format(
+                sql.Identifier(self.schema)
+            )
+        )
+        connection.commit()
 
     def _raw_connect(self, *, autocommit: bool = False) -> Any:
         try:
@@ -363,6 +455,7 @@ class PostgresPlanningJobRepository(PlanningJobRepository):
                 autocommit=autocommit,
                 row_factory=dict_row,
                 connect_timeout=5,
+                application_name="bj-pal-job-store-direct",
             )
             return connection
         except psycopg.Error as exc:
@@ -371,21 +464,42 @@ class PostgresPlanningJobRepository(PlanningJobRepository):
             ) from exc
 
     def _connect(self) -> _PostgresConnection:
-        from psycopg import sql
+        from psycopg_pool import PoolClosed, PoolTimeout, TooManyRequests
 
-        connection = self._raw_connect()
-        connection.execute(
-            sql.SQL("SET search_path TO {}, pg_catalog").format(
-                sql.Identifier(self.schema)
-            )
-        )
-        # SET starts a transaction when autocommit is disabled.  Finish that
-        # configuration transaction so callers can choose their actual
-        # isolation level explicitly (notably workload_evidence()).
-        connection.commit()
-        return _PostgresConnection(connection)
+        try:
+            lease = self._pool.connection(timeout=self.pool_timeout_seconds)
+            connection = lease.__enter__()
+            return _PostgresConnection(connection, lease)
+        except TooManyRequests as exc:
+            raise JobStoreUnavailable(
+                "PostgreSQL durable job store connection queue is full"
+            ) from exc
+        except PoolTimeout as exc:
+            raise JobStoreUnavailable(
+                "PostgreSQL durable job store connection acquisition timed out"
+            ) from exc
+        except PoolClosed as exc:
+            raise JobStoreUnavailable(
+                "PostgreSQL durable job store connection pool is closed"
+            ) from exc
+        except JobStoreUnavailable:
+            raise
+        except Exception as exc:
+            raise JobStoreUnavailable(
+                "PostgreSQL durable job store connection failed"
+            ) from exc
 
-    def _initialize_postgres_schema(self) -> None:
+    def close(self, *, timeout: float = 5.0) -> None:
+        self._pool.close(timeout=timeout)
+
+    @property
+    def closed(self) -> bool:
+        return bool(self._pool.closed)
+
+    def pool_stats(self) -> dict[str, int]:
+        return {key: int(value) for key, value in self._pool.get_stats().items()}
+
+    def _create_postgres_schema(self) -> None:
         from psycopg import sql
 
         try:
@@ -395,6 +509,15 @@ class PostgresPlanningJobRepository(PlanningJobRepository):
                         sql.Identifier(self.schema)
                     )
                 )
+        except JobStoreUnavailable:
+            raise
+        except Exception as exc:
+            raise JobStoreUnavailable(
+                "PostgreSQL durable job store schema creation failed"
+            ) from exc
+
+    def _initialize_postgres_schema(self) -> None:
+        try:
             with self._connect() as connection:
                 connection.execute("BEGIN IMMEDIATE")
                 for statement in POSTGRES_SCHEMA_STATEMENTS:

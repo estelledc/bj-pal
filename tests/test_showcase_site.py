@@ -94,12 +94,12 @@ class ShowcaseSiteTest(unittest.TestCase):
     def test_first_view_surfaces_status_attribution_and_bounded_evidence(self) -> None:
         first_view = self.html[: self.html.index('<figure class="hero-figure">')]
         for expected in [
-            "Public release · v6.28.0",
+            "Release candidate · v6.29.0",
             "Jason Xun · 项目负责人",
             "KeepL · 共同作者",
-            "963 passed",
-            "966 collected · 3 real-cache skipped",
-            "GHCR 可匿名拉取 · Pages 不是 API",
+            "976 passed",
+            "979 collected · 3 real-cache skipped",
+            "公开稳定镜像仍为 v6.28 · Pages 不是 API",
             "1 provider run · 0 real users",
             "1464 实报 token · 单个 synthetic 场景",
         ]:

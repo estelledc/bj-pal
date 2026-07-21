@@ -59,6 +59,9 @@ jobs:
       - name: Verify PostgreSQL durable job store and cutover
         run: make test-postgres-job-store PYTHON=python
 
+      - name: Build and verify bounded PostgreSQL pool acceptance
+        run: make eval-postgres-pool PYTHON=python
+
       - name: Run tests
         run: make test PYTHON=python
 
@@ -157,6 +160,7 @@ jobs:
             evals/results/observability-core.json
             evals/results/job-diagnostics-contract.json
             evals/results/workload-health-contract.json
+            evals/results/postgres-pool-acceptance.json
             evals/results/otlp-export-contract.json
             evals/results/operational-alert-contract.json
             evals/results/execution-budget-core.json

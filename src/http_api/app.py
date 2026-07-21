@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 import logging
 import os
 import sqlite3
@@ -192,9 +193,20 @@ def create_app(
         public_demo=public_demo,
     )
 
+    @asynccontextmanager
+    async def lifespan(_: FastAPI):
+        try:
+            yield
+        finally:
+            if resolved_job_service is not None:
+                close = getattr(resolved_job_service, "close", None)
+                if callable(close):
+                    close()
+
     application = FastAPI(
         title="BJ-Pal Planning API",
         version=SERVICE_VERSION,
+        lifespan=lifespan,
         description=(
             "Short-activity planning API. Public demo responses use a provenance-labeled "
             "synthetic dataset and do not prove live availability or booking success."

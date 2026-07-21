@@ -17,7 +17,7 @@
 
 BJ-Pal 把一句“周末下午带孩子在北京玩四小时”的自然语言需求，转换成带时间、路线、风险、替补方案和证据来源的结构化计划。项目源自黑客松原型，当前重构目标不是继续堆 Agent 数量，而是补齐一个简历项目应该具备的工程闭环：稳定契约、数据边界、持久任务、失败语义、公开评测和可部署入口。
 
-> 发布状态（2026-07-21）：v6.28 的 SQLite→PostgreSQL job-store cutover 已经 [PR #21](https://github.com/estelledc/bj-pal/pull/21) 合并。merge commit `239e4ae` 的 [Core workflow](https://github.com/estelledc/bj-pal/actions/runs/29810717686)、[Pages 部署](https://github.com/estelledc/bj-pal/actions/runs/29810717693) 与 [OCI publish workflow](https://github.com/estelledc/bj-pal/actions/runs/29810950348) 均已通过；[v6.28.0 Release](https://github.com/estelledc/bj-pal/releases/tag/v6.28.0) 已公开。
+> 发布状态（2026-07-21）：v6.29.0 是当前 release candidate，增加有界 PostgreSQL 连接池、失败关闭背压、坏连接替换与显式 API/worker 关闭；本机 PostgreSQL 17.10 的独立 artifact 已通过，公开 PR/main/OCI 证据待发布后回填。当前公开稳定版仍是 [v6.28.0](https://github.com/estelledc/bj-pal/releases/tag/v6.28.0)。
 
 本地 v6.23 follow-up 在 v6.22 的 durable-job/OTLP/告警链路之上，增加显式 CSSwitch DeepSeek 凭证交接和一次真实 provider acceptance：配置必须是当前用户持有的 regular 0600 文件、active DeepSeek/Anthropic profile、credential-free HTTPS endpoint，并且调用前显式确认费用和固定模型/预算。产物只保留 provider-reported token、耗时、契约/质量 gate 与哈希，不保留 Key、配置路径、prompt、raw output 或 plan。它仍不能证明 provider 签名身份、账单金额、线上成功率、实时 POI/路线、真实预订或用户满意度。
 
@@ -30,6 +30,8 @@ v6.26 重构 HTTP composition root：把 system、planning、durable jobs、side
 v6.27 把 durable job 从 SQLite 具体类后面抽出 `PlanningJobStore` 边界，并增加显式选择的 PostgreSQL adapter。SQLite 继续作为零依赖默认；`BJ_PAL_JOB_STORE=postgres` 时，提交、全局 tenant admission、claim、lease fencing、状态与 append-only event 共享同一 PostgreSQL schema。真实 PostgreSQL 17 验收使用 4 个独立 OS worker 进程领取 12 个 job，验证无重复 claim，并覆盖 8 路并发提交下精确 3 admitted / 5 rejected、过期 lease 回收、旧 owner 拒绝、replay 与事件防篡改；`/readyz` 现在也探测所选 store。包含 PostgreSQL 用例的完整门禁为 954 collected / 951 passed / 3 real-cache skipped，所有 smoke、eval、showcase 和两条 HTTP benchmark 通过。实现用短事务级 advisory lock 换取确定性调度/准入正确性，不声称高吞吐、exactly-once、数据库 RLS、线上迁移或生产容量。`v6.27.0` 的 release/SHA/latest 与匿名 manifest 共同绑定 digest `sha256:9ff768ec8901b24e6f5ea79cf207e3a3cb6a5e58d32e9a88eb254a72a698ffe6`。
 
 v6.28 补齐 SQLite → PostgreSQL 的停写窗口迁移与回滚判定：dry-run 不创建 target；apply 要求显式 cutover/quiescence 确认、拒绝 WAL source、running lease 和非空 target，并在 SQLite `BEGIN IMMEDIATE` 与 PostgreSQL advisory lock 下复制 job/event/admission/scheduler 四域。row/event sequence、表级 count/digest 和 append-only receipt 在同一 PostgreSQL 事务验证，任一点失败整批回滚；source 文件不删除、不改写。相同快照重复 apply 返回原 receipt，切换后 target 一旦新增状态则 `rollback_safe=false`，禁止直接切回过期 SQLite。真实 PostgreSQL 17 已覆盖完整 copy、重复执行、writer lock、目标污染、故障注入回滚与 post-cutover drift；完整 pytest 为 966 collected / 963 passed / 3 real-cache skipped。`v6.28.0` 的 release/SHA/latest 与公开 manifest 共同绑定 digest `sha256:5767a1e2cfe6b8ad0121ecb654720eefd02257added57d8e21d8b373d56550e9`。这仍是 operator 停写流程，不是在线双写、零停机、HA 或生产 RPO/RTO。
+
+v6.29 把 PostgreSQL adapter 从“每次操作新建连接”改为显式有界池：默认 `min=1/max=4`、最多 8 个等待者、1 秒获取超时，并允许通过环境变量在安全范围内调整。池在借出前执行连接检查；满载、等待超时、关闭或连接失败都转换为不含 DSN 的稳定失败语义。FastAPI lifespan 与独立 job worker 都显式关闭 store；SQLite 实现保持无共享连接的同一生命周期契约。真实 PostgreSQL 17.10 acceptance 以 `max=2` 持满连接后在 0.105 秒失败关闭，额外等待者被拒绝且均未泄露 DSN，释放后恢复；终止一个 backend 后探针换用新连接；64 次、并发 2 的 readiness 查询 64/64 成功、p95 2.593 ms，关闭前后该应用会话均为 0。独立 verifier 从 raw latency、配置、恢复与 SHA 复算 gate；完整 pytest 为 979 collected / 976 passed / 3 real-cache skipped。它不是生产容量、数据库 HA、跨主机负载或 SLA。
 
 ## 一句话简历描述
 
@@ -58,6 +60,7 @@ v6.28 补齐 SQLite → PostgreSQL 的停写窗口迁移与回滚判定：dry-ru
 | Workload 健康可复算 | `GET /v1/planning-job-health` 与 0600 CLI 对单 tenant、最长 31 天的闭合 `[start,end)` 窗口聚合固定 status 分母、nearest-rank queue/run/terminal p50/p95/p99、重试/lease/timeout/dead-letter/cancel 比率和双 SHA；空窗口比率为 `null` | 2 个 fixed synthetic window 与独立 verifier 当前全通过；最多 1,000 job/10,000 event，超限拒绝截断；不输出 tenant/principal/request/job/worker/payload/error；这是可复算快照，不是 OTLP、生产 SLO、容量结论或事故率 |
 | 运行告警不把小样本当健康 | `GET /v1/operational-alerts` 组合 integrity-checked workload 与 payload-free trace status；failure/queue/retry 各有 20 样本门，规则与总状态只允许 `firing/healthy/insufficient_data/disabled`，并绑定 source/policy/artifact SHA；离线 CLI 只读已有 source 并创建 0600 工件 | 4 个 authored synthetic case 与独立 verifier 全通过；fixed threshold 和单 snapshot 不是生产 baseline/SLO，也没有连续窗口、迟滞、Alertmanager delivery、事故处置 outcome 或多实例证据 |
 | 断线不丢任务 | 请求先写 durable job，worker claim 后定期 heartbeat；过期 lease 可 fenced/reclaim，结果持久化为带 SHA-256 的 artifact；SQLite 为默认，PostgreSQL 可由多个 API/worker 进程共享 | PostgreSQL 验收覆盖独立进程 claim，不等于 exactly-once、高吞吐 broker 或真实副作用 receipt |
+| PostgreSQL 连接容量失败关闭 | PostgreSQL store 使用显式 `psycopg_pool` 有界池、有限等待队列与借出前连接检查；FastAPI lifespan 和 worker `finally` 关闭池。真实 PostgreSQL 17.10 artifact 覆盖池满 timeout、释放恢复、backend termination 后替换、64 次并发查询与关闭后会话回到 baseline | 单机 Docker、并发 2、`SELECT 1` 探针；不是生产吞吐、跨主机故障转移、数据库 HA、RPO/RTO 或 SLA |
 | Job store 可审计迁移 | `scripts/migrate_planning_jobs.py` 先 dry-run，再在显式停写确认下锁定 SQLite source、复制四张状态表、保留 row/event sequence、复算跨库 count/digest，并把 receipt 与数据同事务提交；重复 apply 幂等 | source 保留且初始可回退；PostgreSQL 出现新写入后明确拒绝直接 rollback。仍依赖 operator 停入口/drain worker，不是在线迁移、双写或自动 forward reconciliation |
 | 优先任务与租户间公平性 | `tenant_fair_priority_aging_v2` 先按 `priority_aging_v1` 计算有效优先级，再在同优先级内选择最久未获服务的 tenant，最后按 eligible-time FIFO；claim event 保存全部选择依据，4-case artifact 独立重算 | 高优先级仍先于低优先级，不是严格全局公平或启动 SLA；新 tenant 会先获得一次机会；无在线 reprioritize、多实例队列或吞吐保证 |
 | 事件可回放 | heartbeat/retry/dead-letter/cancel/timeout 与状态同事务追加；JSON cursor 和 SSE 共用事件表，`Last-Event-ID` 可续读；PostgreSQL trigger 同样拒绝事件 UPDATE/DELETE | SSE 是最长 30 秒的轮询投影；没有 broker/pub-sub fanout 或远端签名日志 |
@@ -226,9 +229,9 @@ v6.26 composition-root 重构后的本地全量 pytest 为 936 passed、3 条 `r
 
 v6.27 PostgreSQL shared-store 重构后的完整 pytest 为 954 collected / 951 passed / 3 条 `real-cache` 专用用例 skipped；PR #19、merge commit `400b92d` 的 Core/Pages、`v6.27.0` tag/Release 与 OCI 发布均已完成。release/SHA/latest 与匿名 registry manifest 共同绑定 digest `sha256:9ff768ec8901b24e6f5ea79cf207e3a3cb6a5e58d32e9a88eb254a72a698ffe6`。
 
-v6.28 job-store cutover 的完整 pytest 为 966 collected / 963 passed / 3 条 `real-cache` 专用用例 skipped；PR #21、merge commit `239e4ae` 的 Core/Pages、`v6.28.0` tag/Release 与 OCI 发布均已完成。release/SHA/latest 与公开 registry manifest 共同绑定 digest `sha256:5767a1e2cfe6b8ad0121ecb654720eefd02257added57d8e21d8b373d56550e9`。
+v6.29 release candidate 的完整 pytest 为 979 collected / 976 passed / 3 条 `real-cache` 专用用例 skipped；PostgreSQL 定向回归 33/33，独立 pool acceptance/verifier 通过。公开 PR/main/Pages/OCI 尚待发布；当前公开 registry 仍是 v6.28.0 digest `sha256:5767a1e2cfe6b8ad0121ecb654720eefd02257added57d8e21d8b373d56550e9`。
 
-这些结果仍不代表 Git 历史无泄露、真实模型幻觉分布/修复率、真实用户结果、真人身份、真实供应商、外部 IdP、动态 RBAC、数据库 RLS、网关 raw-attempt 配额/金额预算、主动强杀阻塞调用、取证级擦除或生产容量。v6.28 的 offline cutover 验收也不等于在线双写、跨主机故障恢复或生产迁移。v6.28 公开镜像已可读取 manifest，但可拉取镜像不等于公网 API 或生产部署。Open-Meteo live smoke 未执行。
+这些结果仍不代表 Git 历史无泄露、真实模型幻觉分布/修复率、真实用户结果、真人身份、真实供应商、外部 IdP、动态 RBAC、数据库 RLS、网关 raw-attempt 配额/金额预算、主动强杀阻塞调用、取证级擦除或生产容量。v6.28 的 offline cutover 与 v6.29 的本机连接替换都不等于在线双写、数据库 HA、跨主机故障恢复或生产迁移。v6.28 公开镜像已可读取 manifest，但可拉取镜像不等于公网 API 或生产部署。Open-Meteo live smoke 未执行。
 
 ### 启动 Streamlit
 

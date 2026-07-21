@@ -668,7 +668,7 @@
       <section class="hero" id="top" aria-labelledby="hero-title">
         <div class="shell">
           <div class="hero-topline">
-            <span class="status">Public release · v6.28.0</span>
+            <span class="status">Release candidate · v6.29.0</span>
             <span class="hero-index">CASE 02 / PRODUCT SYSTEMS</span>
           </div>
 
@@ -686,7 +686,7 @@
           <div class="role-strip" aria-label="项目状态、归因与证据边界">
             <div class="role-cell">
               <div class="role-label">Status / 状态</div>
-              <div class="role-value">v6.28.0 · Public<small>GHCR 可匿名拉取 · Pages 不是 API</small><a class="source-tag" href="https://github.com/estelledc/bj-pal/releases/tag/v6.28.0" target="_blank" rel="noreferrer">Release ↗</a></div>
+              <div class="role-value">v6.29.0 · Candidate<small>公开稳定镜像仍为 v6.28 · Pages 不是 API</small><a class="source-tag" href="https://github.com/estelledc/bj-pal/releases/tag/v6.28.0" target="_blank" rel="noreferrer">Stable release ↗</a></div>
             </div>
             <div class="role-cell">
               <div class="role-label">Ownership / 归因</div>
@@ -694,14 +694,14 @@
             </div>
             <div class="role-cell">
               <div class="role-label">Core evidence</div>
-              <div class="role-value">963 passed<small>966 collected · 3 real-cache skipped</small><a class="source-tag" href="https://github.com/estelledc/bj-pal/actions/runs/29810717686" target="_blank" rel="noreferrer">Main workflow ↗</a></div>
+              <div class="role-value">976 passed<small>979 collected · 3 real-cache skipped</small><a class="source-tag" href="https://github.com/estelledc/bj-pal/blob/main/evals/results/postgres-pool-acceptance.json" target="_blank" rel="noreferrer">Pool artifact ↗</a></div>
             </div>
             <div class="role-cell">
               <div class="role-label">Evidence boundary</div>
               <div class="role-value">1 provider run · 0 real users<small>1464 实报 token · 单个 synthetic 场景</small><a class="source-tag" href="https://github.com/estelledc/bj-pal/blob/main/evals/live_provider/observations/2026-07-21-deepseek-pro-sanlitun/acceptance.json" target="_blank" rel="noreferrer">Acceptance receipt ↗</a></div>
             </div>
           </div>
-          <p class="verification-line">最后验证 2026-07-21 · main Core、Pages、hardened OCI smoke、匿名 manifest、Release 与公开证据链接已复核</p>
+          <p class="verification-line">最后验证 2026-07-21 · v6.29 本机 PostgreSQL 17.10、完整 pytest 与独立 verifier 已通过；公开 PR/main/Pages/OCI 待发布</p>
 
           <figure class="hero-figure">
             <img src="pitch-png/01.png" width="3840" height="2160" alt="BJ-Pal 项目封面：周六下午的决策解药" fetchpriority="high" />
@@ -837,14 +837,14 @@ STATUS · historical showcase run</p>
         <div class="shell">
           <p class="eyebrow">04 / Reproducible engineering evidence</p>
           <h2 class="section-title" id="outcomes-title">不只展示一次好结果，<br />还展示它如何失败、恢复与被复核。</h2>
-          <p class="section-lede">以下数字绑定 2026-07-21 的 v6.28.0 公开主线。它们证明代码、契约、镜像和证据链可复现；不外推为线上业务效果、生产容量或真实用户满意度。</p>
+          <p class="section-lede">以下数字区分 2026-07-21 的 v6.29 本机 release candidate 与 v6.28.0 公开稳定镜像。它们证明代码、契约和受控证据可复算；不外推为线上业务效果、生产容量或真实用户满意度。</p>
 
           <div class="metrics">
             <article class="metric">
               <div class="metric-label">Core regression</div>
-              <div class="metric-value">963/966</div>
-              <p>963 passed；3 条 real-cache 专用用例 skipped。CI 同时执行 PostgreSQL 17 迁移、Docker build、smoke 与离线 verifier。</p>
-              <a href="https://github.com/estelledc/bj-pal/actions/runs/29810717686" target="_blank" rel="noreferrer">MAIN WORKFLOW ↗</a>
+              <div class="metric-value">976/979</div>
+              <p>976 passed；3 条 real-cache 专用用例 skipped。v6.29 公开 CI 尚待 PR，数字来自本机完整回归。</p>
+              <a href="https://github.com/estelledc/bj-pal/blob/main/README.md#%E9%AA%8C%E8%AF%81" target="_blank" rel="noreferrer">VALIDATION ↗</a>
             </article>
             <article class="metric">
               <div class="metric-label">OCI reproducibility</div>
@@ -853,10 +853,10 @@ STATUS · historical showcase run</p>
               <a href="https://github.com/estelledc/bj-pal/actions/runs/29810950348" target="_blank" rel="noreferrer">OCI WORKFLOW ↗</a>
             </article>
             <article class="metric">
-              <div class="metric-label">HTTP acceptance</div>
-              <div class="metric-value">40/40</div>
-              <p>进程内 ASGI 20/20，加独立 localhost TCP 20/20；都是本机 mock/synthetic 回归，不是 SLA。</p>
-              <a href="https://github.com/estelledc/bj-pal/blob/main/README.md#%E9%AA%8C%E8%AF%81" target="_blank" rel="noreferrer">VALIDATION ↗</a>
+              <div class="metric-label">PostgreSQL pool acceptance</div>
+              <div class="metric-value">64/64</div>
+              <p>并发 2 readiness 全成功；池满 timeout、backend termination 后替换、关闭零泄漏均通过。不是生产容量。</p>
+              <a href="https://github.com/estelledc/bj-pal/blob/main/evals/results/postgres-pool-acceptance.json" target="_blank" rel="noreferrer">ARTIFACT ↗</a>
             </article>
             <article class="metric">
               <div class="metric-label">Live provider acceptance</div>
@@ -880,7 +880,7 @@ STATUS · historical showcase run</p>
             <div class="rubric-foot">
               <p><strong>不混写：</strong>synthetic contract 通过不等于真实模型成功；真实 API 返回不等于真实用户采纳。</p>
               <p><strong>失败关闭：</strong>缺少 usage、样本门、候选绑定或完整证据时，系统返回 unavailable / insufficient_data / error，而不是补一个好看的数字。</p>
-              <p><strong>历史基线：</strong>早期 v1-v3 LongCat 指标仍保留在公开评测报告中，但不再代表当前 v6.28 主线的完整工程证据。</p>
+              <p><strong>历史基线：</strong>早期 v1-v3 LongCat 指标仍保留在公开评测报告中，但不再代表当前 v6.29 candidate 的完整工程证据。</p>
             </div>
           </section>
         </div>
@@ -900,7 +900,7 @@ STATUS · historical showcase run</p>
               <span class="evidence-type">Evaluation</span><h3>当前分层评测框架</h3><p>离线 contract、独立 verifier、真实 provider observation 与用户结果如何分轨。</p><span class="evidence-arrow">查看框架 ↗</span>
             </a>
             <a class="evidence-card" href="https://github.com/estelledc/bj-pal/blob/main/docs/DESIGN.md" target="_blank" rel="noreferrer">
-              <span class="evidence-type">Architecture</span><h3>v6.28 系统设计</h3><p>5 个领域路由、可切换 durable store、可审计 offline cutover 与 OCI 发布边界。</p><span class="evidence-arrow">查看设计 ↗</span>
+              <span class="evidence-type">Architecture</span><h3>v6.29 系统设计</h3><p>5 个领域路由、可切换 durable store、可审计 offline cutover 与有界 PostgreSQL pool。</p><span class="evidence-arrow">查看设计 ↗</span>
             </a>
             <a class="evidence-card" href="https://github.com/estelledc/bj-pal/blob/main/docs/TECHNICAL_REPORT.md" target="_blank" rel="noreferrer">
               <span class="evidence-type">Engineering report</span><h3>从 Demo 到可靠 Agent</h3><p>每个版本解决的问题、失败样本、验证方式与仍未覆盖的生产缺口。</p><span class="evidence-arrow">查看报告 ↗</span>
@@ -965,7 +965,7 @@ STATUS · historical showcase run</p>
 
       <div class="site-footer">
         <span>BJ-Pal · Jason Xun · KeepL · 2026</span>
-        <span>v6.28.0 · Public source + OCI · Evidence-bounded</span>
+        <span>v6.29.0 candidate · v6.28.0 public OCI · Evidence-bounded</span>
       </div>
     </div>
   </footer>

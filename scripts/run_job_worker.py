@@ -21,11 +21,15 @@ def main() -> int:
     parser.add_argument("--heartbeat-interval-seconds", type=float, default=None)
     args = parser.parse_args()
 
-    job = PlanningJobService().run_once(
-        worker_id=args.worker_id,
-        lease_seconds=args.lease_seconds,
-        heartbeat_interval_seconds=args.heartbeat_interval_seconds,
-    )
+    service = PlanningJobService()
+    try:
+        job = service.run_once(
+            worker_id=args.worker_id,
+            lease_seconds=args.lease_seconds,
+            heartbeat_interval_seconds=args.heartbeat_interval_seconds,
+        )
+    finally:
+        service.close()
     if job is None:
         print(json.dumps({"status": "idle"}))
         return 0
