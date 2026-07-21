@@ -94,13 +94,13 @@ class ShowcaseSiteTest(unittest.TestCase):
     def test_first_view_surfaces_status_attribution_and_bounded_evidence(self) -> None:
         first_view = self.html[: self.html.index('<figure class="hero-figure">')]
         for expected in [
-            "Prototype",
+            "Public release · v6.23.0",
             "Jason Xun · 项目负责人",
             "KeepL · 共同作者",
-            "47/100",
-            "LongCat 既定场景 final_pass，不是业务效果",
-            "尚无真实用户验证",
-            "AI 合成访谈只用于生成需求假设",
+            "900 passed",
+            "903 collected · 3 real-cache skipped",
+            "1 provider run · 0 real users",
+            "1464 实报 token · 单个 synthetic 场景",
         ]:
             with self.subTest(expected=expected):
                 self.assertIn(expected, first_view)
@@ -120,7 +120,8 @@ class ShowcaseSiteTest(unittest.TestCase):
         self.assertNotIn('"name": "Jason"', self.html)
 
     def test_evaluation_heading_describes_observation_not_verified_outcomes(self) -> None:
-        self.assertIn("04 / Observed evaluation", self.html)
+        self.assertIn("04 / Reproducible engineering evidence", self.html)
+        self.assertIn("Evidence ladder · 四层证据不混写", self.html)
         self.assertNotIn("Verified outcomes", self.html)
 
     def test_decision_trace_replays_a_sourced_observed_case_without_javascript(self) -> None:
@@ -146,7 +147,7 @@ class ShowcaseSiteTest(unittest.TestCase):
 
     def test_sources_verification_and_next_work_are_explicit(self) -> None:
         self.assertGreaterEqual(self.html.count('class="source-tag"'), 6)
-        self.assertIn("最后验证 2026-07-11", self.html)
+        self.assertIn("最后验证 2026-07-21", self.html)
         self.assertIn("来源类型：Observed historical run", self.html)
         self.assertIn("Next product system · 03", self.html)
         self.assertIn("https://estelledc.github.io/practicemate/", self.page.links)

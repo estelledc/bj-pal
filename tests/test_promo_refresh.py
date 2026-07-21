@@ -142,14 +142,13 @@ class PromoRefreshTest(unittest.TestCase):
         self.assertIn("三阶段评测路径", combined)
 
     def test_promo_eval_copy_names_rubric_and_technical_version_deltas(self) -> None:
-        eval_pages = [
+        legacy_eval_pages = [
             PROMO / "pitch-deck.html",
-            PROMO / "landing-page.html",
             PROMO / "one-pager.html",
             PROMO / "xhs-carousel.html",
         ]
 
-        for path in eval_pages:
+        for path in legacy_eval_pages:
             text = _read(path)
             for expected in [
                 "Rubric",
@@ -168,15 +167,26 @@ class PromoRefreshTest(unittest.TestCase):
             self.assertNotIn("v3 是当前版本", text)
             self.assertNotIn("v3 当前版本", text)
 
+        landing = _read(PROMO / "landing-page.html")
+        for expected in [
+            "Evidence ladder · 四层证据不混写",
+            "L1 · contract",
+            "L2 · verifier",
+            "L3 · provider",
+            "L4 · user",
+            "早期 v1-v3 LongCat 指标仍保留",
+        ]:
+            with self.subTest(page="landing-page.html", expected=expected):
+                self.assertIn(expected, landing)
+
     def test_promo_eval_rubric_explains_metric_meanings(self) -> None:
-        eval_pages = [
+        legacy_eval_pages = [
             PROMO / "pitch-deck.html",
-            PROMO / "landing-page.html",
             PROMO / "one-pager.html",
             PROMO / "xhs-carousel.html",
         ]
 
-        for path in eval_pages:
+        for path in legacy_eval_pages:
             text = _read(path)
             for expected in [
                 "计划非空 + JSON 合法",
@@ -186,6 +196,16 @@ class PromoRefreshTest(unittest.TestCase):
             ]:
                 with self.subTest(page=path.name, expected=expected):
                     self.assertIn(expected, text)
+
+        landing = _read(PROMO / "landing-page.html")
+        for expected in [
+            "类型、预算、状态机与失败语义",
+            "从 raw artifact 独立复算决策与 SHA",
+            "真实调用只证明该次 observation",
+            "真实 participant/report 当前仍为 0",
+        ]:
+            with self.subTest(page="landing-page.html", expected=expected):
+                self.assertIn(expected, landing)
 
 
 if __name__ == "__main__":
