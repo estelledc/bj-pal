@@ -94,11 +94,11 @@ class ShowcaseSiteTest(unittest.TestCase):
     def test_first_view_surfaces_status_attribution_and_bounded_evidence(self) -> None:
         first_view = self.html[: self.html.index('<figure class="hero-figure">')]
         for expected in [
-            "Public release · v6.25.0",
+            "Public release · v6.26.0",
             "Jason Xun · 项目负责人",
             "KeepL · 共同作者",
-            "931 passed",
-            "934 collected · 3 real-cache skipped",
+            "936 passed",
+            "939 collected · 3 real-cache skipped",
             "GHCR 可匿名拉取 · Pages 不是 API",
             "1 provider run · 0 real users",
             "1464 实报 token · 单个 synthetic 场景",
@@ -109,14 +109,14 @@ class ShowcaseSiteTest(unittest.TestCase):
     def test_current_release_surfaces_immutable_oci_evidence(self) -> None:
         for expected in [
             "OCI reproducibility",
-            "7ee7…861d",
-            "https://github.com/estelledc/bj-pal/actions/runs/29801249729",
-            "https://github.com/estelledc/bj-pal/releases/tag/v6.25.0",
-            "v6.25.0 不可变镜像",
+            "a424…7051",
+            "https://github.com/estelledc/bj-pal/actions/runs/29803766469",
+            "https://github.com/estelledc/bj-pal/releases/tag/v6.26.0",
+            "v6.26.0 不可变镜像",
         ]:
             with self.subTest(expected=expected):
                 self.assertIn(expected, self.html)
-        self.assertNotIn("v6.24.0", self.html)
+        self.assertNotIn("v6.25.0", self.html)
 
     def test_identity_uses_the_canonical_portfolio_person(self) -> None:
         payload = re.search(
