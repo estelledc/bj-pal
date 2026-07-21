@@ -86,6 +86,9 @@ jobs:
       - name: Build and verify durable workload health artifact
         run: make eval-workload-health PYTHON=python
 
+      - name: Build and verify privacy-minimized OTLP export artifact
+        run: make eval-otlp-export PYTHON=python
+
       - name: Build and verify execution-budget artifact
         run: make eval-execution-budget PYTHON=python
 
@@ -130,6 +133,7 @@ jobs:
             evals/results/observability-core.json
             evals/results/job-diagnostics-contract.json
             evals/results/workload-health-contract.json
+            evals/results/otlp-export-contract.json
             evals/results/execution-budget-core.json
             evals/results/model-output-contract.json
             evals/results/orchestration-comparison.json

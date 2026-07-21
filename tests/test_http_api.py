@@ -211,6 +211,39 @@ def test_health_and_readiness_contracts_include_request_ids() -> None:
     assert ready.headers["X-Request-ID"].startswith("req-")
 
 
+def test_trace_export_status_is_authenticated_and_payload_free(monkeypatch) -> None:
+    monkeypatch.setenv("BJ_PAL_TRACE", "off")
+    from agents import tracing
+
+    tracing.reset_backend_for_tests()
+    app = create_app(service=StubService(), readiness_probe=_ready)
+    with TestClient(app) as client:
+        missing = client.get("/v1/trace-export-status")
+    with _client(app) as client:
+        allowed = client.get("/v1/trace-export-status")
+
+    assert missing.status_code == 401
+    assert allowed.status_code == 200
+    assert allowed.json() == {
+        "version": "trace_export_status_v1",
+        "backend": "off",
+        "state": "disabled",
+        "processor": "none",
+        "privacy_policy": "trace_export_minimal_v1",
+        "semconv_profile": "gen_ai_minimal_v1",
+        "content_capture_enabled": False,
+        "endpoint_origin_sha256": None,
+        "export_attempt_count": 0,
+        "exported_span_count": 0,
+        "failed_span_count": 0,
+        "dropped_attribute_count": 0,
+        "last_error_code": None,
+    }
+    serialized = json.dumps(allowed.json())
+    assert "endpoint_url" not in serialized
+    assert "headers" not in serialized
+
+
 def test_sync_plan_issues_ephemeral_feedback_capability_and_accepts_two_phases(
     tmp_path,
 ) -> None:
@@ -1744,6 +1777,7 @@ def test_openapi_exposes_versioned_contracts() -> None:
     assert {
         "/healthz",
         "/readyz",
+        "/v1/trace-export-status",
         "/v1/plans",
         "/v1/clarifications/{continuation_id}/plan",
         "/v1/planning-jobs",
@@ -1781,6 +1815,9 @@ def test_openapi_exposes_versioned_contracts() -> None:
     ]["post"]["responses"]
     assert schema["components"]["securitySchemes"]["BJPalControlBearer"]["scheme"] == "bearer"
     assert schema["paths"]["/v1/planning-jobs"]["get"]["security"] == [
+        {"BJPalControlBearer": []}
+    ]
+    assert schema["paths"]["/v1/trace-export-status"]["get"]["security"] == [
         {"BJPalControlBearer": []}
     ]
     assert schema["paths"]["/v1/planning-admission-events"]["get"]["security"] == [

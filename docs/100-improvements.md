@@ -12,7 +12,7 @@
 - ✅ **[15简]** Plan 重复地点边界 → 历史版本曾 post-process dedup；v6.9 改为 strict contract 拒绝重复并最多修复一次，不再静默删站
 - ✅ **[83]** TravelPlanner 风格 evaluator → `evals/eval_plans.py`，4 项指标
 - ✅ **[55]** 责任盾牌叙事 → IM 卡片群发追加"AI 综合大家偏好生成"
-- ✅ **[88]** OpenTelemetry trace → `agents/tracing.py`，三档 backend（off / jsonl / otel），span 嵌套 + ContextVar 跨线程，planner.plan / planner.plan_tot / llm.* / tot.branch 均插桩；6/6 测试通过；OTel SDK 可选依赖（未装自动降级 jsonl）
+- ✅ **[88]** OpenTelemetry trace → `agents/tracing.py` + `agents/trace_export.py`，off / privacy-minimized JSONL / OTLP-HTTP protobuf 三档 backend，span 嵌套 + ContextVar 跨线程，planner.plan / planner.plan_tot / llm.* / tot.branch 均插桩；OTel SDK/exporter 为声明依赖，endpoint 缺失或 exporter 失败进入可观测 degraded no-op，不静默回退 JSONL；loopback protobuf + failure injection 可独立验证。
 
 ### eval 扩展（5/21）
 - ✅ **[12]** eval 100 场景扩展 → `scripts/run_longcat_demo.py` SCENARIOS 40 → 100；S41-S100 覆盖边缘 case（雨天 / 高/极低预算 / 极短/极长 / 婴幼儿 / 素食 / halal / 早晨 6:30 / 工作日中午 / KTV 5 人组等）；mock 100 场景全跑通；LongCat 验证脚本 `scripts/run_longcat_eval100.py`（增量保存 + skip 已成功项）
