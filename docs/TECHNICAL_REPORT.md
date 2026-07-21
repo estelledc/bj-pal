@@ -2,7 +2,7 @@
 
 > 本文面向代码评审者，解释项目从黑客松 Demo 到 v6.23 offline-first、需求门控、自然语言约束账本、可续跑澄清、可验证执行观测、隐私最小化 OTLP 导出与可复算运行告警、请求级执行预算、显式 live-provider 凭证交接和 usage/质量验收、模型输出失败关闭、编排选型对照、tenant-aware durable 调度、持久证据驱动的故障诊断与 workload health、原子准入、身份感知控制面、审批式沙箱副作用状态机、用户结果证据链、知情试用分母、安全 operator 工作流、证据型计划质量代理、localhost socket acceptance、隐私最小化工具调用账本、诊断隔离、非破坏业务状态迁移与可复核发布边界的演进。系统细节见 [DESIGN.md](DESIGN.md)，逐项证据见 [ARCHITECTURE_EVIDENCE.md](ARCHITECTURE_EVIDENCE.md)。
 
-> 发布状态（2026-07-21）：v6.18-v6.23 位于 Draft PR #5-#10；v6.23 在 `codex/live-provider-acceptance-v6-23` 完成实现、一次真实调用、本地完整门禁与首轮远端 workflow，当前仍是 stacked Draft PR。本文的“已实现”按本机/远端分支证据分别标注，不能外推为 `main` 已发布能力。
+> 发布状态（2026-07-21）：v6.18-v6.23 已按 PR #5-#10 的依赖顺序合并到公开 `main`；最终集成提交 `e136b04` 的 [Core workflow](https://github.com/estelledc/bj-pal/actions/runs/29796656281) 与 [Pages 部署](https://github.com/estelledc/bj-pal/actions/runs/29796656267) 均已通过。本文仍区分公开实现、合成证据、单操作者真实 provider observation 与尚未发生的真实用户结果。
 
 ## 1. 问题定义
 
@@ -390,7 +390,7 @@ Delivery adapter 不再拥有 Planner/Probe 顺序。Planner、Prober、ProfileL
 - 2026-07-21 一次三里屯 synthetic 场景首轮接受：1 个 LLM call、53 input + 1411 output = 1464 provider-reported token，canonical execution 约 28.9 秒，quality hard gate 通过；实际 Key 在三份 linked artifact 中 exact-match count 为 0；
 - 独立 verifier 复用既有 observation/quality verifier，再自行重算 credential preflight、usage 加总、execution budget SHA/count、linked artifact、六项 acceptance checks 与 outer SHA。它不能证明签名 provider/external execution、成功率、发票金额、价格版本或服务端 credential lifecycle。
 - 首次完整门禁发现 OTLP artifact verifier 仍硬编码 v6.22；修复后 verifier 从 `pyproject.toml` 读取声明版本，并由 package/app/core 版本一致性测试约束。最终 557-file secret gate、903 collected / 900 passed / 3 skipped、ASGI/TCP 各 20/20，完整门禁退出码为 0。
-- stacked Draft PR [#10](https://github.com/estelledc/bj-pal/pull/10) 的首轮 [Ubuntu branch workflow](https://github.com/estelledc/bj-pal/actions/runs/29796028892) 已通过，包含 Docker build 与 checked-in acceptance receipt 的离线复核；这证明分支可复现，不等于真实 API 会在 CI 中再次调用或 `main` 已发布。
+- [PR #10](https://github.com/estelledc/bj-pal/pull/10) 已合并；最终 `main` [Ubuntu Core workflow](https://github.com/estelledc/bj-pal/actions/runs/29796656281) 包含 Docker build 与 checked-in acceptance receipt 的离线复核。CI 不会再次调用真实 API，因此仍不能把离线复核写成新的 provider execution。
 
 ## 3. 当前执行链
 
