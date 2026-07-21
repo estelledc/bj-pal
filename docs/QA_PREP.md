@@ -127,7 +127,7 @@ v6.5 的 `manage_trial.py` 不在 stdout 输出原始码；批量码只允许写
 
 v6.28 把“怎么从 SQLite 切到 PostgreSQL”收敛为可执行 runbook，并已通过 PR #21/main Core/Pages/OCI 发布：dry-run、显式停写、running/WAL/污染 target gate、四表同事务 copy + count/digest + append-only receipt、故障回滚、重复 apply 和 post-cutover rollback denial 都在 PostgreSQL 17 验证。准确表述是“可审计的 offline cutover”，不能写“零停机迁移”；source quiescence 仍是 operator attestation，PostgreSQL 产生新写入后也没有自动双向 merge。
 
-v6.29 把“多进程 PostgreSQL adapter 如何限制单进程连接并处理死连接”收敛为显式 pool contract：配置边界先验失败关闭，pool 满 timeout 后不泄露 DSN，释放后恢复；`pg_terminate_backend` 后借出前检查换连接；API/worker 退出关闭 pool。真实 PostgreSQL 17.10 artifact 是本机受控 acceptance，只能写“有限池与局部坏连接替换”，不能写“生产容量”“数据库自动 failover”或“高可用”。
+v6.29 把“多进程 PostgreSQL adapter 如何限制单进程连接并处理死连接”收敛为显式 pool contract：配置边界先验失败关闭，pool 满 timeout 后不泄露 DSN，释放后恢复；`pg_terminate_backend` 后借出前检查换连接；API/worker 退出关闭 pool。PR #23、main Core/Pages、`v6.29.0` Release 与 OCI 已公开通过，release/SHA/latest 指向同一 digest。真实 PostgreSQL 17.10 artifact 仍只是本机受控 acceptance，只能写“有限池与局部坏连接替换”，不能写“生产容量”“数据库自动 failover”或“高可用”。
 
 ## Q15. Docker 和 CI 到什么程度？
 
