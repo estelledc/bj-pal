@@ -160,9 +160,9 @@ from .sse import (
     encode_stream_error,
     encode_stream_timeout,
 )
+from version import SERVICE_VERSION
 
 
-SERVICE_VERSION = "6.22.0"
 REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
 LOGGER = logging.getLogger(__name__)
 

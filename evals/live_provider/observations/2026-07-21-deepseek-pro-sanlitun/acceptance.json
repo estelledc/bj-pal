@@ -1,0 +1,92 @@
+{
+  "schema_id": "bj-pal.live-provider-acceptance",
+  "schema_version": 1,
+  "classification": "operator_observed_bounded_live_provider_acceptance",
+  "evidence_level": "configured_client_usage_and_quality_not_signed_provider_receipt",
+  "observed_at": "2026-07-21T02:14:26Z",
+  "scenario_id": "synthetic-friends-sanlitun-3h-budget",
+  "provider": {
+    "configured_client": "dpsk",
+    "configured_model": "deepseek-v4-pro",
+    "endpoint_origin": "https://api.deepseek.com"
+  },
+  "credential_handoff": {
+    "source_type": "csswitch_active_profile",
+    "config_file_mode": "0600",
+    "owner_uid_match": true,
+    "regular_file": true,
+    "symlink": false,
+    "profile_template": "deepseek",
+    "api_format": "anthropic",
+    "explicit_cost_ack": true,
+    "exact_credential_occurrences_in_linked_artifacts": 0
+  },
+  "linked_artifacts": {
+    "live_model_observation_sha256": "d0bd0caa09bd3a13e3faac3229359e16edc9fe93271c8c9a472c9a6f7010bc00",
+    "live_plan_quality_sha256": "120ec6318c89553eb46490b7c3d4a21900c1a9916f45bb7bd98a20e25493fba5"
+  },
+  "execution_evidence": {
+    "source_artifact_sha256": "9c61349cecc51fa11c6dc36a936074f3cc73ad776f0dc621cd1d09f97cec1c24",
+    "version": "execution_observation_v2",
+    "status": "succeeded",
+    "duration_ms": 28872.914,
+    "operation_counts": {
+      "llm_call_count": 1,
+      "data_provider_batch_count": 1,
+      "tool_call_count": 0
+    },
+    "provider_reported_usage": {
+      "completeness": "complete",
+      "reported_calls": 1,
+      "input_tokens": 53,
+      "output_tokens": 1411,
+      "total_tokens": 1464
+    },
+    "execution_budget": {
+      "version": "execution_budget_v1",
+      "status": "succeeded",
+      "termination_reason": "completed",
+      "policy": {
+        "max_llm_calls": 2,
+        "max_data_provider_batches": 1,
+        "max_tool_calls": 8,
+        "max_transport_attempts_per_llm_call": 2,
+        "max_reported_tokens": 16384,
+        "max_wall_clock_ms": 90000
+      },
+      "usage": {
+        "llm_call_count": 1,
+        "data_provider_batch_count": 1,
+        "tool_call_count": 0,
+        "reported_token_call_count": 1,
+        "reported_total_tokens": 1464,
+        "elapsed_ms": 28872.764
+      },
+      "artifact_sha256": "f6da0fe24d0113653e633118765f2ed0dec6cee197efb97dacffacee8161b730"
+    }
+  },
+  "acceptance": {
+    "checks": {
+      "credential_preflight_pass": true,
+      "live_result_accepted": true,
+      "quality_hard_gate_pass": true,
+      "provider_reported_usage_complete": true,
+      "execution_budget_completed": true,
+      "exact_credential_absent_from_linked_artifacts": true
+    },
+    "gate_pass": true
+  },
+  "provenance": {
+    "external_call_attestation": "operator_observation_not_independently_verifiable",
+    "provider_identity": "configured_client_not_signed_provider_receipt",
+    "usage_origin": "provider_reported_through_configured_client"
+  },
+  "limitations": [
+    "This is one operator-observed fixed synthetic scenario, not a success-rate estimate.",
+    "Configured provider/model identity and external execution are not backed by a signed provider receipt.",
+    "Token counts are provider-reported through the configured client; no invoice or currency cost is claimed.",
+    "The credential absence check covers only the generated observation and quality artifacts.",
+    "No prompt, raw response, generated plan, credential, profile identifier, or local path is retained."
+  ],
+  "artifact_sha256": "a349a958e73db0ca6a991ddd2452f07c32cd8229a6c8775ee73042d328ab0f73"
+}

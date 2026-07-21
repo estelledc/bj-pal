@@ -1,0 +1,297 @@
+{
+  "schema_id": "bj-pal.live-plan-quality",
+  "schema_version": 1,
+  "classification": "fixed_synthetic_live_plan_quality_proxy",
+  "evidence_level": "deterministic_rules_over_sanitized_live_plan_projection",
+  "observed_at": "2026-07-21T02:14:26Z",
+  "scenario_id": "synthetic-friends-sanlitun-3h-budget",
+  "provider": {
+    "configured_client": "dpsk",
+    "configured_model": "deepseek-v4-pro",
+    "endpoint_origin": "https://api.deepseek.com"
+  },
+  "linked_observation_sha256": "d0bd0caa09bd3a13e3faac3229359e16edc9fe93271c8c9a472c9a6f7010bc00",
+  "data_profile": {
+    "name": "demo",
+    "classification": "synthetic",
+    "public_reproducible": true
+  },
+  "policy": {
+    "persona": "friends",
+    "area_anchor": "三里屯片区",
+    "target_start": "14:00",
+    "duration_minutes": 180,
+    "budget_per_person": 200,
+    "walk_radius_m": 800,
+    "walking_tolerance_multiplier": 1.5,
+    "minimum_activity_steps": 2,
+    "required_kinds": [],
+    "required_diet_evidence_tags": [],
+    "required_any_positive_tags": [],
+    "required_indoor_kind": null
+  },
+  "plan_projection": {
+    "persona": "friends",
+    "area_anchor": "三里屯片区",
+    "steps": [
+      {
+        "step_index": 1,
+        "kind": "shopping",
+        "poi_id": "P_EXTRA_004",
+        "poi_name": "朝阳大悦城",
+        "start_time": "14:00",
+        "duration_min": 50,
+        "mode_to_here": "walking",
+        "travel_time_min": 0,
+        "travel_distance_m": 0,
+        "weather_shelter": "full_indoor"
+      },
+      {
+        "step_index": 2,
+        "kind": "shopping",
+        "poi_id": "P_SLT",
+        "poi_name": "三里屯太古里",
+        "start_time": "14:57",
+        "duration_min": 50,
+        "mode_to_here": "walking",
+        "travel_time_min": 7,
+        "travel_distance_m": 546,
+        "weather_shelter": "full_indoor"
+      },
+      {
+        "step_index": 3,
+        "kind": "meal",
+        "poi_id": "P_SUP_FOOD_01_04",
+        "poi_name": "三里屯家常菜馆",
+        "start_time": "15:48",
+        "duration_min": 60,
+        "mode_to_here": "walking",
+        "travel_time_min": 1,
+        "travel_distance_m": 124,
+        "weather_shelter": "full_indoor"
+      },
+      {
+        "step_index": 4,
+        "kind": "depart",
+        "poi_id": null,
+        "poi_name": "返程",
+        "start_time": "16:48",
+        "duration_min": 0,
+        "mode_to_here": "transit",
+        "travel_time_min": 0,
+        "travel_distance_m": 0,
+        "weather_shelter": "unknown"
+      }
+    ],
+    "route": {
+      "version": "route_refresh_v1",
+      "status": "complete",
+      "resolved_poi_step_count": 3,
+      "total_poi_step_count": 3
+    },
+    "schedule": {
+      "version": "schedule_reconcile_v1",
+      "status": "complete",
+      "target_start": "14:00",
+      "window_minutes": 180,
+      "planned_end": "16:48",
+      "total_elapsed_minutes": 168,
+      "overrun_minutes": 0
+    }
+  },
+  "selected_poi_facts": [
+    {
+      "poi_id": "P_EXTRA_004",
+      "poi_name": "朝阳大悦城",
+      "category_lv1": "购物服务",
+      "category_lv2": "商场",
+      "rating": 4.7,
+      "avg_price": 30.0,
+      "positive_evidence_tags": [
+        "baby",
+        "parking",
+        "toilet"
+      ],
+      "risk_tags": []
+    },
+    {
+      "poi_id": "P_SLT",
+      "poi_name": "三里屯太古里",
+      "category_lv1": "购物服务",
+      "category_lv2": "商场",
+      "rating": 4.7,
+      "avg_price": 180.0,
+      "positive_evidence_tags": [],
+      "risk_tags": [
+        "crowded",
+        "not_child_friendly",
+        "parking_hard"
+      ]
+    },
+    {
+      "poi_id": "P_SUP_FOOD_01_04",
+      "poi_name": "三里屯家常菜馆",
+      "category_lv1": "餐饮服务",
+      "category_lv2": "中餐厅",
+      "rating": 4.8,
+      "avg_price": 96.0,
+      "positive_evidence_tags": [],
+      "risk_tags": [
+        "queue"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "check_id": "identity_match",
+      "required": true,
+      "status": "pass",
+      "observed": {
+        "persona": "friends",
+        "area_anchor": "三里屯片区"
+      }
+    },
+    {
+      "check_id": "minimum_activity_steps",
+      "required": true,
+      "status": "pass",
+      "observed": {
+        "count": 3,
+        "minimum": 2
+      }
+    },
+    {
+      "check_id": "depart_and_sequence_contract",
+      "required": true,
+      "status": "pass",
+      "observed": {
+        "depart_count": 1,
+        "step_count": 4
+      }
+    },
+    {
+      "check_id": "selected_poi_grounding",
+      "required": true,
+      "status": "pass",
+      "observed": {
+        "activity_count": 3,
+        "fact_count": 3,
+        "mismatch_step_indices": []
+      }
+    },
+    {
+      "check_id": "travel_aware_timeline",
+      "required": true,
+      "status": "pass",
+      "observed": {
+        "target_start": "14:00",
+        "violation_step_indices": []
+      }
+    },
+    {
+      "check_id": "duration_window",
+      "required": true,
+      "status": "pass",
+      "observed": {
+        "version": "schedule_reconcile_v1",
+        "status": "complete",
+        "target_start": "14:00",
+        "window_minutes": 180,
+        "planned_end": "16:48",
+        "total_elapsed_minutes": 168,
+        "overrun_minutes": 0
+      }
+    },
+    {
+      "check_id": "route_completeness",
+      "required": true,
+      "status": "pass",
+      "observed": {
+        "version": "route_refresh_v1",
+        "status": "complete",
+        "resolved_poi_step_count": 3,
+        "total_poi_step_count": 3
+      }
+    },
+    {
+      "check_id": "walking_leg_proxy",
+      "required": true,
+      "status": "pass",
+      "observed": {
+        "maximum_walking_leg_m": 546,
+        "limit_m": 1200,
+        "tolerance_multiplier": 1.5
+      }
+    },
+    {
+      "check_id": "required_activity_kinds",
+      "required": false,
+      "status": "not_applicable",
+      "observed": {
+        "required": [],
+        "missing": []
+      }
+    },
+    {
+      "check_id": "selected_food_price_cap",
+      "required": true,
+      "status": "pass",
+      "observed": {
+        "cap": 200,
+        "unknown_step_indices": [],
+        "over_cap_step_indices": []
+      }
+    },
+    {
+      "check_id": "diet_evidence",
+      "required": false,
+      "status": "not_applicable",
+      "observed": {
+        "required": [],
+        "missing": []
+      }
+    },
+    {
+      "check_id": "scenario_positive_evidence",
+      "required": false,
+      "status": "not_applicable",
+      "observed": {
+        "accepted_any": [],
+        "matched": []
+      }
+    },
+    {
+      "check_id": "indoor_activity_evidence",
+      "required": false,
+      "status": "not_applicable",
+      "observed": {
+        "required_kind": null,
+        "matching_step_indices": []
+      }
+    }
+  ],
+  "metrics": {
+    "check_count": 13,
+    "required_check_count": 9,
+    "required_pass_count": 9,
+    "required_fail_or_unknown_count": 0,
+    "not_evaluable_count": 0,
+    "hard_gate_pass": true
+  },
+  "privacy": {
+    "fixed_synthetic_scenario_only": true,
+    "request_text_persisted": false,
+    "raw_prompt_persisted": false,
+    "raw_model_output_persisted": false,
+    "rationale_or_summary_persisted": false,
+    "auth_material_persisted": false
+  },
+  "limitations": [
+    "The checks are deterministic quality proxies, not a human preference judgment.",
+    "POI, UGC, route, and weather inputs are public demo synthetic fixtures.",
+    "A passing gate does not estimate user success, satisfaction, or production quality.",
+    "Rationale, summary, prompt, raw output, request text, and auth material are excluded.",
+    "Configured provider identity is linked to an unsigned local observation."
+  ],
+  "artifact_sha256": "120ec6318c89553eb46490b7c3d4a21900c1a9916f45bb7bd98a20e25493fba5"
+}

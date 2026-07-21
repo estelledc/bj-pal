@@ -50,6 +50,7 @@
 | v6.20 Durable workload health | Stacked Draft PR #7；本地完整门禁与分支 workflow 已通过 | tenant-scoped closed `[start,end)`；截止 end 的 event prefix + as-of status 重建；固定 status/terminal 分母；nearest-rank queue/run/terminal p50/p95/p99；retry/lease/timeout/dead-letter/cancel rates；1,000 job/10,000 event fail-closed；HTTP/0600 CLI 与双 SHA；2-case 独立 verifier 全通过；526-file secret gate、868 collected / 865 passed / 3 skipped、ASGI/TCP 均 20/20 | fixed synthetic windows，不是生产 SLO、事故率、容量或 OTLP；当前 SQLite 单实例；不输出实体 ID 也不等于完成 retention/access audit；stacked 分支尚未公开合并 |
 | v6.21 Privacy-minimized OTLP export | Stacked Draft PR #8；本地完整门禁与分支 workflow 已通过 | 声明 OTel SDK + OTLP/HTTP protobuf exporter；显式 endpoint/protocol validation；batch export + non-fatal failure monitor；GenAI 语义 allowlist；JSONL/OTLP 共用 privacy projection；`jobs:read` 受控健康快照；2-case loopback/failure artifact 与独立 protobuf verifier；534-file secret gate、877 collected / 874 passed / 3 skipped、ASGI/TCP 均 20/20，8 份保留 DB SHA 不变；Ubuntu workflow 含 Docker build 全通过 | fixed synthetic span + 本机 receiver，不是远程 vendor、生产投递、告警/SLO、retention、多实例或真实用户证据；prompt/tool args/content 刻意不采集；stacked 分支尚未公开合并 |
 | v6.22 Operational alert contract | Stacked Draft PR [#9](https://github.com/estelledc/bj-pal/pull/9)；本地完整门禁与分支 workflow 已通过 | `operational_alert_snapshot_v1` 复用闭合 workload 与 payload-free trace status；固定 4 条低基数规则、20 样本门、`firing/healthy/insufficient_data/disabled` 四态、source/policy/artifact SHA；受控 HTTP、0600 离线 CLI、4-case 独立 verifier；546-file secret gate、893 collected / 890 passed / 3 skipped、ASGI/TCP 均 20/20；[Ubuntu workflow](https://github.com/estelledc/bj-pal/actions/runs/29734771068) 含 Docker build 全通过 | fixed portfolio threshold 不是生产 SLO；无连续窗口、迟滞、Alertmanager/远程投递、事故响应 outcome、多实例或真实流量证据；stacked 分支尚未公开合并 |
+| v6.23 Bounded live-provider acceptance | Stacked Draft PR [#10](https://github.com/estelledc/bj-pal/pull/10)；本地完整门禁与分支 workflow 已通过 | 显式费用确认 + owner-only regular 0600 CSSwitch active DeepSeek profile；拒绝 symlink/宽权限/非 HTTPS/隐式模型/覆盖；固定三里屯一次首轮通过，1 LLM call、53 input + 1411 output = 1464 provider-reported token、约 28.9 秒；observation/quality/acceptance 三份 0600 工件 Key 精确命中 0；独立 verifier 重算 usage/budget/quality/link/gate；557-file secret gate、903 collected / 900 passed / 3 skipped、ASGI/TCP 均 20/20；[Ubuntu workflow](https://github.com/estelledc/bj-pal/actions/runs/29796028892) 含 Docker build 全通过 | 单次 configured-client operator observation，不是 signed provider receipt、成功率、延迟分布、发票或币种成本；不等于 KMS、服务端过期/轮换/撤销、多租户金额预算或 billing reconciliation；stacked 分支尚未公开合并 |
 | GitHub 发布 | Release candidate | public `main` 仍是 `86af63f`；v6.18 在 `codex/reproducible-core-v4` 按两个原子提交发布并以 Draft PR/CI 复核 | 合并前不能称公开发布；description/homepage/license 仍为空，历史清理、Pages/API 部署与真实试用分别治理 |
 
 ## 1.1 v6.18 GitHub 发布门
@@ -106,7 +107,20 @@
 
 边界：当前阈值是作品集中的固定演示策略，不是来自流量基线或错误预算；单个 snapshot 没有连续窗口、迟滞、抑制、路由和处置闭环，也没有 Prometheus/Alertmanager 或远程 collector acceptance。对外只能称 deterministic alert decision contract，不能称“生产告警系统”或“SLO 达成”。
 
-## 1.5 v6.12-v6.13 Tool-call Audit 验收
+## 1.5 v6.23 Bounded Live-provider Acceptance
+
+目标：把“本机配过 DeepSeek、跑出过几个结果”推进为一次可复核、不会把 Key 混进消息/命令/工件的真实 provider 验收，同时不把 token observation 伪装成账单或生产成本治理。
+
+- opt-in runner 必须同时收到 `--ack-provider-cost`、`--credential-source csswitch` 和显式 `--model`；默认离线门禁绝不读取本机配置或发起 API 调用；
+- CSSwitch loader 只接受当前用户持有的 regular file、无 group/other 权限、最大 64 KiB、schema v2、唯一 active DeepSeek/Anthropic profile 和 credential-free HTTPS endpoint；symlink、宽权限、歧义、非 HTTPS、空 Key 均 fail closed；
+- Key 只在 context manager 生命周期内映射到 `DPSK_*`，同时剥离 LongCat/Anthropic/DeepSeek 混用变量，退出后精确恢复原环境；secret field 不参与 repr/equality；
+- 真实调用复用 canonical `PlanningService`、strict model-output contract、quality projection、execution observation 和固定 request-local budget；输出目录必须不存在，新建为 0700，三份 JSON 以 O_EXCL/0600 写入；
+- acceptance receipt 绑定 live-model observation、live-plan quality、execution budget 与 provider-reported usage：独立 verifier 复算 53 + 1411 = 1464 token、1 LLM/1 data batch、completed budget、quality hard gate、linked SHA 和六项总决策；
+- 2026-07-21 固定三里屯 synthetic 场景一次首轮接受，canonical execution 约 28.9 秒；三份 linked artifact 对实际 Key 的 exact-match count 均为 0。
+
+边界：configured provider/model 与 external execution 没有签名回执；单次 synthetic scenario 不能估计成功率或延迟分布。当前不记录价格版本、cache hit/miss 计价、invoice、币种金额，也未实现服务端 secret manager、凭证过期/轮换/撤销、tenant spend ledger、跨实例 cost controller 或 billing reconciliation。
+
+## 1.6 v6.12-v6.13 Tool-call Audit 验收
 
 目标：把“为了排障把整个工具输入/输出写进 SQLite”收紧成隐私最小化、可发现篡改的本地诊断账本，避免可观测性成为用户文本、联系方式、provider credential 或异常原文的第二泄漏面。
 

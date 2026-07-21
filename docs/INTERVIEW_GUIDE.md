@@ -196,11 +196,13 @@ v6.21 把这个回答向前推了一步：不再把 console exporter 叫 OTel，
 
 v6.22 再把“operator 可单独告警”落实成确定性规则，而不是用一句话带过：terminal failure、queue wait p95、retry rate 各有 20 个样本门，OTLP 状态单独处理；任何样本不足都是 `insufficient_data`，不能因 1 个成功任务显示绿色。整体优先级是 firing 高于 insufficient，再高于 healthy；规则、policy 和两个 source 都有 SHA，4-case verifier 独立重算。面试必须主动说明这些阈值只是作品集固定策略，没有生产 baseline、连续窗口、迟滞、Alertmanager delivery 或 incident outcome，所以不能写“搭建生产 SLO 告警平台”。
 
-这仍不是完整生产可观测性或成本治理：wall-clock checkpoint 不能强杀已经阻塞的网络调用，token gate 在 provider 不回报 usage 时无法生效，也没有模型价格表、tenant 金额账户、跨实例全局预算或 billing reconciliation。v6.21 只在本机 loopback receiver 完成一次 synthetic OTLP 协议验收；v6.22 也只是把单个 closed window 和当前 sink 状态转成 deterministic decision，没有远程 collector 回执、多实例汇聚、持续 scrape、迟滞/抑制、告警 delivery、provider freshness、audit retention 或成本看板。正确下一步是接入经授权的远程 collector/metrics backend，再用连续可比较窗口和实际处置 outcome 校准阈值。
+v6.23 回答“你说接了真实模型，Key 怎么进程、实际用了多少、结果凭什么可信”。不要回答“放 `.env` 然后看输出”：opt-in runner 只接受 owner-only regular 0600 CSSwitch active DeepSeek profile、credential-free HTTPS、显式 model 和费用确认；Key 只在 context manager 内进入 `DPSK_*`，不进 CLI、Agent message、repr 或 artifact。一次固定三里屯运行首轮通过，1 个 LLM call 实报 53 input + 1411 output = 1464 token、canonical execution 约 28.9 秒，quality hard gate 和六项 acceptance check 均通过；独立 verifier 复算 observation/quality/budget/receipt SHA，三份 0600 工件 Key 精确命中 0。必须同时说清：这是一次 operator observation，不是成功率、延迟分布、签名 provider receipt、账单金额或服务端 credential rotation/KMS。
+
+这仍不是完整生产可观测性或成本治理：wall-clock checkpoint 不能强杀已经阻塞的网络调用，token gate 在 provider 不回报 usage 时无法生效；v6.23 虽记录一次 provider-reported token，但没有价格版本、cache 计价拆分、tenant 金额账户、跨实例全局预算、invoice reconciliation 或服务端密钥轮换。v6.21 只在本机 loopback receiver 完成一次 synthetic OTLP 协议验收；v6.22 也只是把单个 closed window 和当前 sink 状态转成 deterministic decision，没有远程 collector 回执、多实例汇聚、持续 scrape、迟滞/抑制、告警 delivery、provider freshness、audit retention 或成本看板。正确下一步是接入经授权的远程 collector/metrics backend，再用连续可比较窗口和实际处置 outcome 校准阈值。
 
 ### Q25. 最大技术债是什么？
 
-不是 UI。v6.22 已能从 durable evidence 生成 failure signature、closed-window workload snapshot、隐私最小化 OTLP/HTTP 本机协议证据和带最小样本门的运行告警快照；但当前最大的证据债仍是真实 participant/report 为 0。用户无法提供真实试用者时，只能继续标为 synthetic，不能用多个模拟账号冒充真人分母。技术上还缺合法 live POI/路线与天气部署验收、远程 collector/metrics backend、多实例 event store、真实告警投递和处置 outcome。其次是托管 purge/备份删除证明、外部 IdP/动态 RBAC、credential 生命周期、数据库 RLS、入口 abuse protection、跨实例全局准入/调度、tenant 金额预算和 audit retention。副作用仍缺真实 provider 查询 acceptance、补偿 operation、客服 handoff 和签名回执。
+不是 UI。v6.23 已能从 durable evidence 生成 diagnosis/workload/OTLP/告警快照，并完成一次显式 CSSwitch handoff 的 DeepSeek usage/质量验收；但当前最大的证据债仍是真实 participant/report 为 0。用户无法提供真实试用者时，只能继续标为 synthetic，不能用多个模拟账号冒充真人分母。技术上还缺合法 live POI/路线与天气部署验收、远程 collector/metrics backend、多实例 event store、真实告警投递和处置 outcome。其次是托管 purge/备份删除证明、服务端 credential 过期/轮换/撤销、外部 IdP/动态 RBAC、数据库 RLS、入口 abuse protection、跨实例全局准入/调度、tenant 金额预算和 audit retention。副作用仍缺真实 provider 查询 acceptance、补偿 operation、客服 handoff 和签名回执。
 
 ### Q26. 你怎么评估 BM25 改动？
 
