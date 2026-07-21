@@ -1,0 +1,117 @@
+name: Publish OCI image
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: publish-container-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Verify release tag matches code
+        run: python scripts/verify_release_tag.py --tag "${GITHUB_REF_NAME}"
+
+      - name: Prepare immutable image names
+        id: image
+        shell: bash
+        run: |
+          set -euo pipefail
+          image_name="ghcr.io/${GITHUB_REPOSITORY,,}"
+          release_tag="${GITHUB_REF_NAME}"
+          sha_tag="sha-${GITHUB_SHA:0:12}"
+          {
+            echo "name=${image_name}"
+            echo "release_tag=${release_tag}"
+            echo "sha_tag=${sha_tag}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Build release image without credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          image="${{ steps.image.outputs.name }}"
+          docker build \
+            --build-arg "OCI_VERSION=${GITHUB_REF_NAME#v}" \
+            --build-arg "OCI_REVISION=${GITHUB_SHA}" \
+            --build-arg "OCI_SOURCE=https://github.com/${GITHUB_REPOSITORY}" \
+            --tag "${image}:${{ steps.image.outputs.release_tag }}" \
+            --tag "${image}:${{ steps.image.outputs.sha_tag }}" \
+            --tag "${image}:latest" \
+            .
+
+      - name: Smoke hardened release container before publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          container="bj-pal-release-${GITHUB_RUN_ID}"
+          cleanup() {
+            docker rm --force "${container}" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          docker run --detach --name "${container}" \
+            --publish 127.0.0.1:8000:8000 \
+            --read-only \
+            --tmpfs /app/runtime:rw,noexec,nosuid,size=64m,mode=0700,uid=10001,gid=10001 \
+            --tmpfs /tmp:rw,noexec,nosuid,size=64m,mode=1777 \
+            --cap-drop ALL \
+            --security-opt no-new-privileges:true \
+            "${{ steps.image.outputs.name }}:${{ steps.image.outputs.release_tag }}"
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error http://127.0.0.1:8000/healthz >/dev/null; then
+              break
+            fi
+            if [ "${attempt}" -eq 30 ]; then
+              docker logs "${container}"
+              exit 1
+            fi
+            sleep 1
+          done
+          python scripts/smoke_deployed_api.py \
+            --base-url http://127.0.0.1:8000 \
+            --expected-version "${GITHUB_REF_NAME#v}"
+
+      - name: Publish release, immutable SHA, and latest tags
+        id: publish
+        shell: bash
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          image="${{ steps.image.outputs.name }}"
+          printf '%s' "${GHCR_TOKEN}" | docker login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin
+          docker push "${image}:${{ steps.image.outputs.sha_tag }}"
+          docker push "${image}:latest"
+          output="$(docker push "${image}:${{ steps.image.outputs.release_tag }}")"
+          printf '%s\n' "${output}"
+          digest="$(printf '%s\n' "${output}" | sed -n 's/^.*digest: \(sha256:[0-9a-f]\{64\}\).*$/\1/p' | tail -1)"
+          if ! printf '%s' "${digest}" | grep -Eq '^sha256:[0-9a-f]{64}$'; then
+            echo "release digest was not reported" >&2
+            exit 1
+          fi
+          echo "digest=${digest}" >> "${GITHUB_OUTPUT}"
+          docker logout ghcr.io >/dev/null
+
+      - name: Record reproducible pull evidence
+        shell: bash
+        run: |
+          {
+            echo "## BJ-Pal OCI release"
+            echo
+            echo "- Image: \`${{ steps.image.outputs.name }}:${{ steps.image.outputs.release_tag }}\`"
+            echo "- Immutable tag: \`${{ steps.image.outputs.name }}:${{ steps.image.outputs.sha_tag }}\`"
+            echo "- Digest: \`${{ steps.publish.outputs.digest }}\`"
+            echo "- Pre-publish checks: health, readiness, OpenAPI version, fixed synthetic plan"
+            echo "- Runtime hardening: UID 10001, read-only root filesystem, all capabilities dropped"
+          } >> "${GITHUB_STEP_SUMMARY}"

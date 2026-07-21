@@ -50,6 +50,21 @@ def test_release_manifest_groups_and_verifies_current_candidate(tmp_path: Path) 
     assert summary["group_counts"] == {"implementation": 2, "documentation": 1}
 
 
+def test_release_manifest_allows_public_compose_contract(tmp_path: Path) -> None:
+    repo = _repo(tmp_path)
+    (repo / "compose.public.yaml").write_text(
+        "services:\n  api:\n    image: example.invalid/bj-pal:v1.0.0\n",
+        encoding="utf-8",
+    )
+
+    artifact = generate_release_candidate_manifest(repo, base_ref="HEAD")
+    summary = verify_release_candidate_manifest(artifact, repo)
+
+    assert artifact["ready"] is True
+    assert summary["candidate_count"] == 1
+    assert artifact["entries"][0]["path"] == "compose.public.yaml"
+
+
 def test_release_manifest_rejects_secret_runtime_and_absolute_paths(tmp_path: Path) -> None:
     repo = _repo(tmp_path)
     (repo / ".env.local").write_text("TOKEN=placeholder\n", encoding="utf-8")

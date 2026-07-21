@@ -17,6 +17,7 @@ TOP_FILES = {
     "Dockerfile",
     "Makefile",
     "README.md",
+    "compose.public.yaml",
     "pyproject.toml",
     "requirements.txt",
     "requirements-dev.txt",

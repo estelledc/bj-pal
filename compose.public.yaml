@@ -1,0 +1,17 @@
+services:
+  api:
+    image: ghcr.io/estelledc/bj-pal:${BJ_PAL_IMAGE_TAG:-v6.24.0}
+    environment:
+      BJ_PAL_LLM: mock
+      BJ_PAL_TRACE: off
+    ports:
+      - "127.0.0.1:${BJ_PAL_PORT:-8000}:8000"
+    read_only: true
+    tmpfs:
+      - /app/runtime:rw,noexec,nosuid,size=64m,mode=0700,uid=10001,gid=10001
+      - /tmp:rw,noexec,nosuid,size=64m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
