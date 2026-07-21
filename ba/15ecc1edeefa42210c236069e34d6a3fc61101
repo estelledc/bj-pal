@@ -1,0 +1,65 @@
+.github/workflows/core.yml
+  s_02941a7649dfc8::t_23e0c0c452a3c0 62-64,163
+Makefile
+  s_02941a7649dfc8::t_a6f75ffbe77b6d 15,62,86-89
+evals/postgres_pool/__init__.py
+  s_02941a7649dfc8::t_f8b69be2703359 1-15
+evals/postgres_pool/verify.py
+  s_02941a7649dfc8::t_9e7ba5d02b9467 1-184
+evals/results/postgres-pool-acceptance.json
+  s_02941a7649dfc8::t_20bc526e608096 1-126
+evals/run_postgres_pool_acceptance.py
+  s_02941a7649dfc8::t_244e5c53b659d4 1-267
+evals/verify_postgres_pool_acceptance.py
+  s_02941a7649dfc8::t_d3593c128676db 1-38
+pyproject.toml
+  s_02941a7649dfc8::t_cfa2d08a2a35d8 3
+requirements.txt
+  s_02941a7649dfc8::t_fa5598b3d28dfd 16
+scripts/run_job_worker.py
+  s_02941a7649dfc8::t_f17efc8b46e199 24-32
+src/http_api/app.py
+  s_02941a7649dfc8::t_5d21612395550b 5,196-205,209
+src/jobs/factory.py
+  s_02941a7649dfc8::t_b4141342b95d5e 15-54,75-83,86-126
+src/jobs/ports.py
+  s_02941a7649dfc8::t_1d571786685bb5 26-27
+src/jobs/postgres_repository.py
+  s_02941a7649dfc8::t_5bc35dc9916b99 21-26,252,254,266-267,270,341-350,355-385,388-404,409-443,458,467,469-490,492-502,512-520
+src/jobs/repository.py
+  s_02941a7649dfc8::t_0b6469b8b66b65 334-336
+src/jobs/service.py
+  s_02941a7649dfc8::t_754babddd900e4 99-103
+src/version.py
+  s_02941a7649dfc8::t_046f0224c25616 3
+tests/test_container_release.py
+  s_02941a7649dfc8::t_4440d43b0bfe2b 21-22
+tests/test_http_api.py
+  s_02941a7649dfc8::t_e1386965911921 77-90
+tests/test_job_store_factory.py
+  s_02941a7649dfc8::t_190fdb097c2e92 57-96
+tests/test_postgres_job_store.py
+  s_02941a7649dfc8::t_5f61e67c0d0a2b 17-21,42,73-88,202-203,266-398
+tests/test_postgres_pool_acceptance.py
+  s_02941a7649dfc8::t_af3f297d837a6b 1-38
+tests/test_trace_export.py
+  s_02941a7649dfc8::t_9e68dae5e566d1 116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "ba15ecc1edeefa42210c236069e34d6a3fc61101",
+  "prompts": {},
+  "sessions": {
+    "s_02941a7649dfc8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_02941a7649dfc8",
+        "model": "unknown"
+      },
+      "human_author": "zhouxun <zhouxun.13@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
