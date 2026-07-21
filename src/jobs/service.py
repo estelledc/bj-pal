@@ -25,8 +25,9 @@ from .diagnostics import (
     JobDiagnosticEventLimitExceeded,
     JobIncidentDiagnosis,
 )
+from .factory import create_planning_job_store
 from .models import PlanningAdmissionEvent, PlanningJob, PlanningJobEvent, PlanningJobSummary
-from .repository import PlanningJobRepository
+from .ports import PlanningJobStore
 from .workload_health import DurableWorkloadHealth, validate_closed_window
 
 
@@ -37,7 +38,7 @@ class PlanningJobService:
     def __init__(
         self,
         *,
-        repository: PlanningJobRepository | None = None,
+        repository: PlanningJobStore | None = None,
         planning_service: PlanningService | None = None,
         max_attempts: int = 3,
         default_deadline_seconds: int = 900,
@@ -54,7 +55,9 @@ class PlanningJobService:
             raise ValueError("retry_base_seconds must be non-negative")
         if retry_max_seconds < retry_base_seconds:
             raise ValueError("retry_max_seconds must be at least retry_base_seconds")
-        self.repository = repository or PlanningJobRepository()
+        self.repository = (
+            repository if repository is not None else create_planning_job_store()
+        )
         self.planning_service = planning_service or PlanningService()
         self.max_attempts = max_attempts
         self.default_deadline_seconds = default_deadline_seconds
@@ -89,6 +92,9 @@ class PlanningJobService:
         # Compatibility for adapters/tests that introspect the old attribute.
         self.requirement_normalizer = self.preflight.requirement_normalizer
         self.constraint_normalizer = self.preflight.constraint_normalizer
+
+    def probe(self) -> bool:
+        return self.repository.probe()
 
     def submit(
         self,

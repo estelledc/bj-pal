@@ -39,6 +39,9 @@ def public_demo_environment(monkeypatch) -> None:
         "ANTHROPIC_API_KEY",
         "BJ_PAL_CONTROL_PRINCIPALS_JSON",
         "BJ_PAL_CONTROL_TOKEN",
+        "BJ_PAL_JOB_POSTGRES_DSN",
+        "BJ_PAL_JOB_POSTGRES_SCHEMA",
+        "BJ_PAL_JOB_STORE",
         "DEEPSEEK_API_KEY",
         "DPSK_API_KEY",
         "LONGCAT_API_KEY",
@@ -232,8 +235,10 @@ def test_public_demo_rejects_work_above_concurrent_capacity() -> None:
     ("name", "value"),
     [
         ("BJ_PAL_LLM", "dpsk"),
+        ("BJ_PAL_JOB_STORE", "postgres"),
         ("DPSK_API_KEY", "configured-but-never-read"),
         ("BJ_PAL_CONTROL_TOKEN", "configured-but-never-read"),
+        ("BJ_PAL_JOB_POSTGRES_DSN", "postgresql://configured-but-never-read"),
     ],
 )
 def test_public_demo_refuses_non_mock_backends_and_credentials(name, value) -> None:

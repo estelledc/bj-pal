@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import sqlite3
 import uuid
 from typing import Callable
 
@@ -65,7 +66,10 @@ LOGGER = logging.getLogger(__name__)
 ReadinessProbe = Callable[[], ReadinessResponse]
 
 
-def default_readiness_probe() -> ReadinessResponse:
+def default_readiness_probe(
+    *,
+    job_store_probe: Callable[[], bool] | None = None,
+) -> ReadinessResponse:
     audit = inspect_runtime_data()
     checks = dict(audit.checks)
     state_ready = True
@@ -85,8 +89,15 @@ def default_readiness_probe() -> ReadinessResponse:
                 for name, value in state_audit.checks.items()
             }
         )
+    job_store_ready = True
+    if job_store_probe is not None:
+        try:
+            job_store_ready = job_store_probe()
+        except (OSError, RuntimeError, sqlite3.Error):
+            job_store_ready = False
+        checks["durable_job_store"] = "ok" if job_store_ready else "failed"
     return ReadinessResponse(
-        status="ready" if audit.ready and state_ready else "not_ready",
+        status="ready" if audit.ready and state_ready and job_store_ready else "not_ready",
         data_profile=audit.profile.name,
         classification=audit.profile.classification,
         checks=checks,
@@ -106,7 +117,6 @@ def create_app(
     public_demo: bool = False,
 ) -> FastAPI:
     planning_service = service or PlanningService()
-    probe = readiness_probe or default_readiness_probe
     resolved_job_service = job_service
     resolved_operation_service = operation_service
     resolved_feedback_service = feedback_service
@@ -152,6 +162,11 @@ def create_app(
         if resolved_job_service is None:
             resolved_job_service = PlanningJobService()
         return resolved_job_service
+
+    def job_store_readiness_probe() -> ReadinessResponse:
+        return default_readiness_probe(job_store_probe=lambda: jobs().probe())
+
+    probe = readiness_probe or job_store_readiness_probe
 
     def operations() -> SideEffectOperationExecutor:
         nonlocal resolved_operation_service

@@ -168,6 +168,10 @@ class InvalidJobTransition(ValueError):
     """The requested control operation is not valid for the current status."""
 
 
+class JobStoreUnavailable(RuntimeError):
+    """The configured durable store could not safely serve an operation."""
+
+
 class TenantAdmissionRejected(RuntimeError):
     """A tenant-scoped active-job or sliding-window admission policy denied work."""
 
@@ -320,6 +324,12 @@ class PlanningJobRepository:
             deterministic=True,
         )
         return connection
+
+    def probe(self) -> bool:
+        """Check connectivity without reading request or result payloads."""
+        with self._connect() as connection:
+            row = connection.execute("SELECT 1 AS ready").fetchone()
+        return row is not None and int(row["ready"]) == 1
 
     @staticmethod
     def _initialize_schema(connection: sqlite3.Connection) -> None:

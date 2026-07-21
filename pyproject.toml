@@ -1,6 +1,6 @@
 [project]
 name = "bj-pal"
-version = "6.26.0"
+version = "6.27.0"
 requires-python = ">=3.11"
 
 [tool.pytest.ini_options]
