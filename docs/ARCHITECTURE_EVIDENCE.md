@@ -103,6 +103,7 @@ BJ-Pal 没有复制三语言、A2A 或某个编排框架；只采纳能解决当
 | 公开评测可复算 | `evals/run_public.py`、`verify_artifact.py` | `tests/test_eval_artifacts.py` | mock regression，不是线上 benchmark |
 | HTTP 并发回归可复算 | `evals/run_http_benchmark.py`、`run_socket_http_benchmark.py`、`verify_http_benchmark.py` | `tests/test_http_performance_artifact.py`、`test_socket_http_benchmark.py`、`make benchmark-http benchmark-socket-http` | 同时覆盖 in-process ASGI 与独立 Uvicorn/localhost TCP；socket 强制 loopback、临时 runtime、子进程凭证剥离、readiness 与优雅退出。仍无 TLS/反向代理、多实例、真实模型/provider 或生产 SLA |
 | OCI 发布在推送前失败关闭 | `Dockerfile`、`.dockerignore`、`compose.public.yaml`、`scripts/verify_release_tag.py`、`scripts/smoke_deployed_api.py`、`.github/workflows/publish-container.yml` | `tests/test_container_release.py`；`v6.24.0` workflow 全绿，hardened-container health/readiness/OpenAPI/fixed-plan smoke 通过；release/SHA/latest 与 anonymous manifest 同指向 digest `sha256:b40f…d235` | 单 runner、amd64、mock/synthetic 镜像，不是公网 API、TLS、多实例或 SLA；anonymous manifest HTTP 200 不是长期 availability；license 为 NOASSERTION |
+| 公网 demo 与完整控制面失败关闭隔离 | `http_api.public_app`、`public_demo.py`、`public_server.py`、`docs/PUBLIC_DEMO.md` | `tests/test_public_demo.py`；真实 Uvicorn/localhost smoke 核对精确 OpenAPI allowlist、synthetic plan、无 feedback capability、request ID 与 demo/security headers | 进程级 aggregate limiter 不信任 proxy identity，也不跨实例；没有长期 HTTPS URL、WAF、外部 IdP、远程平台回执或 SLA；Cloudflare Quick Tunnel 本轮被本机策略 SIGKILL |
 
 ## 3. 失败语义检查表
 
