@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import argparse
 import json
-from typing import Any
+import re
+from typing import Any, Mapping
 from urllib.parse import urljoin, urlsplit, urlunsplit
 from urllib.request import Request, urlopen
 
 
 LOCAL_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
+VERSION_PATTERN = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
 
 
 def normalize_base_url(value: str) -> str:
@@ -24,13 +26,20 @@ def normalize_base_url(value: str) -> str:
     return urlunsplit((parsed.scheme, parsed.netloc, path, "", ""))
 
 
+def requires_public_demo_contract(version: str) -> bool:
+    match = VERSION_PATTERN.fullmatch(version)
+    if match is None:
+        raise ValueError("expected version must use canonical MAJOR.MINOR.PATCH format")
+    return tuple(int(part) for part in match.groups()) >= (6, 25, 0)
+
+
 def request_json(
     base_url: str,
     path: str,
     *,
     timeout: float,
     payload: dict[str, Any] | None = None,
-) -> tuple[dict[str, Any], str | None]:
+) -> tuple[dict[str, Any], Mapping[str, str]]:
     data = None if payload is None else json.dumps(payload).encode("utf-8")
     request = Request(
         urljoin(base_url, path.lstrip("/")),
@@ -48,26 +57,34 @@ def request_json(
         body = json.loads(response.read().decode("utf-8"))
         if not isinstance(body, dict):
             raise RuntimeError(f"{path} did not return a JSON object")
-        return body, response.headers.get("X-Request-ID")
+        return body, {
+            name.lower(): value for name, value in response.headers.items()
+        }
 
 
 def smoke(base_url: str, *, expected_version: str, timeout: float) -> dict[str, Any]:
     normalized = normalize_base_url(base_url)
-    health, health_request_id = request_json(normalized, "/healthz", timeout=timeout)
+    public_demo_contract = requires_public_demo_contract(expected_version)
+    health, health_headers = request_json(normalized, "/healthz", timeout=timeout)
     if health != {"status": "ok", "service": "bj-pal", "version": expected_version}:
         raise RuntimeError("health response did not match the release contract")
 
-    readiness, _ = request_json(normalized, "/readyz", timeout=timeout)
+    readiness, readiness_headers = request_json(normalized, "/readyz", timeout=timeout)
     if readiness.get("status") != "ready":
         raise RuntimeError("readiness response was not ready")
 
-    schema, _ = request_json(normalized, "/openapi.json", timeout=timeout)
+    schema, schema_headers = request_json(normalized, "/openapi.json", timeout=timeout)
     if schema.get("info", {}).get("version") != expected_version:
         raise RuntimeError("OpenAPI version did not match the release")
-    if "/v1/plans" not in schema.get("paths", {}):
+    schema_paths = set(schema.get("paths", {}))
+    if public_demo_contract:
+        expected_paths = {"/healthz", "/readyz", "/v1/plans"}
+        if schema_paths != expected_paths:
+            raise RuntimeError("OpenAPI schema exposed routes outside the public demo contract")
+    elif "/v1/plans" not in schema_paths:
         raise RuntimeError("OpenAPI schema did not expose /v1/plans")
 
-    plan, plan_request_id = request_json(
+    plan, plan_headers = request_json(
         normalized,
         "/v1/plans",
         timeout=timeout,
@@ -87,13 +104,42 @@ def smoke(base_url: str, *, expected_version: str, timeout: float) -> dict[str, 
         raise RuntimeError("public image must identify its bundled data as synthetic")
     if not plan.get("final_plan", {}).get("steps"):
         raise RuntimeError("planning smoke returned no final steps")
-    if not health_request_id or not plan_request_id:
+    if public_demo_contract and plan.get("feedback") is not None:
+        raise RuntimeError("public demo must not issue a persisted feedback capability")
+    response_headers = (
+        health_headers,
+        readiness_headers,
+        schema_headers,
+        plan_headers,
+    )
+    if any(not headers.get("x-request-id") for headers in response_headers):
         raise RuntimeError("request ID propagation was missing")
+    if public_demo_contract:
+        if any(
+            headers.get("x-bj-pal-demo-mode") != "synthetic-mock"
+            for headers in response_headers
+        ):
+            raise RuntimeError("public demo mode header was missing")
+        if plan_headers.get("cache-control") != "no-store":
+            raise RuntimeError("public plan responses must not be cached")
+
+    checks = ["health", "readiness"]
+    if public_demo_contract:
+        checks.extend(
+            [
+                "public_openapi_allowlist",
+                "fixed_synthetic_plan",
+                "no_feedback_capability",
+                "abuse_guard_headers",
+            ]
+        )
+    else:
+        checks.extend(["openapi", "fixed_synthetic_plan"])
 
     return {
         "version": expected_version,
         "data_classification": "synthetic",
-        "checks": ["health", "readiness", "openapi", "fixed_synthetic_plan"],
+        "checks": checks,
         "request_id_propagation": "present",
     }
 
