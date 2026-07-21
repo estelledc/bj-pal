@@ -32,7 +32,7 @@ ALLOWED_TOP_LEVEL_FILES = frozenset(
     }
 )
 ALLOWED_TOP_LEVEL_DIRECTORIES = frozenset(
-    {".github", "docs", "evals", "fixtures", "scripts", "src", "tests"}
+    {".github", "docs", "evals", "fixtures", "promo", "scripts", "src", "tests"}
 )
 DENIED_PREFIXES = (
     ".venv/",

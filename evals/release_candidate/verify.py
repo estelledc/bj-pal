@@ -22,7 +22,9 @@ TOP_FILES = {
     "requirements.txt",
     "requirements-dev.txt",
 }
-TOP_DIRECTORIES = {".github", "docs", "evals", "fixtures", "scripts", "src", "tests"}
+TOP_DIRECTORIES = {
+    ".github", "docs", "evals", "fixtures", "promo", "scripts", "src", "tests",
+}
 DENIED_PREFIXES = (".venv/", ".streamlit/", "_site/", "data/", "evals/results/", "runtime/")
 DENIED_SUFFIXES = (
     ".db", ".db-journal", ".db-shm", ".db-wal", ".local.png", ".pyc",
