@@ -36,10 +36,12 @@ from clarifications import (
 )
 from data_profile import inspect_runtime_data
 from jobs import (
+    DurableWorkloadHealth,
     IdempotencyConflict,
     InvalidJobTransition,
     JobDiagnosticEventLimitExceeded,
     JobIncidentDiagnosis,
+    JobWorkloadEvidenceLimitExceeded,
     JobNotFound,
     PlanningAdmissionEvent,
     PlanningJob,
@@ -49,6 +51,7 @@ from jobs import (
     SUBMISSION_RATE_WINDOW_SECONDS,
     TenantAdmissionRejected,
 )
+from jobs.workload_health import validate_closed_window
 from operations import (
     InvalidOperationTransition,
     OperationApprovalConflict,
@@ -90,6 +93,7 @@ from storage.legacy_retirement import (
 from .schemas import (
     ErrorResponse,
     ClarificationContinueRequest,
+    DurableWorkloadHealthResponse,
     FeedbackCollectionResponse,
     FeedbackReportResponse,
     FeedbackSubmitRequest,
@@ -153,7 +157,7 @@ from .sse import (
 )
 
 
-SERVICE_VERSION = "6.19.0"
+SERVICE_VERSION = "6.20.0"
 REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
 LOGGER = logging.getLogger(__name__)
 
@@ -223,6 +227,14 @@ class PlanningJobExecutor(Protocol):
         *,
         tenant_id: str | None = None,
     ) -> JobIncidentDiagnosis | None: ...
+
+    def workload_health(
+        self,
+        *,
+        tenant_id: str,
+        window_start: str,
+        window_end: str,
+    ) -> DurableWorkloadHealth: ...
 
     def admission_events(
         self,
@@ -2407,6 +2419,78 @@ def create_app(
                 message="The durable job store is temporarily unavailable.",
             )
         return job_list_response(items, job_status=job_status, limit=limit)
+
+    @application.get(
+        "/v1/planning-job-health",
+        response_model=DurableWorkloadHealthResponse,
+        responses={
+            400: {"model": ErrorResponse, "description": "Invalid metrics window"},
+            409: {
+                "model": ErrorResponse,
+                "description": "Bounded evidence limit exceeded",
+            },
+            500: {"model": ErrorResponse, "description": "Invalid workload evidence"},
+            503: {"model": ErrorResponse, "description": "Durable job store unavailable"},
+        },
+        tags=["planning-jobs"],
+        summary="Aggregate a tenant-scoped durable workload window",
+    )
+    def get_planning_job_health(
+        request: Request,
+        principal: ControlPrincipal = Depends(require_read_auth),
+        window_start: str = Query(min_length=20, max_length=64),
+        window_end: str = Query(min_length=20, max_length=64),
+    ):
+        try:
+            validate_closed_window(window_start, window_end)
+        except ValueError as exc:
+            return _error_response(
+                request,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                code="invalid_workload_window",
+                message=str(exc),
+            )
+        try:
+            snapshot = jobs().workload_health(
+                tenant_id=principal.tenant_id,
+                window_start=window_start,
+                window_end=window_end,
+            )
+        except JobWorkloadEvidenceLimitExceeded:
+            return _error_response(
+                request,
+                status_code=status.HTTP_409_CONFLICT,
+                code="workload_evidence_limit_exceeded",
+                message="The workload window exceeds the bounded evidence limit.",
+            )
+        except ValueError:
+            LOGGER.exception(
+                "durable workload evidence is invalid",
+                extra={"request_id": _request_id(request)},
+            )
+            return _error_response(
+                request,
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                code="invalid_workload_evidence",
+                message="The persisted workload evidence is invalid.",
+            )
+        except (OSError, RuntimeError, sqlite3.Error):
+            LOGGER.exception(
+                "durable workload aggregation failed",
+                extra={"request_id": _request_id(request)},
+            )
+            return _error_response(
+                request,
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                code="job_store_unavailable",
+                message="The durable job store is temporarily unavailable.",
+            )
+        payload = snapshot.to_dict()
+        payload["links"] = {
+            "jobs": "/v1/planning-jobs",
+            "admission_events": "/v1/planning-admission-events",
+        }
+        return DurableWorkloadHealthResponse.model_validate(payload)
 
     @application.get(
         "/v1/planning-admission-events",

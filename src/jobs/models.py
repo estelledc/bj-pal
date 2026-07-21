@@ -119,3 +119,13 @@ class PlanningJobSummary:
     replayed_from_job_id: str | None
     artifact_id: str | None
     error_code: str | None
+
+
+@dataclass(frozen=True)
+class PlanningJobWindowEvidence:
+    """Payload-minimized job/event evidence for one aggregate metrics window."""
+
+    job_id: str
+    status: JobStatus
+    created_at: str
+    events: tuple[PlanningJobEvent, ...]

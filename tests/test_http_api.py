@@ -641,6 +641,29 @@ def test_tenant_isolation_covers_idempotency_jobs_events_controls_and_continuati
     with TestClient(app) as client:
         alpha = client.post("/v1/planning-jobs", headers=alpha_headers, json=payload)
         beta = client.post("/v1/planning-jobs", headers=beta_headers, json=payload)
+        health_now = datetime.now(timezone.utc)
+        health_window = {
+            "window_start": (health_now - timedelta(minutes=1)).isoformat(),
+            "window_end": datetime.now(timezone.utc).isoformat(),
+        }
+        alpha_health = client.get(
+            "/v1/planning-job-health",
+            headers={"Authorization": f"Bearer {alpha_token}"},
+            params=health_window,
+        )
+        beta_health = client.get(
+            "/v1/planning-job-health",
+            headers={"Authorization": f"Bearer {beta_token}"},
+            params=health_window,
+        )
+        invalid_health = client.get(
+            "/v1/planning-job-health",
+            headers={"Authorization": f"Bearer {alpha_token}"},
+            params={
+                "window_start": "2026-08-01T00:00:00Z",
+                "window_end": "2026-07-01T00:00:00Z",
+            },
+        )
         alpha_list = client.get(
             "/v1/planning-jobs",
             headers={"Authorization": f"Bearer {alpha_token}"},
@@ -707,6 +730,15 @@ def test_tenant_isolation_covers_idempotency_jobs_events_controls_and_continuati
     assert alpha.json()["job_id"] != beta.json()["job_id"]
     assert alpha.json()["tenant_id"] == "tenant-alpha"
     assert beta.json()["tenant_id"] == "tenant-beta"
+    assert alpha_health.status_code == beta_health.status_code == 200
+    assert alpha_health.json()["job_count"] == beta_health.json()["job_count"] == 1
+    health_serialized = alpha_health.text + beta_health.text
+    assert "tenant-alpha" not in health_serialized
+    assert "tenant-beta" not in health_serialized
+    assert alpha.json()["job_id"] not in health_serialized
+    assert beta.json()["job_id"] not in health_serialized
+    assert invalid_health.status_code == 400
+    assert invalid_health.json()["error"]["code"] == "invalid_workload_window"
     assert [item["job_id"] for item in alpha_list.json()["jobs"]] == [
         alpha.json()["job_id"]
     ]

@@ -869,6 +869,53 @@ class JobIncidentDiagnosisResponse(StrictModel):
     links: dict[str, str]
 
 
+class WorkloadLatencyDistributionResponse(StrictModel):
+    sample_count: int = Field(ge=0)
+    minimum_ms: Optional[float] = Field(default=None, ge=0)
+    p50_ms: Optional[float] = Field(default=None, ge=0)
+    p95_ms: Optional[float] = Field(default=None, ge=0)
+    p99_ms: Optional[float] = Field(default=None, ge=0)
+    maximum_ms: Optional[float] = Field(default=None, ge=0)
+    quantile_method: Literal["nearest_rank"]
+
+
+class WorkloadStatusCountsResponse(StrictModel):
+    queued: int = Field(ge=0)
+    running: int = Field(ge=0)
+    succeeded: int = Field(ge=0)
+    failed: int = Field(ge=0)
+    dead_lettered: int = Field(ge=0)
+    cancelled: int = Field(ge=0)
+    timed_out: int = Field(ge=0)
+
+
+class DurableWorkloadHealthResponse(StrictModel):
+    version: Literal["durable_workload_health_v1"]
+    window_start: str
+    window_end: str
+    window_duration_seconds: int = Field(ge=1, le=2_678_400)
+    job_count: int = Field(ge=0, le=1_000)
+    terminal_job_count: int = Field(ge=0)
+    active_job_count: int = Field(ge=0)
+    status_counts: WorkloadStatusCountsResponse
+    event_count: int = Field(ge=0, le=10_000)
+    retry_job_count: int = Field(ge=0)
+    lease_recovery_job_count: int = Field(ge=0)
+    terminal_success_rate: Optional[float] = Field(default=None, ge=0, le=1)
+    terminal_failure_rate: Optional[float] = Field(default=None, ge=0, le=1)
+    dead_letter_rate: Optional[float] = Field(default=None, ge=0, le=1)
+    timeout_rate: Optional[float] = Field(default=None, ge=0, le=1)
+    cancellation_rate: Optional[float] = Field(default=None, ge=0, le=1)
+    retry_job_rate: Optional[float] = Field(default=None, ge=0, le=1)
+    lease_recovery_job_rate: Optional[float] = Field(default=None, ge=0, le=1)
+    queue_wait_ms: WorkloadLatencyDistributionResponse
+    run_duration_ms: WorkloadLatencyDistributionResponse
+    time_to_terminal_ms: WorkloadLatencyDistributionResponse
+    evidence_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    artifact_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    links: dict[str, str]
+
+
 class PlanningAdmissionEventResponse(StrictModel):
     event_id: int
     policy_version: Literal["tenant_admission_v1"]

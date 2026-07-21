@@ -12,7 +12,21 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from .models import PlanningAdmissionEvent, PlanningJob, PlanningJobEvent, PlanningJobSummary
+from .models import (
+    PlanningAdmissionEvent,
+    PlanningJob,
+    PlanningJobEvent,
+    PlanningJobSummary,
+    PlanningJobWindowEvidence,
+)
+from .workload_health import (
+    MAX_WORKLOAD_EVENTS,
+    MAX_WORKLOAD_JOBS,
+    JobWorkloadEvidenceLimitExceeded,
+    canonical_timestamp,
+    derive_status_from_events,
+    validate_window,
+)
 
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -1751,6 +1765,85 @@ class PlanningJobRepository:
                 (job_id, after_event_id, limit),
             ).fetchall()
         return tuple(self._event_from_row(row) for row in rows)
+
+    def workload_evidence(
+        self,
+        *,
+        tenant_id: str,
+        window_start: str,
+        window_end: str,
+    ) -> tuple[PlanningJobWindowEvidence, ...]:
+        """Read one exact tenant/window without loading request or result payloads."""
+        _validate_scope_identifier(tenant_id, field="tenant_id")
+        start, end = validate_window(window_start, window_end)
+        canonical_start = canonical_timestamp(start)
+        canonical_end = canonical_timestamp(end)
+        with self._connect() as connection:
+            connection.execute("BEGIN")
+            jobs = connection.execute(
+                """
+                SELECT job_id, status, created_at
+                FROM planning_jobs
+                WHERE tenant_id = ? AND created_at >= ? AND created_at < ?
+                ORDER BY created_at, job_id
+                LIMIT ?
+                """,
+                (
+                    tenant_id,
+                    canonical_start,
+                    canonical_end,
+                    MAX_WORKLOAD_JOBS + 1,
+                ),
+            ).fetchall()
+            if len(jobs) > MAX_WORKLOAD_JOBS:
+                raise JobWorkloadEvidenceLimitExceeded(
+                    "durable workload job limit exceeded; aggregate was not truncated"
+                )
+            if not jobs:
+                return ()
+            events = connection.execute(
+                """
+                WITH selected_jobs AS (
+                    SELECT job_id
+                    FROM planning_jobs
+                    WHERE tenant_id = ? AND created_at >= ? AND created_at < ?
+                    ORDER BY created_at, job_id
+                    LIMIT ?
+                )
+                SELECT event.*
+                FROM planning_job_events AS event
+                INNER JOIN selected_jobs AS selected ON selected.job_id = event.job_id
+                WHERE event.created_at < ?
+                ORDER BY event.job_id, event.event_id
+                LIMIT ?
+                """,
+                (
+                    tenant_id,
+                    canonical_start,
+                    canonical_end,
+                    MAX_WORKLOAD_JOBS,
+                    canonical_end,
+                    MAX_WORKLOAD_EVENTS + 1,
+                ),
+            ).fetchall()
+        if len(events) > MAX_WORKLOAD_EVENTS:
+            raise JobWorkloadEvidenceLimitExceeded(
+                "durable workload event limit exceeded; aggregate was not truncated"
+            )
+        grouped: dict[str, list[PlanningJobEvent]] = {
+            str(row["job_id"]): [] for row in jobs
+        }
+        for row in events:
+            grouped[str(row["job_id"])].append(self._event_from_row(row))
+        return tuple(
+            PlanningJobWindowEvidence(
+                job_id=str(row["job_id"]),
+                status=derive_status_from_events(grouped[str(row["job_id"])]),
+                created_at=str(row["created_at"]),
+                events=tuple(grouped[str(row["job_id"])]),
+            )
+            for row in jobs
+        )
 
     def list_admission_events(
         self,
