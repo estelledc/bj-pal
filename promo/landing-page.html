@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#f3eee4" />
-  <meta name="description" content="BJ-Pal 是一个面向北京周末短时活动的决策 Agent 原型：用真实场景信号校准计划，在风险出现时解释并重排。Jason Xun 的 Product Systems Builder 项目案例。" />
+  <meta name="description" content="BJ-Pal 是一个公开、可复现的北京短时活动规划 Agent：具备 durable jobs、有界 LLM 执行、失败关闭与独立评测证据。" />
   <meta name="author" content="Jason Xun · KeepL" />
   <link rel="icon" type="image/png" href="favicon.png" />
 
@@ -17,7 +17,7 @@
   <meta property="og:locale" content="zh_CN" />
   <meta property="og:site_name" content="Jason Xun · Product Systems Builder" />
   <meta property="og:title" content="BJ-Pal · 能解释、会改主意的北京决策 Agent" />
-  <meta property="og:description" content="从问题定义、Agent 系统到分层评测：一个公开、可追溯，也坦诚边界的产品系统案例。" />
+  <meta property="og:description" content="从产品决策到可靠 Agent 工程：durable jobs、有界执行、OTLP、告警与真实 Provider 验收均可沿公开证据复核。" />
   <meta property="og:url" content="https://estelledc.github.io/bj-pal/" />
   <meta property="og:image" content="https://estelledc.github.io/bj-pal/pitch-png/01.png" />
   <meta property="og:image:width" content="3840" />
@@ -25,7 +25,7 @@
   <meta property="og:image:alt" content="BJ-Pal 项目封面：周六下午的决策解药" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="BJ-Pal · Product Systems Case" />
-  <meta name="twitter:description" content="A grounded, explainable and re-plannable decision agent for short activities in Beijing." />
+  <meta name="twitter:description" content="A reproducible Beijing planning agent with durable jobs, bounded LLM execution, and independently verified evidence." />
   <meta name="twitter:image" content="https://estelledc.github.io/bj-pal/pitch-png/01.png" />
 
   <title>BJ-Pal · Jason Xun 的 Product Systems 案例</title>
@@ -36,14 +36,14 @@
     "@type": "SoftwareSourceCode",
     "name": "BJ-Pal",
     "alternateName": "北京搭子",
-    "description": "面向北京周末短时活动的决策 Agent 原型，结合场景信号、风险探测、局部重排和群体共识。",
+    "description": "公开、可复现的北京短时活动规划 Agent，结合需求门控、风险探测、局部重排、durable jobs、有界 LLM 执行与独立评测证据。",
     "url": "https://estelledc.github.io/bj-pal/",
     "codeRepository": "https://github.com/estelledc/bj-pal",
     "programmingLanguage": "Python",
     "applicationCategory": "DeveloperApplication",
     "inLanguage": ["zh-CN", "en"],
     "isAccessibleForFree": true,
-    "dateModified": "2026-07-11",
+    "dateModified": "2026-07-21",
     "creator": [
       {
         "@type": "Person",
@@ -668,39 +668,40 @@
       <section class="hero" id="top" aria-labelledby="hero-title">
         <div class="shell">
           <div class="hero-topline">
-            <span class="status">Prototype · Hackathon 2026</span>
+            <span class="status">Public release · v6.23.0</span>
             <span class="hero-index">CASE 02 / PRODUCT SYSTEMS</span>
           </div>
 
           <p class="eyebrow">BJ-Pal / 北京搭子</p>
           <h1 class="display" id="hero-title">把“去哪儿”变成一条<em>能解释、会改主意</em>的决策链。</h1>
           <p class="hero-subtitle">周末活动真正难的，不是生成更多选项，而是在排队、关店、意见冲突出现时，仍给出一条能执行、能追溯、敢于承认不确定的方案。</p>
-          <p class="hero-english" lang="en">BJ-Pal is a prototype decision agent for short activities in Beijing. It grounds plans in place and UGC signals, probes execution risk, replans locally, and exposes the evidence behind each decision.</p>
+          <p class="hero-english" lang="en">BJ-Pal is a reproducible planning agent for short activities in Beijing. It grounds plans in typed evidence, fails closed on missing constraints, persists recoverable jobs, bounds LLM execution, and exposes verifiable operational evidence.</p>
 
           <div class="cta-row">
             <a class="button button--primary" href="#decision-trace">回放一次决策 <span aria-hidden="true">↓</span></a>
             <a class="button button--ghost" href="https://github.com/estelledc/bj-pal" target="_blank" rel="noreferrer">阅读源码 <span aria-hidden="true">↗</span></a>
+            <a class="button button--ghost" href="https://github.com/estelledc/bj-pal/releases/tag/v6.23.0" target="_blank" rel="noreferrer">查看 Release <span aria-hidden="true">↗</span></a>
           </div>
 
           <div class="role-strip" aria-label="项目状态、归因与证据边界">
             <div class="role-cell">
               <div class="role-label">Status / 状态</div>
-              <div class="role-value">Prototype<small>可运行原型 · 不是生产服务</small></div>
+              <div class="role-value">v6.23.0 · Public<small>已进入 main · Pages 不是 API 部署</small><a class="source-tag" href="https://github.com/estelledc/bj-pal/releases/tag/v6.23.0" target="_blank" rel="noreferrer">Release ↗</a></div>
             </div>
             <div class="role-cell">
               <div class="role-label">Ownership / 归因</div>
               <div class="role-value">Jason Xun · 项目负责人<small>KeepL · 共同作者；AI · 协作工具</small></div>
             </div>
             <div class="role-cell">
-              <div class="role-label">Bounded evaluation</div>
-              <div class="role-value">47/100<small>LongCat 既定场景 final_pass，不是业务效果</small><a class="source-tag" href="https://github.com/estelledc/bj-pal/blob/main/docs/eval-100-results.md" target="_blank" rel="noreferrer">Evaluation source ↗</a></div>
+              <div class="role-label">Core evidence</div>
+              <div class="role-value">900 passed<small>903 collected · 3 real-cache skipped</small><a class="source-tag" href="https://github.com/estelledc/bj-pal/actions/runs/29797142543" target="_blank" rel="noreferrer">Main workflow ↗</a></div>
             </div>
             <div class="role-cell">
-              <div class="role-label">User evidence</div>
-              <div class="role-value">尚无真实用户验证<small>AI 合成访谈只用于生成需求假设</small><a class="source-tag" href="https://github.com/estelledc/bj-pal/blob/main/docs/ROADMAP.md" target="_blank" rel="noreferrer">Research boundary ↗</a></div>
+              <div class="role-label">Evidence boundary</div>
+              <div class="role-value">1 provider run · 0 real users<small>1464 实报 token · 单个 synthetic 场景</small><a class="source-tag" href="https://github.com/estelledc/bj-pal/blob/main/evals/live_provider/observations/2026-07-21-deepseek-pro-sanlitun/acceptance.json" target="_blank" rel="noreferrer">Acceptance receipt ↗</a></div>
             </div>
           </div>
-          <p class="verification-line">最后验证 2026-07-11 · 页面契约、相关展示测试与公开评测来源已复核</p>
+          <p class="verification-line">最后验证 2026-07-21 · main Core、Docker build、Pages 部署、Release 与公开证据链接已复核</p>
 
           <figure class="hero-figure">
             <img src="pitch-png/01.png" width="3840" height="2160" alt="BJ-Pal 项目封面：周六下午的决策解药" fetchpriority="high" />
@@ -759,7 +760,7 @@
           <div class="role-brief">
             <article><span>01 / Define</span><h3>把模糊痛点变成可检查行为</h3><p>定义责任可见、红旗提示、错误自承认、周末聚焦与重要场合筛选。</p></article>
             <article><span>02 / Orchestrate</span><h3>把计划、探测、重排串成控制流</h3><p>Planner 生成，AvailabilityProbe 回灌风险，Replanner 只替换失败步骤。</p></article>
-            <article><span>03 / Evaluate</span><h3>把“看起来不错”拆成证据层</h3><p>TravelPlanner 四指标评方案，S1-S5 验行为；两者不互相替代。</p></article>
+            <article><span>03 / Evaluate</span><h3>把“看起来不错”拆成证据层</h3><p>contract、独立 verifier、provider observation 与用户结果分轨记录；任何一层都不替代下一层。</p></article>
           </div>
         </div>
       </section>
@@ -768,7 +769,7 @@
         <div class="shell">
           <p class="eyebrow">03 / System design</p>
           <h2 class="section-title" id="system-title">从一句话，到一条可回放的决策流水线。</h2>
-          <p class="section-lede">系统采用 Plan-and-Execute：先理解偏好与硬约束，再生成候选、用真实场景信号校准、探测风险、局部重排，最后形成群体可转发的结果。</p>
+          <p class="section-lede">当前主链把入口统一到 PlanRequest → Preflight → PlanningService → PlanResult：缺少高风险约束时在 fan-out 前停止；执行中限制 LLM、数据、工具、重试、实报 token 与安全检查点耗时；同步请求和 durable job 共用同一业务语义。</p>
 
           <div class="jx-case-question" id="decision-trace">
             <p class="jx-case-question__label">Case question</p>
@@ -807,7 +808,7 @@ DURATION · 14:00—17:50
 DUPLICATE POI · none
 PATH · citywalk → culture → rest → meal → depart
 TRACE · reasons[] + evidence[]</p>
-                <div class="trace-decision"><span>Decision 02 · plan</span><h3>用 ToT / OPTW 候选与理由生成一条能检查的初始计划。</h3><p>计划不是最终答案。每一步携带 reasons[] 与 evidence[]，再交给 AvailabilityProbe 检查排队、闭店与其他红旗。</p><a class="source-tag" href="https://github.com/estelledc/bj-pal/blob/main/docs/submission/TECHNICAL_REPORT.md#4-%E7%B3%BB%E7%BB%9F%E6%80%BB%E4%BD%93%E6%9E%B6%E6%9E%84" target="_blank" rel="noreferrer">Architecture source ↗</a></div>
+                <div class="trace-decision"><span>Decision 02 · plan</span><h3>在候选边界内生成一条能检查的初始计划。</h3><p>这段历史回放来自早期多分支实验；当前 main 默认使用单分支 canonical PlanningService。两者都要求每一步携带 reasons[] 与 evidence[]，再交给 AvailabilityProbe 检查排队、闭店与其他红旗。</p><a class="source-tag" href="https://github.com/estelledc/bj-pal/blob/main/docs/DESIGN.md" target="_blank" rel="noreferrer">Current architecture ↗</a></div>
               </article>
               <article class="trace-panel" data-panel="probe">
                 <p class="trace-observation">RED FLAG 01 · queue 65 min
@@ -834,52 +835,52 @@ STATUS · historical showcase run</p>
 
       <section class="section" id="outcomes" aria-labelledby="outcomes-title">
         <div class="shell">
-          <p class="eyebrow">04 / Observed evaluation</p>
-          <h2 class="section-title" id="outcomes-title">把亮点和限制写在同一张成绩单上。</h2>
-          <p class="section-lede">以下数字来自仓库公开评测文档，描述的是原型在既定测试中的表现，不外推为线上业务效果或真实用户满意度。</p>
+          <p class="eyebrow">04 / Reproducible engineering evidence</p>
+          <h2 class="section-title" id="outcomes-title">不只展示一次好结果，<br />还展示它如何失败、恢复与被复核。</h2>
+          <p class="section-lede">以下数字绑定 2026-07-21 的 v6.23.0 公开主线。它们证明代码、契约和证据链可复现；不外推为线上业务效果、生产容量或真实用户满意度。</p>
 
           <div class="metrics">
             <article class="metric">
-              <div class="metric-label">Final pass · v3</div>
-              <div class="metric-value">47/100</div>
-              <p>100 道 LongCat 场景中，47 道同时通过交付、常识和硬约束要求。</p>
-              <a href="https://github.com/estelledc/bj-pal/blob/main/docs/eval-100-results.md" target="_blank" rel="noreferrer">SOURCE ↗</a>
+              <div class="metric-label">Core regression</div>
+              <div class="metric-value">900/903</div>
+              <p>900 passed；3 条 real-cache 专用用例 skipped。CI 同时执行 Docker build、smoke 与离线 verifier。</p>
+              <a href="https://github.com/estelledc/bj-pal/actions/runs/29797142543" target="_blank" rel="noreferrer">MAIN WORKFLOW ↗</a>
             </article>
             <article class="metric">
-              <div class="metric-label">Relative lift</div>
-              <div class="metric-value">+71%</div>
-              <p>final_pass 从 v1 的 27.5% 到 v3 的 47.0%；两组样本量不同，不是受控 A/B。</p>
-              <a href="https://github.com/estelledc/bj-pal/blob/main/docs/eval-100-results.md#1-travelplanner-4-%E6%8C%87%E6%A0%87v1--v3" target="_blank" rel="noreferrer">SOURCE ↗</a>
+              <div class="metric-label">Credential boundary</div>
+              <div class="metric-value">557 files</div>
+              <p>当前发布树凭证扫描通过；真实 Key 不进入请求、Agent message、CLI 或提交工件。</p>
+              <a href="https://github.com/estelledc/bj-pal/blob/main/scripts/check_no_secrets.py" target="_blank" rel="noreferrer">SCANNER ↗</a>
             </article>
             <article class="metric">
-              <div class="metric-label">S1–S5 checks</div>
-              <div class="metric-value">280/280</div>
-              <p>确定性检查全过，证明行为触发器接入主路径；不能证明产品已经“做对”。</p>
-              <a href="https://github.com/estelledc/bj-pal/blob/main/docs/eval-100-results.md#2-v30-l3-%E5%85%A8%E9%87%8F%E8%AF%84%E6%B5%8B5-%E4%BF%A1%E5%8F%B7--100-case--280-%E6%A3%80%E6%9F%A5" target="_blank" rel="noreferrer">SOURCE ↗</a>
+              <div class="metric-label">HTTP acceptance</div>
+              <div class="metric-value">40/40</div>
+              <p>进程内 ASGI 20/20，加独立 localhost TCP 20/20；都是本机 mock/synthetic 回归，不是 SLA。</p>
+              <a href="https://github.com/estelledc/bj-pal/blob/main/README.md#%E9%AA%8C%E8%AF%81" target="_blank" rel="noreferrer">VALIDATION ↗</a>
             </article>
             <article class="metric">
-              <div class="metric-label">Global ECE</div>
-              <div class="metric-value">0.1089</div>
-              <p>基于 291 个 trace ↔ outcome 配对；置信度仍过度集中在 0.7–0.8。</p>
-              <a href="https://github.com/estelledc/bj-pal/blob/main/docs/eval-100-results.md#4-v31-d7-%E6%A0%A1%E5%87%86%E7%BB%93%E6%9E%9C%E6%BB%91%E7%AA%97-ece--%E7%BD%AE%E4%BF%A1%E5%BA%A6%E5%88%86%E5%B8%83" target="_blank" rel="noreferrer">SOURCE ↗</a>
+              <div class="metric-label">Live provider acceptance</div>
+              <div class="metric-value">1464</div>
+              <p>1 次 DeepSeek 调用的 provider-reported tokens；约 28.9 秒、首轮接受。单样本不代表成功率或延迟分布。</p>
+              <a href="https://github.com/estelledc/bj-pal/blob/main/evals/live_provider/observations/2026-07-21-deepseek-pro-sanlitun/acceptance.json" target="_blank" rel="noreferrer">RECEIPT ↗</a>
             </article>
           </div>
 
           <section class="rubric" aria-labelledby="rubric-title">
             <div class="rubric-head">
-              <h3 id="rubric-title">Rubric · TravelPlanner 四指标</h3>
-              <span>human review + deterministic checks</span>
+              <h3 id="rubric-title">Evidence ladder · 四层证据不混写</h3>
+              <span>contract → verifier → provider → user</span>
             </div>
             <div class="rubric-grid">
-              <div class="rubric-item"><code>delivery_rate</code><p>计划非空 + JSON 合法</p></div>
-              <div class="rubric-item"><code>commonsense_pass</code><p>时间顺序 / 餐时 / 地理常识</p></div>
-              <div class="rubric-item"><code>hard_constraint_pass</code><p>预算 / 时段 / 人数 / 忌口</p></div>
-              <div class="rubric-item"><code>final_pass</code><p>四项同时通过，才算用户级通过</p></div>
+              <div class="rubric-item"><code>L1 · contract</code><p>类型、预算、状态机与失败语义</p></div>
+              <div class="rubric-item"><code>L2 · verifier</code><p>从 raw artifact 独立复算决策与 SHA</p></div>
+              <div class="rubric-item"><code>L3 · provider</code><p>真实调用只证明该次 observation</p></div>
+              <div class="rubric-item"><code>L4 · user</code><p>真实 participant/report 当前仍为 0</p></div>
             </div>
             <div class="rubric-foot">
-              <p><strong>S1-S5 deterministic checks：</strong>trace / red flags / apology / weekday / screening。</p>
-              <p><strong>技术方案对照：</strong>v1 = 裸 Planner 基线 · v2 = Planner + AvailabilityProbe · v3 = Planner + AvailabilityProbe + Replanner + IM 卡片。</p>
-              <p><strong>三阶段评测路径：</strong>BASELINE → DIAGNOSE → REPLAN-FALLBACK；版本号描述技术方案，不代表只有三次迭代。</p>
+              <p><strong>不混写：</strong>synthetic contract 通过不等于真实模型成功；真实 API 返回不等于真实用户采纳。</p>
+              <p><strong>失败关闭：</strong>缺少 usage、样本门、候选绑定或完整证据时，系统返回 unavailable / insufficient_data / error，而不是补一个好看的数字。</p>
+              <p><strong>历史基线：</strong>早期 v1-v3 LongCat 指标仍保留在公开评测报告中，但不再代表当前 v6.23 主线的完整工程证据。</p>
             </div>
           </section>
         </div>
@@ -889,26 +890,26 @@ STATUS · historical showcase run</p>
         <div class="shell">
           <p class="eyebrow">05 / Evidence trail</p>
           <h2 class="section-title" id="evidence-title">不只给结论，<br />也给出结论从哪里来。</h2>
-          <p class="section-lede">案例页只做导航。系统设计、评测定义、原始结果、研究假设与路线图都保留在公开仓库，方便逐项核查。</p>
+          <p class="section-lede">案例页只做导航。当前架构、评测定义、历史基线、工程报告、面试映射与固定 Release 都保留在公开仓库，方便逐项核查。</p>
 
           <div class="evidence-grid">
             <a class="evidence-card" href="https://github.com/estelledc/bj-pal/blob/main/docs/eval-100-results.md" target="_blank" rel="noreferrer">
-              <span class="evidence-type">Evaluation</span><h3>评测结果与诚实复盘</h3><p>v1/v2/v3 指标、L2/L3 行为检查、ECE 分布和当前风险。</p><span class="evidence-arrow">阅读报告 ↗</span>
+              <span class="evidence-type">Historical baseline</span><h3>早期评测与诚实复盘</h3><p>v1-v3 LongCat 指标、行为检查、ECE 分布及样本不可比边界。</p><span class="evidence-arrow">阅读报告 ↗</span>
             </a>
             <a class="evidence-card" href="https://github.com/estelledc/bj-pal/blob/main/docs/EVAL_FRAMEWORK.md" target="_blank" rel="noreferrer">
-              <span class="evidence-type">Rubric</span><h3>分层评测框架</h3><p>为什么分 L1、L2、L3，以及每层能证明什么、不能证明什么。</p><span class="evidence-arrow">查看框架 ↗</span>
+              <span class="evidence-type">Evaluation</span><h3>当前分层评测框架</h3><p>离线 contract、独立 verifier、真实 provider observation 与用户结果如何分轨。</p><span class="evidence-arrow">查看框架 ↗</span>
             </a>
             <a class="evidence-card" href="https://github.com/estelledc/bj-pal/blob/main/docs/DESIGN.md" target="_blank" rel="noreferrer">
-              <span class="evidence-type">Architecture</span><h3>系统设计与异常处理</h3><p>Agent 控制流、工具边界、回退策略与关键技术决策。</p><span class="evidence-arrow">查看设计 ↗</span>
+              <span class="evidence-type">Architecture</span><h3>v6.23 系统设计</h3><p>统一主链、durable jobs、执行预算、状态迁移、OTLP 与告警边界。</p><span class="evidence-arrow">查看设计 ↗</span>
             </a>
-            <a class="evidence-card" href="https://github.com/estelledc/bj-pal/blob/main/docs/USER_RESEARCH_FINDINGS.md" target="_blank" rel="noreferrer">
-              <span class="evidence-type">Discovery</span><h3>AI 访谈与产品假设</h3><p>100 条合成访谈如何转成五类行为信号，以及证据边界。</p><span class="evidence-arrow">查看研究 ↗</span>
+            <a class="evidence-card" href="https://github.com/estelledc/bj-pal/blob/main/docs/TECHNICAL_REPORT.md" target="_blank" rel="noreferrer">
+              <span class="evidence-type">Engineering report</span><h3>从 Demo 到可靠 Agent</h3><p>每个版本解决的问题、失败样本、验证方式与仍未覆盖的生产缺口。</p><span class="evidence-arrow">查看报告 ↗</span>
             </a>
-            <a class="evidence-card" href="https://github.com/estelledc/bj-pal/blob/main/docs/ROADMAP.md" target="_blank" rel="noreferrer">
-              <span class="evidence-type">Roadmap</span><h3>从原型到真实验证</h3><p>真实用户、细粒度置信度、外部服务接入等后续路径。</p><span class="evidence-arrow">查看路线图 ↗</span>
+            <a class="evidence-card" href="https://github.com/estelledc/bj-pal/blob/main/docs/INTERVIEW_GUIDE.md" target="_blank" rel="noreferrer">
+              <span class="evidence-type">Interview map</span><h3>从代码证据到面试讲法</h3><p>按可靠性、成本、评测、安全与数据边界组织追问和回答。</p><span class="evidence-arrow">查看指南 ↗</span>
             </a>
-            <a class="evidence-card" href="one-pager.pdf" target="_blank" rel="noreferrer">
-              <span class="evidence-type">Brief</span><h3>一页技术摘要</h3><p>适合快速了解系统、数据、工具与评测的可打印版本。</p><span class="evidence-arrow">打开 PDF ↗</span>
+            <a class="evidence-card" href="https://github.com/estelledc/bj-pal/releases/tag/v6.23.0" target="_blank" rel="noreferrer">
+              <span class="evidence-type">Release</span><h3>v6.23.0 可复现版本</h3><p>固定公开 main 版本、运行方式、能力摘要与不外推边界。</p><span class="evidence-arrow">打开 Release ↗</span>
             </a>
           </div>
         </div>
@@ -922,11 +923,11 @@ STATUS · historical showcase run</p>
           <div class="limits-layout">
             <p class="limits-intro">可信的案例不是把所有数字写大，而是让读者知道：哪些已经验证，哪些只是原型假设，下一步该验证什么。</p>
             <ol class="limit-list">
-              <li><span>01</span><div><strong>需求发现仍缺真实用户证据</strong><p>100 条 AI 用户访谈只能帮助生成假设，不能替代招募真实用户后的访谈、观察与可用性测试。</p></div></li>
-              <li><span>02</span><div><strong>确定性检查不等于泛化能力</strong><p>S1-S5 的 280/280 证明触发逻辑没有断，但关键词规则可能在真实表达中漏判或误判。</p></div></li>
-              <li><span>03</span><div><strong>版本对比并非受控实验</strong><p>v1 使用 40 题，v3 使用 100 题；+71% 是相对变化，不能被包装成严格的模型提升结论。</p></div></li>
-              <li><span>04</span><div><strong>置信度仍不够细</strong><p>79.1% 的 trace 集中在 0.7–0.8 桶。ECE 达标，但 planner 自评分数还没有完整进入 trace。</p></div></li>
-              <li><span>05</span><div><strong>交易与消息链路是 mock</strong><p>预订、蛋糕配送和群消息用于验证流程与界面，不代表已接入真实商业服务或具备生产 SLA。</p></div></li>
+              <li><span>01</span><div><strong>真实用户结果仍为 0</strong><p>AI 合成访谈、fixture 与 operator observation 不能替代真实参与者的任务完成、采纳或满意度。</p></div></li>
+              <li><span>02</span><div><strong>真实 Provider 只有一个样本</strong><p>1464 实报 token 与约 28.9 秒只描述该次 DeepSeek observation，不能估计成功率、延迟分布或金额成本。</p></div></li>
+              <li><span>03</span><div><strong>评测大多是 hand-authored synthetic</strong><p>独立 verifier 能证明契约与工件一致，不能证明 case 分布代表真实北京出行需求。</p></div></li>
+              <li><span>04</span><div><strong>Pages 不是公开 API 部署</strong><p>当前线上入口是静态案例；没有 TLS 反向代理、多实例服务、真实负载或持续 SLO 证据。</p></div></li>
+              <li><span>05</span><div><strong>外部服务仍停在授权边界</strong><p>预订只允许沙箱；POI/路线不是合法 live provider；也未实现服务端 KMS、凭证轮换、跨实例预算或 billing reconciliation。</p></div></li>
             </ol>
           </div>
         </div>
@@ -964,7 +965,7 @@ STATUS · historical showcase run</p>
 
       <div class="site-footer">
         <span>BJ-Pal · Jason Xun · KeepL · 2026</span>
-        <span>Prototype · Public source · Beijing</span>
+        <span>v6.23.0 · Public source · Evidence-bounded</span>
       </div>
     </div>
   </footer>
