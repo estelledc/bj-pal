@@ -1,8 +1,8 @@
 # BJ-Pal 技术报告
 
-> 本文面向代码评审者，解释项目从黑客松 Demo 到 v6.18 offline-first、需求门控、自然语言约束账本、可续跑澄清、可验证执行观测与请求级执行预算、模型输出失败关闭、编排选型对照、tenant-aware durable 调度、原子准入、身份感知控制面、审批式沙箱副作用状态机、用户结果证据链、知情试用分母、安全 operator 工作流、证据型计划质量代理、localhost socket acceptance、隐私最小化工具调用账本、诊断隔离、非破坏业务状态迁移与可复核发布边界的演进。系统细节见 [DESIGN.md](DESIGN.md)，逐项证据见 [ARCHITECTURE_EVIDENCE.md](ARCHITECTURE_EVIDENCE.md)。
+> 本文面向代码评审者，解释项目从黑客松 Demo 到 v6.19 offline-first、需求门控、自然语言约束账本、可续跑澄清、可验证执行观测与请求级执行预算、模型输出失败关闭、编排选型对照、tenant-aware durable 调度、持久证据驱动的故障诊断、原子准入、身份感知控制面、审批式沙箱副作用状态机、用户结果证据链、知情试用分母、安全 operator 工作流、证据型计划质量代理、localhost socket acceptance、隐私最小化工具调用账本、诊断隔离、非破坏业务状态迁移与可复核发布边界的演进。系统细节见 [DESIGN.md](DESIGN.md)，逐项证据见 [ARCHITECTURE_EVIDENCE.md](ARCHITECTURE_EVIDENCE.md)。
 
-> 发布状态（2026-07-20）：v6.18 位于 `codex/reproducible-core-v4` release-candidate 分支，尚未合并到 `main`；GitHub `main` 仍停在 `86af63f`。本文的“已实现”以本机门禁为证据，不能替代 Draft PR 远端 CI 或外推为已发布能力。
+> 发布状态（2026-07-20）：v6.18 位于尚未合并的 Draft PR #5；v6.19 位于 stacked Draft PR #6，本地完整门禁与分支 workflow 已通过。本文的“已实现”按本机/远端分支证据分别标注，不能外推为 `main` 已发布能力。
 
 ## 1. 问题定义
 
@@ -349,7 +349,15 @@ Delivery adapter 不再拥有 Planner/Probe 顺序。Planner、Prober、ProfileL
 - 直接把数百个 dirty-tree 文件写进提交说明既不可复核，也容易把 runtime、数据库、评测结果或本机路径混入发布；发布边界必须从 Git 的字节安全状态流生成，而不是靠 shell 空格分割或人工计数；
 - `release_candidate_manifest_v1` 以 NUL-safe porcelain 为输入，把每个候选绑定到相对路径、XY status、实现/文档组、size、Git executable mode 和 SHA-256，并同时绑定 branch、HEAD、`origin/main` 及 ahead/behind；
 - 主生成器执行明确 allowlist/denylist，拒绝 env/state/generated/binary/symlink/non-UTF8/大文件/本机绝对路径；独立 verifier 重新读取当前 Git 状态和文件字节，复算分组、状态、总字节、mode、文件 SHA 与 artifact SHA，不信任生成器自报摘要；
-- 当前 manifest 精确覆盖 333 项：315 implementation、18 documentation，60 modified、273 untracked，逐项字节数及总量以每次重建的 gitignored artifact 为准，0 违规。它为两个原子提交提供可执行边界，但不扫描 Git 历史、不证明代码语义正确，也不把真实 API 调用授权等同于历史 Key 已在 provider 侧失效。
+- 当前 manifest 精确覆盖 333 项：315 implementation、18 documentation，60 modified、273 untracked，逐项字节数及总量以每次重建的 gitignored artifact 为准，0 违规。它为两个原子提交提供可执行边界，但不扫描 Git 历史、不证明代码语义正确。repository owner 已确认旧 LongCat Key 在 provider 侧撤销；这属于 owner attestation，不是 provider 签名回执，真实 DeepSeek API 调用也不是撤销证据。
+
+### v6.19：Durable-job Incident Diagnosis
+
+- 新增 `job_incident_diagnosis_v1`，从 tenant-scoped job 与完整 append-only event chain 生成 14 类稳定 failure signature 和 recommended action；排队/执行 deadline 由 claim evidence 区分，retry/lease recovery 保持为非 terminal 诊断；
+- 诊断 read model 只暴露 job ID、status、allowlisted error code、事件类型/attempt/相对时间、计数和双 SHA；request/tenant/principal/worker、原始 payload/error message 与未知 error 原值不进入输出；
+- 事件链要求 submitted 起点、单调 ID/时间、attempt 边界和 terminal matching；服务达到 1,000 项时探测 overflow 并失败关闭，不在截断证据上分类；
+- tenant-scoped HTTP 复用 `jobs:read`，本地 CLI 只创建 0600 新文件；job smoke 实际走 SQLite submit/claim/success、dead-letter 和 queue timeout 三条路径；
+- 14-case hand-authored synthetic artifact 覆盖全部分类，独立 verifier 从 raw case 重算 classification/action、phase、sanitized event SHA、inner/outer SHA 和隐私约束。它是 deterministic triage contract，不是生产 root-cause accuracy、事故频率或建议修复率。
 
 ## 3. 当前执行链
 

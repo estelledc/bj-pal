@@ -38,6 +38,8 @@ from data_profile import inspect_runtime_data
 from jobs import (
     IdempotencyConflict,
     InvalidJobTransition,
+    JobDiagnosticEventLimitExceeded,
+    JobIncidentDiagnosis,
     JobNotFound,
     PlanningAdmissionEvent,
     PlanningJob,
@@ -100,6 +102,7 @@ from .schemas import (
     PlanningAdmissionEventsResponse,
     PlanningJobEventResponse,
     PlanningJobEventsResponse,
+    JobIncidentDiagnosisResponse,
     PlanningJobListItemResponse,
     PlanningJobListResponse,
     PlanningJobResponse,
@@ -150,7 +153,7 @@ from .sse import (
 )
 
 
-SERVICE_VERSION = "6.18.0"
+SERVICE_VERSION = "6.19.0"
 REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
 LOGGER = logging.getLogger(__name__)
 
@@ -213,6 +216,13 @@ class PlanningJobExecutor(Protocol):
         after_event_id: int = 0,
         limit: int = 100,
     ) -> tuple[PlanningJobEvent, ...]: ...
+
+    def diagnose(
+        self,
+        job_id: str,
+        *,
+        tenant_id: str | None = None,
+    ) -> JobIncidentDiagnosis | None: ...
 
     def admission_events(
         self,
@@ -596,6 +606,7 @@ def create_app(
                 "error_message": job.error_message,
                 "links": {
                     "self": f"/v1/planning-jobs/{job.job_id}",
+                    "diagnosis": f"/v1/planning-jobs/{job.job_id}/diagnosis",
                     "events": f"/v1/planning-jobs/{job.job_id}/events",
                     "event_stream": f"/v1/planning-jobs/{job.job_id}/events/stream",
                     "cancel": f"/v1/planning-jobs/{job.job_id}/cancel",
@@ -2618,6 +2629,73 @@ def create_app(
                 code="invalid_job_artifact",
                 message="The persisted planning artifact is invalid.",
             )
+
+    @application.get(
+        "/v1/planning-jobs/{job_id}/diagnosis",
+        response_model=JobIncidentDiagnosisResponse,
+        responses={
+            404: {"model": ErrorResponse, "description": "Planning job not found"},
+            409: {
+                "model": ErrorResponse,
+                "description": "Diagnostic event boundary exceeded",
+            },
+            500: {"model": ErrorResponse, "description": "Invalid diagnostic evidence"},
+            503: {"model": ErrorResponse, "description": "Durable job store unavailable"},
+        },
+        tags=["planning-jobs"],
+        summary="Classify a durable job from privacy-minimized persisted evidence",
+    )
+    def diagnose_planning_job(
+        job_id: str,
+        request: Request,
+        principal: ControlPrincipal = Depends(require_read_auth),
+    ):
+        if not re.fullmatch(r"job-[a-f0-9]{32}", job_id):
+            return _error_response(
+                request,
+                status_code=status.HTTP_404_NOT_FOUND,
+                code="job_not_found",
+                message="The planning job was not found.",
+            )
+        try:
+            diagnosis = jobs().diagnose(job_id, tenant_id=principal.tenant_id)
+        except JobDiagnosticEventLimitExceeded:
+            return _error_response(
+                request,
+                status_code=status.HTTP_409_CONFLICT,
+                code="job_diagnosis_event_limit_exceeded",
+                message="The job event chain exceeds the bounded diagnostic limit.",
+            )
+        except ValueError:
+            LOGGER.exception("planning job diagnostic evidence is invalid", extra={"job_id": job_id})
+            return _error_response(
+                request,
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                code="invalid_job_diagnosis",
+                message="The persisted job diagnostic evidence is invalid.",
+            )
+        except (OSError, RuntimeError, sqlite3.Error):
+            LOGGER.exception("planning job diagnosis failed", extra={"job_id": job_id})
+            return _error_response(
+                request,
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                code="job_store_unavailable",
+                message="The durable job store is temporarily unavailable.",
+            )
+        if diagnosis is None:
+            return _error_response(
+                request,
+                status_code=status.HTTP_404_NOT_FOUND,
+                code="job_not_found",
+                message="The planning job was not found.",
+            )
+        payload = diagnosis.to_dict()
+        payload["links"] = {
+            "job": f"/v1/planning-jobs/{job_id}",
+            "events": f"/v1/planning-jobs/{job_id}/events",
+            "replay": f"/v1/planning-jobs/{job_id}/replay",
+        }
+        return JobIncidentDiagnosisResponse.model_validate(payload)
 
     @application.get(
         "/v1/planning-jobs/{job_id}/events",

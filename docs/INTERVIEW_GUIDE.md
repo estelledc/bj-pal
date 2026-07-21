@@ -186,13 +186,15 @@ v6.16 把同一方法扩到更难的双表状态机：`user_memory` 保存可变
 
 v6.17 继续追问“receipt 有过以后，部署会不会又静默回旧库”。答案是把 owner 状态放进 readiness：retirement audit 只读核对旧库已知表、三份 source snapshot 绑定、resolver、专用库完整性和 tool-audit owner；`dedicated_required` 下任何 fallback、drift、未知表或 receipt 丢失都会让 `/readyz` 返回 not-ready。真实本机 18 项检查全过，4-case verifier 还分别注入 drift、未知表和缺 receipt。这个故事适合回答迁移、灰度和可运维性问题，但不能夸成在线双写、自动清库或合规擦除。
 
-v6.18 回答“数百个本地改动如何保证提交边界可审计”。不要背文件名：生成器从 NUL-safe Git porcelain 得到候选，把每项的 status、实现/文档组、字节数、Git mode 和 SHA 与 HEAD/branch/divergence 一起签入 gitignored manifest；独立 verifier 重读工作树并复算。当前精确结果是 333 项 = 315 实现 + 18 文档，支持先提交可独立跑门禁的实现，再提交只引用实现证据的文档。要主动说清它不是 secret-history scanner 或 code review；真实 API 调用已获授权也不代表旧泄露 Key 已被撤销。
+v6.18 回答“数百个本地改动如何保证提交边界可审计”。不要背文件名：生成器从 NUL-safe Git porcelain 得到候选，把每项的 status、实现/文档组、字节数、Git mode 和 SHA 与 HEAD/branch/divergence 一起签入 gitignored manifest；独立 verifier 重读工作树并复算。当前精确结果是 333 项 = 315 实现 + 18 文档，支持先提交可独立跑门禁的实现，再提交只引用实现证据的文档。要主动说清它不是 secret-history scanner 或 code review；repository owner 已确认旧 LongCat Key 在 provider 侧撤销，但这仍是 owner attestation，不是 provider 签名回执，真实 DeepSeek API 调用也不是撤销证据。
+
+v6.19 回答“任务失败后如何快速、可靠地定位下一步”。系统不读取 prompt 或原始异常来猜根因，而是从 tenant-scoped job 与完整 append-only event chain 生成版本化 failure signature：区分 retry pending、lease recovery、queue/execution deadline、persisted request、clarification、budget、model-output、worker-lease 和 unknown runtime 等 14 类，并给出受控 action。事件链和结果分别带 SHA，超过 1,000 项拒绝截断；HTTP 复用 read scope，CLI 只新建 0600 文件。关键边界是 `runtime_or_dependency_unknown` 仍然不知道究竟是模型、网络、数据库还是依赖，必须继续查健康状态，不能在面试中说成自动根因分析。
 
 这仍不是完整生产可观测性或成本治理：wall-clock checkpoint 不能强杀已经阻塞的网络调用，token gate 在 provider 不回报 usage 时无法生效，也没有模型价格表、tenant 金额账户、跨实例全局预算或 billing reconciliation。durable claim 已保存 queue wait/tenant cursor，v6.0 admission 也有追加式 decision audit，但内存 capture 仍没有 OTLP collector、多实例汇聚、queue-wait/run-latency p50/p95/p99、错误/重试率、provider freshness、audit retention 或成本看板；tool log 虽已独立建库，仍没有 retroactive legacy erase、数据库加密或远端不可变存储。正确下一步是把现有 correlation/span/event/budget contract 接到 collector 和 metrics backend，并独立治理历史数据，而不是仅增加 print 日志。
 
 ### Q25. 最大技术债是什么？
 
-不是 UI。v6.10 已把一个真实暴露的数据缺口（798 仅 2 候选）和一个约束证据缺口（不吃辣只存在于 prompt）修到可复算，并补了 3-case live quality proxy；当前最大的证据债因此转为真实 participant/report 仍为 0。固定 synthetic plan 通过 32 个必需检查不能替代真人是否采纳、执行和为何放弃。技术上天气 typed adapter、failure/cache 契约和 offline artifact 已完成，但缺适用于作品集/宣传部署的商业授权或自托管 live acceptance；POI/路线仍无 live provider。其次是托管 purge/备份删除证明、外部 IdP/动态 RBAC、credential 生命周期、数据库 RLS、入口 raw-attempt abuse protection、跨实例全局准入/调度、tenant 金额预算、audit retention、多实例 store。副作用只完成 sandbox approval/receipt/read-only reconciliation，还缺真实 provider 查询 acceptance、补偿 operation、客服 handoff 和签名回执。
+不是 UI。v6.19 已能从 durable evidence 生成受限 failure signature，但当前最大的证据债仍是真实 participant/report 为 0。固定 synthetic plan 通过 32 个必需检查、14 类诊断 fixture 全通过，都不能替代真人是否采纳、执行和为何放弃，也不能证明生产 incident 分布。技术上还缺适用于作品集/宣传部署的天气商业授权或自托管 live acceptance，POI/路线仍无 live provider；诊断还没有生产 metrics/incident backend、跨实例 event store 或真实处置 outcome。其次是托管 purge/备份删除证明、外部 IdP/动态 RBAC、credential 生命周期、数据库 RLS、入口 raw-attempt abuse protection、跨实例全局准入/调度、tenant 金额预算和 audit retention。副作用只完成 sandbox approval/receipt/read-only reconciliation，还缺真实 provider 查询 acceptance、补偿 operation、客服 handoff 和签名回执。
 
 ### Q26. 你怎么评估 BM25 改动？
 
@@ -395,6 +397,7 @@ git diff --check
 
 - 基于 FastAPI + Pydantic 建立同步/异步双入口，并设计 SQLite durable job：幂等提交、事务 claim、lease heartbeat、过期 owner fencing、有限指数退避、dead letter、协作取消、持久 deadline、lineage replay 与带 aging 的 0-9 优先级；同步与 worker 复用同一 Application Service，job 控制面默认由 Bearer token fail closed 保护。
 - 设计 append-only job event log，将 heartbeat、retry、cancel、replay、lease 回收、成功和失败与状态变更同事务落库；JSON cursor 与 bounded SSE 共用 durable event，支持 `Last-Event-ID` 断线续读。
+- 从 tenant-scoped durable job 与完整事件链构建 `job_incident_diagnosis_v1`：以 14 类稳定 failure signature 区分 queue/execution deadline、retry/lease/model-output/budget 等边界，未知 provider/runtime 错误不提升为根因；用双 SHA、1,000-event fail-closed、跨租户 HTTP 测试和独立 synthetic verifier 约束可复算性与隐私最小化。
 - 设计 `priority_aging_v1`，从 eligible time 每 60 秒提升有效优先级并以 FIFO 解同分，retry backoff 不累计等待；claim event 固化 queue-wait 证据，3-case 独立 verifier 重算抢占、抗饥饿与 backoff 排除。
 - 抽象类型化 data provider，将多类 POI/UGC 查询改为独立并行结果 + 单点 merge，显式返回 freshness、bookable、provider reference 和 partial failure。
 - 实现 offline-first Open-Meteo adapter：三种 usage mode fail closed，覆盖 timeout/429/schema、共享 TTL/stale cache、attribution 和 Planner/Probe 同快照；用独立 verifier 证明离线契约，同时不把 synthetic fixture 冒充 live acceptance。
